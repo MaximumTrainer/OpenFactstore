@@ -1,0 +1,27 @@
+# Backend build artifacts
+backend/build/
+backend/.gradle/
+backend/out/
+
+# Frontend build artifacts
+frontend/dist/
+frontend/node_modules/
+frontend/playwright-report/
+frontend/test-results/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
