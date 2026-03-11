@@ -34,12 +34,25 @@ const NEW_STATUS_MARKER = 'No existing GitHub issue';
 async function ensureLabel(github, owner, repo, label, core) {
   try {
     await github.rest.issues.getLabel({ owner, repo, name: label });
-  } catch {
-    try {
-      await github.rest.issues.createLabel({ owner, repo, name: label });
-      core.info(`🏷️  Created label "${label}"`);
-    } catch (e) {
-      core.warning(`⚠️  Failed to create label "${label}": ${e.message}`);
+  } catch (e) {
+    // Only attempt to create the label if it truly does not exist (404).
+    if (e && e.status === 404) {
+      try {
+        await github.rest.issues.createLabel({
+          owner,
+          repo,
+          name: label,
+          color: '0e8a16',
+          description: 'Auto-created backlog label',
+        });
+        core.info(`🏷️  Created label "${label}"`);
+      } catch (createError) {
+        core.warning(`⚠️  Failed to create label "${label}": ${createError.message}`);
+      }
+    } else {
+      core.warning(
+        `⚠️  Failed to verify existence of label "${label}" (status: ${e && e.status}): ${e && e.message}`
+      );
     }
   }
 }
@@ -53,6 +66,23 @@ async function findExistingIssue(github, owner, repo, title) {
     q: `repo:${owner}/${repo} is:issue in:title "${title}"`,
   });
   return data.total_count > 0 ? data.items[0].number : null;
+}
+
+/**
+ * Update the backlog file's status line to reference the given issue.
+ * Throws if the expected status marker is not found.
+ */
+function updateBacklogStatus(fs, filePath, content, issueNumber, issueUrl, core) {
+  const updated = content.replace(
+    /> \*\*Status:\*\* 🆕 New — No existing GitHub issue/,
+    `> **Status:** ✅ Existing — [GitHub Issue #${issueNumber}](${issueUrl})`
+  );
+  if (updated === content) {
+    const message = `Failed to update status line in "${filePath}" for issue #${issueNumber}: expected status marker not found.`;
+    core.error(message);
+    throw new Error(message);
+  }
+  fs.writeFileSync(filePath, updated);
 }
 
 /**
@@ -85,11 +115,13 @@ async function createBacklogIssues({ github, context, core, fs, path }) {
       continue;
     }
 
-    // Skip if an issue with this title already exists on GitHub
+    // If an issue with this title already exists on GitHub, update the backlog file and skip
     const existingNumber = await findExistingIssue(github, owner, repo, item.title);
     if (existingNumber) {
+      const issueUrl = `https://github.com/${owner}/${repo}/issues/${existingNumber}`;
+      updateBacklogStatus(fs, filePath, content, existingNumber, issueUrl, core);
       skipped.push(item.title);
-      core.info(`⏭️  Skipped "${item.title}" — issue already exists (#${existingNumber})`);
+      core.info(`⏭️  Skipped "${item.title}" — issue already exists (#${existingNumber}), updated backlog file`);
       continue;
     }
 
@@ -112,11 +144,7 @@ async function createBacklogIssues({ github, context, core, fs, path }) {
 
     // Update the backlog file status line
     const issueUrl = `https://github.com/${owner}/${repo}/issues/${issue.number}`;
-    const updated = content.replace(
-      /> \*\*Status:\*\* 🆕 New — No existing GitHub issue/,
-      `> **Status:** ✅ Existing — [GitHub Issue #${issue.number}](${issueUrl})`
-    );
-    fs.writeFileSync(filePath, updated);
+    updateBacklogStatus(fs, filePath, content, issue.number, issueUrl, core);
   }
 
   // Write GitHub Actions job summary
