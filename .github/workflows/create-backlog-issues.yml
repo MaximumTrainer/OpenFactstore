@@ -64,12 +64,16 @@ jobs:
                     name: label,
                   });
                 } catch {
-                  await github.rest.issues.createLabel({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    name: label,
-                  });
-                  core.info(`🏷️  Created label "${label}"`);
+                  try {
+                    await github.rest.issues.createLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name: label,
+                    });
+                    core.info(`🏷️  Created label "${label}"`);
+                  } catch (e) {
+                    core.warning(`⚠️  Failed to create label "${label}": ${e.message}`);
+                  }
                 }
               }
 
