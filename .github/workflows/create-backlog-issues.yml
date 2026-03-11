@@ -1,0 +1,128 @@
+name: Create Backlog Issues
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  create-issues:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Issue 11: HashiCorp Vault Integration"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('docs/backlog/11-hashicorp-vault-integration.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Feature: HashiCorp Vault Integration',
+              body: body,
+              labels: ['enhancement', 'integration', 'security']
+            });
+
+      - name: "Issue 12: OPA Integration"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('docs/backlog/12-opa-integration.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Feature: OPA (Open Policy Agent) Integration',
+              body: body,
+              labels: ['enhancement', 'integration', 'policy']
+            });
+
+      - name: "Issue 13: Jira & Confluence Integration"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('docs/backlog/13-jira-confluence-integration.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Feature: Jira & Confluence Integration',
+              body: body,
+              labels: ['enhancement', 'integration']
+            });
+
+      - name: "Issue 14: Grafana Dashboard Integration"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('docs/backlog/14-grafana-dashboard-integration.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Feature: Grafana Dashboard & Prometheus Metrics Integration',
+              body: body,
+              labels: ['enhancement', 'integration', 'monitoring']
+            });
+
+      - name: "Issue 15: Regulatory Compliance Framework"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('docs/backlog/15-regulatory-compliance-framework.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Feature: Regulatory Compliance Framework (SOX, PCI-DSS, GDPR)',
+              body: body,
+              labels: ['enhancement', 'compliance', 'governance']
+            });
+
+      - name: "Issue 16: Security Scan Integration"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('docs/backlog/16-security-scan-integration.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Feature: Security Scan Integration (OWASP ZAP, Snyk, Trivy)',
+              body: body,
+              labels: ['enhancement', 'security']
+            });
+
+      - name: "Issue 17: Continuous Evidence Collection Pipeline"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('docs/backlog/17-continuous-evidence-collection.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Feature: Continuous Evidence Collection Pipeline',
+              body: body,
+              labels: ['enhancement', 'pipeline', 'automation']
+            });
+
+      - name: "Issue 18: Immutable Ledger Support"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('docs/backlog/18-immutable-ledger-support.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Feature: Immutable Ledger Support (Hash-Chain & AWS QLDB)',
+              body: body,
+              labels: ['enhancement', 'infrastructure', 'audit-log']
+            });
+
+      - name: Summary
+        run: echo "✅ Created 8 new backlog issues (11-18) in the repository"
