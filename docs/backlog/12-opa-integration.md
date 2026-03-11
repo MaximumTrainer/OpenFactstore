@@ -119,6 +119,5 @@ opa:
 
 ### Dependencies
 
-- `com.github.jnr:jnr-ffi` or OPA REST client for external OPA
-- Embedded OPA via Rego evaluation library (optional)
+- OPA REST API client via Spring `RestTemplate` or `WebClient` (already available)
 - OPA Docker image: `openpolicyagent/opa:latest`
