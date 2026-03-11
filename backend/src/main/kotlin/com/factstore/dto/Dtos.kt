@@ -1,7 +1,9 @@
 package com.factstore.dto
 
 import com.factstore.core.domain.AttestationStatus
+import com.factstore.core.domain.DeliveryStatus
 import com.factstore.core.domain.TrailStatus
+import com.factstore.core.domain.WebhookSource
 import java.time.Instant
 import java.util.UUID
 
@@ -129,6 +131,52 @@ data class ChainOfCustodyResponse(
     val attestations: List<AttestationResponse>,
     val evidenceFiles: List<EvidenceFileResponse>,
     val complianceStatus: ComplianceStatus
+)
+
+// Webhook Config DTOs
+data class CreateWebhookConfigRequest(
+    val source: WebhookSource,
+    val secret: String,
+    val flowId: UUID
+)
+
+data class WebhookConfigResponse(
+    val id: UUID,
+    val source: WebhookSource,
+    val flowId: UUID,
+    val isActive: Boolean,
+    val createdAt: Instant
+)
+
+// Webhook Delivery DTOs
+data class WebhookDeliveryResponse(
+    val id: UUID,
+    val webhookConfigId: UUID,
+    val deliveryId: String,
+    val source: WebhookSource,
+    val eventType: String?,
+    val status: DeliveryStatus,
+    val statusMessage: String?,
+    val receivedAt: Instant
+)
+
+// Webhook Inbound Event DTOs
+data class GenericWebhookPayload(
+    val eventType: String,
+    val trailId: UUID? = null,
+    val gitCommitSha: String? = null,
+    val gitBranch: String? = null,
+    val gitAuthor: String? = null,
+    val gitAuthorEmail: String? = null,
+    val attestationType: String? = null,
+    val attestationStatus: AttestationStatus? = null,
+    val details: String? = null
+)
+
+data class WebhookResponse(
+    val accepted: Boolean,
+    val deliveryId: String,
+    val message: String
 )
 
 // Error DTO
