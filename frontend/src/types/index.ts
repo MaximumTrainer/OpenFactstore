@@ -73,3 +73,42 @@ export interface WebhookDelivery {
   statusMessage: string | null
   receivedAt: string
 }
+
+export interface JiraConfig {
+  id: string
+  jiraBaseUrl: string
+  jiraUsername: string
+  defaultProjectKey: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ConfluenceConfig {
+  id: string
+  confluenceBaseUrl: string
+  confluenceUsername: string
+  defaultSpaceKey: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface JiraTicket {
+  id: string
+  ticketKey: string
+  summary: string
+  status: string
+  issueType: string
+  projectKey: string
+  trailId: string | null
+  createdAt: string
+}
+
+export interface ConnectionTestResponse {
+  success: boolean
+  message: string
+}
+
+export interface JiraSyncResponse {
+  syncedCount: number
+  message: string
+}

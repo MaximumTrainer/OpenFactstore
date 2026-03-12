@@ -2,12 +2,20 @@
   <div>
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-gray-900">Integrations</h1>
-      <button
-        class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
-        @click="showModal = true"
-      >
-        + New Webhook
-      </button>
+      <div class="flex items-center gap-3">
+        <RouterLink
+          to="/integrations/atlassian"
+          class="inline-flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
+        >
+          <span>🔗</span> Jira &amp; Confluence
+        </RouterLink>
+        <button
+          class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
+          @click="showModal = true"
+        >
+          + New Webhook
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="text-center text-gray-500 py-12">Loading...</div>

@@ -186,3 +186,67 @@ data class ErrorResponse(
     val message: String,
     val timestamp: Instant = Instant.now()
 )
+
+// Jira Integration DTOs
+data class JiraConfigRequest(
+    val jiraBaseUrl: String,
+    val jiraUsername: String,
+    val jiraApiToken: String,
+    val defaultProjectKey: String
+)
+
+data class JiraConfigResponse(
+    val id: UUID,
+    val jiraBaseUrl: String,
+    val jiraUsername: String,
+    val defaultProjectKey: String,
+    val createdAt: Instant,
+    val updatedAt: Instant
+)
+
+data class JiraTicketResponse(
+    val id: UUID,
+    val ticketKey: String,
+    val summary: String,
+    val status: String,
+    val issueType: String,
+    val projectKey: String,
+    val trailId: UUID?,
+    val createdAt: Instant
+)
+
+// Confluence Integration DTOs
+data class ConfluenceConfigRequest(
+    val confluenceBaseUrl: String,
+    val confluenceUsername: String,
+    val confluenceApiToken: String,
+    val defaultSpaceKey: String
+)
+
+data class ConfluenceConfigResponse(
+    val id: UUID,
+    val confluenceBaseUrl: String,
+    val confluenceUsername: String,
+    val defaultSpaceKey: String,
+    val createdAt: Instant,
+    val updatedAt: Instant
+)
+
+// Integration connectivity test DTO
+data class ConnectionTestResponse(
+    val success: Boolean,
+    val message: String
+)
+
+// Jira sync DTO
+data class JiraSyncResponse(
+    val syncedCount: Int,
+    val message: String
+)
+
+// Create Jira ticket request DTO
+data class CreateJiraTicketRequest(
+    val trailId: UUID,
+    val summary: String,
+    val issueType: String = "Task"
+)
