@@ -109,7 +109,8 @@ class JiraIntegrationService(
             val url = "${config.jiraBaseUrl}/rest/api/2/issue"
             @Suppress("UNCHECKED_CAST")
             val response = restTemplate.postForObject(url, entity, Map::class.java) as Map<String, Any>
-            val key = response["key"] as? String ?: "UNKNOWN-0"
+            val key = response["key"] as? String
+                ?: throw IllegalStateException("Jira API returned a response without a ticket key")
             JiraTicket(
                 ticketKey = key,
                 summary = summary,

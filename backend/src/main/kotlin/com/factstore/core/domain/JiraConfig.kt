@@ -17,6 +17,8 @@ class JiraConfig(
     var jiraUsername: String,
 
     @Column(name = "jira_api_token", nullable = false)
+    // Note: token is stored only in-memory (H2). For production use, integrate with a secrets
+    // manager such as HashiCorp Vault and replace this column with a Vault secret reference.
     var jiraApiToken: String,
 
     @Column(name = "default_project_key", nullable = false)

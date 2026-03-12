@@ -285,8 +285,9 @@ async function submitJiraConfig() {
     jiraForm.value.jiraUsername = resp.data.jiraUsername
     jiraForm.value.defaultProjectKey = resp.data.defaultProjectKey
     jiraFormSuccess.value = 'Jira configuration saved successfully.'
-  } catch {
-    jiraFormError.value = 'Failed to save Jira configuration. Please try again.'
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    jiraFormError.value = `Failed to save Jira configuration: ${msg}`
   } finally {
     jiraSubmitting.value = false
   }
@@ -299,8 +300,9 @@ async function handleTestJira() {
     const resp = await testJiraConnectivity()
     jiraTestResult.value = resp.data
     jiraHealthClass.value = resp.data.success ? 'bg-green-500' : 'bg-red-500'
-  } catch {
-    jiraTestResult.value = { success: false, message: 'Failed to perform connectivity test.' }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    jiraTestResult.value = { success: false, message: `Failed to perform connectivity test: ${msg}` }
     jiraHealthClass.value = 'bg-red-500'
   } finally {
     jiraTesting.value = false
@@ -314,8 +316,9 @@ async function handleSync() {
     const resp = await syncToJira()
     syncResult.value = resp.data
     await loadTickets()
-  } catch {
-    syncResult.value = { syncedCount: 0, message: 'Sync failed. Please try again.' }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    syncResult.value = { syncedCount: 0, message: `Sync failed: ${msg}` }
   } finally {
     syncing.value = false
   }
@@ -327,8 +330,9 @@ async function loadTickets() {
   try {
     const resp = await listJiraTickets()
     tickets.value = resp.data
-  } catch {
-    ticketsError.value = 'Failed to load Jira tickets.'
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    ticketsError.value = `Failed to load Jira tickets: ${msg}`
   } finally {
     ticketsLoading.value = false
   }
@@ -344,8 +348,9 @@ async function submitConfluenceConfig() {
     confluenceForm.value.confluenceUsername = resp.data.confluenceUsername
     confluenceForm.value.defaultSpaceKey = resp.data.defaultSpaceKey
     confluenceFormSuccess.value = 'Confluence configuration saved successfully.'
-  } catch {
-    confluenceFormError.value = 'Failed to save Confluence configuration. Please try again.'
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    confluenceFormError.value = `Failed to save Confluence configuration: ${msg}`
   } finally {
     confluenceSubmitting.value = false
   }
@@ -358,8 +363,9 @@ async function handleTestConfluence() {
     const resp = await testConfluenceConnectivity()
     confluenceTestResult.value = resp.data
     confluenceHealthClass.value = resp.data.success ? 'bg-green-500' : 'bg-red-500'
-  } catch {
-    confluenceTestResult.value = { success: false, message: 'Failed to perform connectivity test.' }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    confluenceTestResult.value = { success: false, message: `Failed to perform connectivity test: ${msg}` }
     confluenceHealthClass.value = 'bg-red-500'
   } finally {
     confluenceTesting.value = false

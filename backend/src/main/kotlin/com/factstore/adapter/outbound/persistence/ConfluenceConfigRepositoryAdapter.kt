@@ -8,12 +8,14 @@ import org.springframework.stereotype.Repository
 import java.util.UUID
 
 @Repository
-interface ConfluenceConfigRepositoryJpa : JpaRepository<ConfluenceConfig, UUID>
+interface ConfluenceConfigRepositoryJpa : JpaRepository<ConfluenceConfig, UUID> {
+    fun findFirstByOrderByCreatedAtAsc(): ConfluenceConfig?
+}
 
 @Component
 class ConfluenceConfigRepositoryAdapter(private val jpa: ConfluenceConfigRepositoryJpa) : IConfluenceConfigRepository {
     override fun save(config: ConfluenceConfig): ConfluenceConfig = jpa.save(config)
-    override fun findFirst(): ConfluenceConfig? = jpa.findAll().firstOrNull()
+    override fun findFirst(): ConfluenceConfig? = jpa.findFirstByOrderByCreatedAtAsc()
     override fun findById(id: UUID): ConfluenceConfig? = jpa.findById(id).orElse(null)
     override fun deleteAll() = jpa.deleteAll()
 }
