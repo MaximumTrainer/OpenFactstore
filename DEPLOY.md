@@ -41,8 +41,8 @@ http://localhost:8080
 ### 3 — Verify (see [Verification Checklist](#verification-checklist))
 
 ```bash
-curl -s http://localhost:8080/actuator/health 2>/dev/null \
-  || curl -s http://localhost:8080/api-docs | head -c 80
+curl -fs http://localhost:8080/actuator/health 2>/dev/null \
+  || curl -fs http://localhost:8080/api-docs 2>/dev/null | head -c 80
 ```
 
 ### Pinning to a specific version
