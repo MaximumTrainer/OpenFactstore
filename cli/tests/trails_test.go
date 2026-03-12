@@ -72,6 +72,21 @@ func TestGetTrail(t *testing.T) {
 	}
 }
 
+func TestGetTrailNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"message": "trail not found"})
+	}))
+	defer server.Close()
+
+	c := client.New(server.URL, "tok")
+	_, err := api.GetTrail(c, "missing")
+	if err == nil {
+		t.Fatal("expected error for 404")
+	}
+}
+
 func TestCreateTrail(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/trails" {

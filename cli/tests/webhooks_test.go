@@ -78,6 +78,21 @@ func TestDeleteWebhook(t *testing.T) {
 	}
 }
 
+func TestDeleteWebhookNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"message": "webhook not found"})
+	}))
+	defer server.Close()
+
+	c := client.New(server.URL, "tok")
+	err := api.DeleteWebhook(c, "missing")
+	if err == nil {
+		t.Fatal("expected error for 404")
+	}
+}
+
 func TestListWebhookDeliveries(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/webhook-configs/wh-1/deliveries" {

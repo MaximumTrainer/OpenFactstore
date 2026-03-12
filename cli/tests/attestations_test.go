@@ -63,7 +63,7 @@ func TestCreateAttestation(t *testing.T) {
 	}
 }
 
-func TestListAttestationsError(t *testing.T) {
+func TestListAttestationsNotFound(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
