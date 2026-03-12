@@ -17,6 +17,7 @@ java {
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict")
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21
     }
 }
 
@@ -33,8 +34,22 @@ dependencies {
     runtimeOnly("com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    testImplementation("au.com.dius.pact.provider:junit5spring:4.6.9")
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.named<Test>("test") {
+    exclude("**/pact/**")
+}
+
+tasks.register<Test>("contractTest") {
+    description = "Runs provider Pact contract verification tests"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform()
+    include("**/pact/**")
 }

@@ -1,0 +1,353 @@
+{
+  "consumer": {
+    "name": "factstore-cli"
+  },
+  "interactions": [
+    {
+      "description": "a CLI GET request for all flows",
+      "providerStates": [
+        {
+          "name": "flows exist"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/flows"
+      },
+      "response": {
+        "body": [
+          {
+            "createdAt": "2024-01-01T00:00:00Z",
+            "description": "A test flow",
+            "id": "7f3f2b99-0000-0000-0000-000000000001",
+            "name": "test-flow",
+            "requiredAttestationTypes": [
+              "junit"
+            ],
+            "updatedAt": "2024-01-01T00:00:00Z"
+          }
+        ],
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$[*].createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].description": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].name": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].requiredAttestationTypes": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].updatedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a CLI POST request to assert compliance",
+      "providerStates": [
+        {
+          "name": "a flow with id 7f3f2b99-0000-0000-0000-000000000001 exists"
+        }
+      ],
+      "request": {
+        "body": {
+          "flowId": "7f3f2b99-0000-0000-0000-000000000001",
+          "sha256Digest": "sha256:deadbeef"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/v1/assert"
+      },
+      "response": {
+        "body": {
+          "details": "No artifacts found with digest sha256:deadbeef",
+          "failedAttestationTypes": [],
+          "flowId": "7f3f2b99-0000-0000-0000-000000000001",
+          "missingAttestationTypes": [],
+          "sha256Digest": "sha256:deadbeef",
+          "status": "NON_COMPLIANT"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.details": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.failedAttestationTypes": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.flowId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.missingAttestationTypes": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.sha256Digest": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a CLI POST request to create a trail",
+      "providerStates": [
+        {
+          "name": "a flow with id 7f3f2b99-0000-0000-0000-000000000001 exists"
+        }
+      ],
+      "request": {
+        "body": {
+          "flowId": "7f3f2b99-0000-0000-0000-000000000001",
+          "gitAuthor": "developer",
+          "gitAuthorEmail": "dev@example.com",
+          "gitBranch": "main",
+          "gitCommitSha": "abc123def456"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/v1/trails"
+      },
+      "response": {
+        "body": {
+          "createdAt": "2024-01-01T00:00:00Z",
+          "flowId": "7f3f2b99-0000-0000-0000-000000000001",
+          "gitAuthor": "developer",
+          "gitAuthorEmail": "dev@example.com",
+          "gitBranch": "main",
+          "gitCommitSha": "abc123def456",
+          "id": "8a4e3c00-0000-0000-0000-000000000001",
+          "status": "PENDING",
+          "updatedAt": "2024-01-01T00:00:00Z"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.flowId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.gitAuthor": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.gitAuthorEmail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.gitBranch": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.gitCommitSha": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.updatedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 201
+      }
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "16.3.0"
+    },
+    "pactRust": {
+      "ffi": "0.5.3",
+      "models": "1.3.9"
+    },
+    "pactSpecification": {
+      "version": "3.0.0"
+    }
+  },
+  "provider": {
+    "name": "factstore-backend"
+  }
+}
