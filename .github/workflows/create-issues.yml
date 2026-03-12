@@ -1,0 +1,196 @@
+name: Create GitHub Issues from Feature Requirements
+
+on:
+  push:
+    branches:
+      - feature/kosli-requirements
+    paths:
+      - 'requirements/features/**.md'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (print issues without creating them)'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  issues: write
+  contents: read
+  repository-projects: write
+
+# To enable automatic project board addition, create a classic PAT with
+# 'repo' and 'project' scopes, then add it as a repository secret named
+# PROJECT_TOKEN (Settings → Secrets and variables → Actions → New repository secret).
+
+jobs:
+  create-issues:
+    name: Create GitHub Issues from Feature Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install PyYAML
+
+      - name: Parse feature files and create issues
+        id: create_issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # PROJECT_TOKEN must be a classic PAT with 'repo' + 'project' scopes.
+          # Without it, issues are created but not added to the project board.
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          REPO: ${{ github.repository }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          PROJECT_NUMBER: '3'
+          PROJECT_OWNER: 'MaximumTrainer'
+        run: |
+          python3 << 'PYTHON_SCRIPT'
+          import os
+          import subprocess
+          import yaml
+          import glob
+          import json
+          import sys
+
+          dry_run = os.environ.get('DRY_RUN', 'false').lower() == 'true'
+          repo = os.environ.get('REPO')
+          project_number = os.environ.get('PROJECT_NUMBER', '3')
+          project_owner = os.environ.get('PROJECT_OWNER', 'MaximumTrainer')
+
+          feature_files = sorted(glob.glob('requirements/features/*.md'))
+          print(f"Found {len(feature_files)} feature files")
+
+          created_issues = []
+
+          for filepath in feature_files:
+              with open(filepath, 'r', encoding='utf-8') as f:
+                  content = f.read()
+
+              # Parse YAML frontmatter between --- markers
+              parts = content.split('---', 2)
+              if len(parts) < 3:
+                  print(f"  WARNING: No valid frontmatter in {filepath}, skipping")
+                  continue
+
+              try:
+                  frontmatter = yaml.safe_load(parts[1])
+              except yaml.YAMLError as e:
+                  print(f"  WARNING: Could not parse frontmatter in {filepath}: {e}")
+                  continue
+
+              title = frontmatter.get('title', os.path.basename(filepath))
+              labels = frontmatter.get('labels', ['enhancement'])
+              body = parts[2].strip()
+
+              print(f"\nProcessing: {filepath}")
+              print(f"  Title:  {title}")
+              print(f"  Labels: {labels}")
+
+              if dry_run:
+                  print(f"  [DRY RUN] Would create issue: {title}")
+                  continue
+
+              # Check if an issue with this exact title already exists
+              check_cmd = [
+                  'gh', 'issue', 'list',
+                  '--repo', repo,
+                  '--state', 'all',
+                  '--search', f'"{title}"',
+                  '--json', 'title,number,url',
+                  '--limit', '5'
+              ]
+              check_result = subprocess.run(check_cmd, capture_output=True, text=True)
+              existing_issues = json.loads(check_result.stdout or '[]')
+              existing = [i for i in existing_issues if i['title'] == title]
+
+              if existing:
+                  print(f"  SKIP: Issue already exists: #{existing[0]['number']} {existing[0]['url']}")
+                  created_issues.append(existing[0]['url'])
+                  continue
+
+              # Ensure required labels exist
+              for label in labels:
+                  subprocess.run(
+                      ['gh', 'label', 'create', label,
+                       '--repo', repo,
+                       '--force',
+                       '--color', 'ededed'],
+                      capture_output=True, text=True
+                  )
+
+              # Write body to temp file to avoid shell escaping issues
+              body_file = f'/tmp/issue_body_{os.path.basename(filepath)}'
+              with open(body_file, 'w', encoding='utf-8') as bf:
+                  bf.write(body)
+
+              # Create the issue
+              create_cmd = [
+                  'gh', 'issue', 'create',
+                  '--repo', repo,
+                  '--title', title,
+                  '--body-file', body_file,
+              ]
+              for label in labels:
+                  create_cmd += ['--label', label]
+
+              result = subprocess.run(create_cmd, capture_output=True, text=True)
+
+              if result.returncode != 0:
+                  print(f"  ERROR creating issue: {result.stderr}")
+                  sys.exit(1)
+
+              issue_url = result.stdout.strip()
+              print(f"  CREATED: {issue_url}")
+              created_issues.append(issue_url)
+
+          if not dry_run and created_issues:
+              project_token = os.environ.get('PROJECT_TOKEN', '')
+              if not project_token:
+                  print(f"\n--- Skipping project board addition (no PROJECT_TOKEN secret set) ---")
+                  print(f"    To add issues to project #{project_number}, create a classic PAT with")
+                  print(f"    'repo' + 'project' scopes and add it as a repository secret named PROJECT_TOKEN.")
+              else:
+                  print(f"\n--- Adding {len(created_issues)} issues to project #{project_number} ---")
+                  env_with_project = os.environ.copy()
+                  env_with_project['GH_TOKEN'] = project_token
+                  for issue_url in created_issues:
+                      add_cmd = [
+                          'gh', 'project', 'item-add', project_number,
+                          '--owner', project_owner,
+                          '--url', issue_url
+                      ]
+                      add_result = subprocess.run(add_cmd, capture_output=True, text=True, env=env_with_project)
+                      if add_result.returncode == 0:
+                          print(f"  Added to project: {issue_url}")
+                      else:
+                          print(f"  WARNING: Could not add to project ({add_result.stderr.strip()}): {issue_url}")
+
+          print(f"\nDone. Processed {len(feature_files)} feature files.")
+          PYTHON_SCRIPT
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Feature Requirements Issue Creation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Project**: https://github.com/users/MaximumTrainer/projects/3" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Feature files processed from \`requirements/features/\`." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -z "${{ secrets.PROJECT_TOKEN }}" ]; then
+            echo "⚠️ **Project board**: Issues were NOT added to the project board automatically." >> $GITHUB_STEP_SUMMARY
+            echo "To enable this, create a classic PAT with \`repo\` + \`project\` scopes and add it as a repository secret named \`PROJECT_TOKEN\`." >> $GITHUB_STEP_SUMMARY
+            echo "Then re-run this workflow." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Issues added to [project board](https://github.com/users/MaximumTrainer/projects/3/views/1)." >> $GITHUB_STEP_SUMMARY
+          fi

@@ -4,6 +4,24 @@ A **Supply Chain Compliance Fact Store** — a full-stack web application for tr
 
 ---
 
+## Getting Started
+
+The [Getting Started guide](./docs/getting-started/01-overview.md) walks you through every concept from first principles:
+
+1. [Overview](./docs/getting-started/01-overview.md)
+2. [Setup & Access](./docs/getting-started/02-setup.md)
+3. [Authentication](./docs/getting-started/03-authentication.md) *(coming soon)*
+4. [Flows](./docs/getting-started/04-flows.md)
+5. [Trails](./docs/getting-started/05-trails.md)
+6. [Artifacts](./docs/getting-started/06-artifacts.md)
+7. [Attestations](./docs/getting-started/07-attestations.md)
+8. [Environments](./docs/getting-started/08-environments.md) *(coming soon)*
+9. [Policies](./docs/getting-started/09-policies.md) *(coming soon)*
+10. [Approvals](./docs/getting-started/10-approvals.md) *(coming soon)*
+11. [Next Steps & Roadmap](./docs/getting-started/11-next-steps.md)
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -15,6 +33,7 @@ A **Supply Chain Compliance Fact Store** — a full-stack web application for tr
 - [Running the Project](#running-the-project)
 - [Running Tests](#running-tests)
 - [API Documentation](#api-documentation)
+- [Contributing](#contributing)
 
 ---
 
@@ -84,7 +103,7 @@ Factstore is built on **Hexagonal Architecture** (Ports and Adapters), where the
 
 ### Why Hexagonal Architecture?
 
-- **Swap storage backends without touching logic.** Replace the H2 JPA adapter with an ElasticSearch or Vector DB adapter by writing a new `IFlowRepository` implementation — zero changes to `FlowService`.
+- **Swap storage backends without touching logic.** Replace the H2 JPA adapter with a PostgreSQL or Vector DB adapter by writing a new `IFlowRepository` implementation — zero changes to `FlowService`.
 - **Add new delivery mechanisms freely.** Add a REST API, CLI, or message-queue consumer by writing a new driving adapter against the inbound port interfaces.
 - **Test business logic without infrastructure.** The `InMemoryFlowRepository` mock adapter lets `FlowService` be unit-tested in a plain JUnit test with no Spring context or database.
 
@@ -125,7 +144,6 @@ com.factstore/
 ### Dependency Rule
 
 > **Dependencies always point inward.** The domain and application layers never import from `adapter` or any external framework. Adapters depend on port interfaces; port interfaces depend only on the domain and DTOs.
-
 
 ### Domain Model
 
@@ -278,3 +296,9 @@ All REST endpoints are grouped under the `/api/v1` base path.
 GitHub Actions runs on every push to `main` or any `copilot/**` branch, and on pull requests targeting `main`. The pipeline runs backend build + tests and frontend build in parallel.
 
 See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for details.
+
+---
+
+## Contributing
+
+Pick an open [issue](https://github.com/MaximumTrainer/Factstore/issues) and open a pull request against `main`.
