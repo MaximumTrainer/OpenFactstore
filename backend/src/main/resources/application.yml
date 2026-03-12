@@ -16,6 +16,18 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
+  # GitHub OAuth2 Social Login (Web UI)
+  # To enable GitHub login, set these environment variables and uncomment the block:
+  #   GITHUB_CLIENT_ID=<your-github-oauth-app-client-id>
+  #   GITHUB_CLIENT_SECRET=<your-github-oauth-app-client-secret>
+  # security:
+  #   oauth2:
+  #     client:
+  #       registration:
+  #         github:
+  #           client-id: ${GITHUB_CLIENT_ID}
+  #           client-secret: ${GITHUB_CLIENT_SECRET}
+  #           scope: read:user,user:email
 
 springdoc:
   api-docs:
@@ -28,3 +40,11 @@ springdoc:
 
 server:
   port: 8080
+  # HTTPS / TLS configuration (production)
+  # Uncomment and configure the block below to enforce HTTPS:
+  # ssl:
+  #   enabled: true
+  #   key-store: classpath:keystore.p12
+  #   key-store-password: ${SSL_KEY_STORE_PASSWORD}
+  #   key-store-type: PKCS12
+  #   key-alias: factstore

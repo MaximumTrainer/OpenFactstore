@@ -37,6 +37,28 @@ class EvidenceVaultService(private val evidenceFileRepository: IEvidenceFileRepo
         return saved
     }
 
+    override fun storeExternal(
+        attestationId: UUID,
+        fileName: String,
+        contentType: String,
+        externalUrl: String,
+        sha256Hash: String,
+        fileSizeBytes: Long
+    ): EvidenceFile {
+        val evidenceFile = EvidenceFile(
+            attestationId = attestationId,
+            fileName = fileName,
+            sha256Hash = sha256Hash,
+            fileSizeBytes = fileSizeBytes,
+            contentType = contentType,
+            content = null,
+            externalUrl = externalUrl
+        )
+        val saved = evidenceFileRepository.save(evidenceFile)
+        log.info("Stored external evidence reference: ${saved.id} url=$externalUrl sha256=$sha256Hash")
+        return saved
+    }
+
     @Transactional(readOnly = true)
     override fun findByAttestationId(attestationId: UUID): List<EvidenceFile> =
         evidenceFileRepository.findByAttestationId(attestationId)
@@ -44,6 +66,11 @@ class EvidenceVaultService(private val evidenceFileRepository: IEvidenceFileRepo
     @Transactional(readOnly = true)
     override fun verifyIntegrity(id: UUID): Boolean {
         val file = evidenceFileRepository.findById(id) ?: return false
+        if (file.content == null) {
+            // External references cannot have their content verified server-side
+            log.warn("Integrity check skipped for external evidence file: $id (url=${file.externalUrl})")
+            return true
+        }
         val recomputed = computeSha256(file.content)
         if (recomputed != file.sha256Hash) {
             throw IntegrityException("Evidence file $id integrity check failed: stored=${file.sha256Hash} computed=$recomputed")
@@ -65,5 +92,6 @@ fun EvidenceFile.toResponse() = EvidenceFileResponse(
     sha256Hash = sha256Hash,
     fileSizeBytes = fileSizeBytes,
     contentType = contentType,
-    storedAt = storedAt
+    storedAt = storedAt,
+    externalUrl = externalUrl
 )

@@ -45,6 +45,18 @@ export interface Artifact {
   reportedBy: string
 }
 
+export interface EvidenceFile {
+  id: string
+  attestationId: string
+  fileName: string
+  sha256Hash: string
+  fileSizeBytes: number
+  contentType: string
+  storedAt: string
+  /** Non-null when the evidence binary is stored at an external location. */
+  externalUrl?: string | null
+}
+
 export interface AssertResult {
   compliant: boolean
   sha256Digest: string
@@ -112,3 +124,55 @@ export interface JiraSyncResponse {
   syncedCount: number
   message: string
 }
+
+// User management
+export interface User {
+  id: string
+  email: string
+  name: string
+  /** GitHub user ID (set when the user authenticated via GitHub OAuth). */
+  githubId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateUserRequest {
+  email: string
+  name: string
+  githubId?: string
+}
+
+export interface UpdateUserRequest {
+  name?: string
+  githubId?: string
+}
+
+// API Key management
+export type ApiKeyType = 'PERSONAL' | 'SERVICE'
+
+export interface ApiKey {
+  id: string
+  userId: string
+  name: string
+  type: ApiKeyType
+  /** First 12 characters of the key — safe to display for identification. */
+  keyPrefix: string
+  isActive: boolean
+  createdAt: string
+  lastUsedAt: string | null
+}
+
+/**
+ * Returned only at creation time; includes the plain-text key shown exactly once.
+ * The caller must store it securely — it cannot be retrieved again.
+ */
+export interface ApiKeyCreated extends ApiKey {
+  plainTextKey: string
+}
+
+export interface CreateApiKeyRequest {
+  userId: string
+  name: string
+  type: ApiKeyType
+}
+

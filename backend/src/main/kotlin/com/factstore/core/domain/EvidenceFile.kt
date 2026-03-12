@@ -28,6 +28,19 @@ class EvidenceFile(
     @Column(name = "stored_at", nullable = false)
     val storedAt: Instant = Instant.now(),
 
-    @Column(name = "content", nullable = false, columnDefinition = "BLOB")
-    val content: ByteArray
+    /**
+     * Inline binary content. Null when the evidence is stored at an external location
+     * referenced by [externalUrl].
+     */
+    @Column(name = "content", nullable = true, columnDefinition = "BLOB")
+    val content: ByteArray? = null,
+
+    /**
+     * URL pointer to an externally hosted evidence file (e.g., S3 bucket, private server).
+     * Allows security-conscious customers to keep heavy artefacts outside the fact-store
+     * while still recording their metadata and hash here.
+     * Exactly one of [content] and [externalUrl] must be non-null.
+     */
+    @Column(name = "external_url", nullable = true, columnDefinition = "TEXT")
+    val externalUrl: String? = null
 )

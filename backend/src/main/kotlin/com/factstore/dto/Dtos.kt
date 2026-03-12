@@ -1,5 +1,6 @@
 package com.factstore.dto
 
+import com.factstore.core.domain.ApiKeyType
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.DeliveryStatus
 import com.factstore.core.domain.TrailStatus
@@ -103,7 +104,9 @@ data class EvidenceFileResponse(
     val sha256Hash: String,
     val fileSizeBytes: Long,
     val contentType: String,
-    val storedAt: Instant
+    val storedAt: Instant,
+    /** Non-null when the evidence binary lives at an external location rather than inline. */
+    val externalUrl: String? = null
 )
 
 // Assert DTOs
@@ -310,3 +313,59 @@ sealed class SlackNotification {
         val comment: String? = null
     ) : SlackNotification()
 }
+
+// User DTOs
+data class CreateUserRequest(
+    val email: String,
+    val name: String,
+    val githubId: String? = null
+)
+
+data class UpdateUserRequest(
+    val name: String? = null,
+    val githubId: String? = null
+)
+
+data class UserResponse(
+    val id: UUID,
+    val email: String,
+    val name: String,
+    val githubId: String?,
+    val createdAt: Instant,
+    val updatedAt: Instant
+)
+
+// API Key DTOs
+data class CreateApiKeyRequest(
+    val userId: UUID,
+    val name: String,
+    val type: ApiKeyType
+)
+
+data class ApiKeyResponse(
+    val id: UUID,
+    val userId: UUID,
+    val name: String,
+    val type: ApiKeyType,
+    /** First 12 characters of the key (safe to display for identification). */
+    val keyPrefix: String,
+    val isActive: Boolean,
+    val createdAt: Instant,
+    val lastUsedAt: Instant?
+)
+
+/**
+ * Returned only once at creation time; contains the plain-text key that must be
+ * stored securely by the caller — it cannot be retrieved again.
+ */
+data class ApiKeyCreatedResponse(
+    val id: UUID,
+    val userId: UUID,
+    val name: String,
+    val type: ApiKeyType,
+    val keyPrefix: String,
+    val isActive: Boolean,
+    val createdAt: Instant,
+    /** The full plain-text key. Shown exactly once; never persisted in clear text. */
+    val plainTextKey: String
+)
