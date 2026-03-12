@@ -19,9 +19,6 @@ var attestationsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List attestations for a trail",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if attestationsListTrailID == "" {
-			return fmt.Errorf("--trail-id is required")
-		}
 		c, err := newClient()
 		if err != nil {
 			return err
@@ -54,15 +51,6 @@ var attestationsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new attestation on a trail",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		for flag, val := range map[string]string{
-			"--trail-id": attestationCreateTrailID,
-			"--type":     attestationCreateType,
-			"--status":   attestationCreateStatus,
-		} {
-			if val == "" {
-				return fmt.Errorf("%s is required", flag)
-			}
-		}
 		c, err := newClient()
 		if err != nil {
 			return err
@@ -94,12 +82,6 @@ var attestationsUploadEvidenceCmd = &cobra.Command{
 	Short: "Upload evidence file for an attestation",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if evidenceTrailID == "" {
-			return fmt.Errorf("--trail-id is required")
-		}
-		if evidenceAttestationID == "" {
-			return fmt.Errorf("--attestation-id is required")
-		}
 		c, err := newClient()
 		if err != nil {
 			return err
@@ -119,14 +101,20 @@ var attestationsUploadEvidenceCmd = &cobra.Command{
 
 func init() {
 	attestationsListCmd.Flags().StringVar(&attestationsListTrailID, "trail-id", "", "Trail ID (required)")
+	_ = attestationsListCmd.MarkFlagRequired("trail-id")
 
 	attestationsCreateCmd.Flags().StringVar(&attestationCreateTrailID, "trail-id", "", "Trail ID (required)")
 	attestationsCreateCmd.Flags().StringVar(&attestationCreateType, "type", "", "Attestation type (required)")
 	attestationsCreateCmd.Flags().StringVar(&attestationCreateStatus, "status", "", "Attestation status (required)")
 	attestationsCreateCmd.Flags().StringVar(&attestationCreateDetails, "details", "", "Additional details")
+	_ = attestationsCreateCmd.MarkFlagRequired("trail-id")
+	_ = attestationsCreateCmd.MarkFlagRequired("type")
+	_ = attestationsCreateCmd.MarkFlagRequired("status")
 
 	attestationsUploadEvidenceCmd.Flags().StringVar(&evidenceTrailID, "trail-id", "", "Trail ID (required)")
 	attestationsUploadEvidenceCmd.Flags().StringVar(&evidenceAttestationID, "attestation-id", "", "Attestation ID (required)")
+	_ = attestationsUploadEvidenceCmd.MarkFlagRequired("trail-id")
+	_ = attestationsUploadEvidenceCmd.MarkFlagRequired("attestation-id")
 
 	attestationsCmd.AddCommand(attestationsListCmd, attestationsCreateCmd, attestationsUploadEvidenceCmd)
 }

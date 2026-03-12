@@ -7,14 +7,17 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 const (
-	maxRetries = 3
-	baseDelay  = time.Second
+	// maxAttempts is the total number of attempts (1 initial + 2 retries).
+	maxAttempts = 3
+	baseDelay   = time.Second
 )
 
 // Client is an HTTP client for the Factstore API.
@@ -24,10 +27,14 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// New creates a new Client.
-func New(baseURL, token string) *Client {
+// New creates a new Client. Returns an error if baseURL uses http:// with a
+// non-localhost host, to prevent sending tokens over plaintext connections.
+func New(baseURL, token string) (*Client, error) {
 	if strings.HasPrefix(baseURL, "http://") {
-		fmt.Fprintln(os.Stderr, "warning: using http:// — consider using https:// for production")
+		u, err := url.Parse(baseURL)
+		if err != nil || (u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1") {
+			return nil, fmt.Errorf("insecure connection refused: use https:// (http:// is only allowed for localhost)")
+		}
 	}
 	return &Client{
 		BaseURL: strings.TrimRight(baseURL, "/"),
@@ -35,44 +42,27 @@ func New(baseURL, token string) *Client {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-	}
+	}, nil
 }
 
-func (c *Client) newRequest(method, path string, body interface{}) (*http.Request, error) {
-	var bodyReader io.Reader
-	if body != nil {
-		data, err := json.Marshal(body)
-		if err != nil {
-			return nil, fmt.Errorf("marshal request body: %w", err)
-		}
-		bodyReader = bytes.NewBuffer(data)
-	}
+// reqFactory is a function that produces a fresh *http.Request for each attempt.
+type reqFactory func() (*http.Request, error)
 
-	url := c.BaseURL + path
-	req, err := http.NewRequest(method, url, bodyReader)
-	if err != nil {
-		return nil, err
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	req.Header.Set("Accept", "application/json")
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
-	}
-	return req, nil
-}
-
-func (c *Client) do(req *http.Request) ([]byte, int, error) {
+func (c *Client) do(build reqFactory) ([]byte, int, error) {
 	var (
 		resp *http.Response
 		err  error
 	)
 	delay := baseDelay
-	for attempt := 0; attempt <= maxRetries; attempt++ {
+	for attempt := 0; attempt < maxAttempts; attempt++ {
 		if attempt > 0 {
 			time.Sleep(delay)
 			delay *= 2
+		}
+		var req *http.Request
+		req, err = build()
+		if err != nil {
+			return nil, 0, err
 		}
 		resp, err = c.httpClient.Do(req)
 		if err == nil {
@@ -80,7 +70,7 @@ func (c *Client) do(req *http.Request) ([]byte, int, error) {
 		}
 	}
 	if err != nil {
-		return nil, 0, fmt.Errorf("request failed after %d retries: %w", maxRetries, err)
+		return nil, 0, fmt.Errorf("request failed after %d attempts: %w", maxAttempts, err)
 	}
 	defer resp.Body.Close()
 
@@ -92,11 +82,35 @@ func (c *Client) do(req *http.Request) ([]byte, int, error) {
 }
 
 func (c *Client) doRequest(method, path string, body interface{}) ([]byte, int, error) {
-	req, err := c.newRequest(method, path, body)
-	if err != nil {
-		return nil, 0, err
+	// Pre-marshal the body once so each retry reuses the same bytes.
+	var bodyBytes []byte
+	if body != nil {
+		var err error
+		bodyBytes, err = json.Marshal(body)
+		if err != nil {
+			return nil, 0, fmt.Errorf("marshal request body: %w", err)
+		}
 	}
-	return c.do(req)
+
+	return c.do(func() (*http.Request, error) {
+		var bodyReader io.Reader
+		if bodyBytes != nil {
+			bodyReader = bytes.NewReader(bodyBytes)
+		}
+		reqURL := c.BaseURL + path
+		req, err := http.NewRequest(method, reqURL, bodyReader)
+		if err != nil {
+			return nil, err
+		}
+		if bodyBytes != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		req.Header.Set("Accept", "application/json")
+		if c.Token != "" {
+			req.Header.Set("Authorization", "Bearer "+c.Token)
+		}
+		return req, nil
+	})
 }
 
 // Get performs a GET request.
@@ -129,7 +143,8 @@ func (c *Client) PostMultipart(path, fieldName, filePath string) ([]byte, int, e
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	part, err := writer.CreateFormFile(fieldName, filePath)
+	// Use only the base filename to avoid leaking local filesystem paths.
+	part, err := writer.CreateFormFile(fieldName, filepath.Base(filePath))
 	if err != nil {
 		return nil, 0, fmt.Errorf("create form file: %w", err)
 	}
@@ -140,17 +155,23 @@ func (c *Client) PostMultipart(path, fieldName, filePath string) ([]byte, int, e
 		return nil, 0, fmt.Errorf("close multipart writer: %w", err)
 	}
 
-	url := c.BaseURL + path
-	req, err := http.NewRequest(http.MethodPost, url, &buf)
-	if err != nil {
-		return nil, 0, err
-	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("Accept", "application/json")
-	if c.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Token)
-	}
-	return c.do(req)
+	// Buffer the multipart body so retries can reuse it.
+	multipartBytes := buf.Bytes()
+	contentType := writer.FormDataContentType()
+
+	return c.do(func() (*http.Request, error) {
+		reqURL := c.BaseURL + path
+		req, err := http.NewRequest(http.MethodPost, reqURL, bytes.NewReader(multipartBytes))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", contentType)
+		req.Header.Set("Accept", "application/json")
+		if c.Token != "" {
+			req.Header.Set("Authorization", "Bearer "+c.Token)
+		}
+		return req, nil
+	})
 }
 
 // ParseError extracts a user-friendly error from an API response body.

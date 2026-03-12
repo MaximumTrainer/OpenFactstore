@@ -59,5 +59,5 @@ func newClient() (*client.Client, error) {
 		fmt.Fprintln(os.Stderr, "hint: run 'factstore configure' or set FACTSTORE_HOST to set the API host")
 		return nil, fmt.Errorf("no host configured")
 	}
-	return client.New(host, token), nil
+	return client.New(host, token)
 }

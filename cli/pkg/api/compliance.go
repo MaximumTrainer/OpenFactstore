@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/MaximumTrainer/Factstore/cli/internal/client"
 )
@@ -51,7 +52,7 @@ func Assert(c *client.Client, req AssertRequest) (*AssertResponse, error) {
 
 // GetChainOfCustody returns the full chain of custody for a SHA-256 digest.
 func GetChainOfCustody(c *client.Client, sha256Digest string) (*ChainOfCustodyResponse, error) {
-	body, status, err := c.Get("/api/v1/compliance/artifact/" + sha256Digest)
+	body, status, err := c.Get("/api/v1/compliance/artifact/" + url.PathEscape(sha256Digest))
 	if err != nil {
 		return nil, err
 	}

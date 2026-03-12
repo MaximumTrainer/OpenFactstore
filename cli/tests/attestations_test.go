@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/MaximumTrainer/Factstore/cli/internal/client"
 	"github.com/MaximumTrainer/Factstore/cli/pkg/api"
 )
 
@@ -22,7 +21,7 @@ func TestListAttestations(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	attestations, err := api.ListAttestations(c, "trail-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -50,7 +49,7 @@ func TestCreateAttestation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	att, err := api.CreateAttestation(c, "trail-1", api.CreateAttestationRequest{
 		Type:   "SBOM",
 		Status: "PASSED",
@@ -71,7 +70,7 @@ func TestListAttestationsNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	_, err := api.ListAttestations(c, "missing")
 	if err == nil {
 		t.Fatal("expected error for 404")

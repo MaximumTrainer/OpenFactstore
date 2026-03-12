@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/MaximumTrainer/Factstore/cli/internal/client"
 )
@@ -40,7 +41,9 @@ type CreateTrailRequest struct {
 func ListTrails(c *client.Client, flowID string) ([]TrailResponse, error) {
 	path := "/api/v1/trails"
 	if flowID != "" {
-		path += "?flowId=" + flowID
+		q := url.Values{}
+		q.Set("flowId", flowID)
+		path += "?" + q.Encode()
 	}
 	body, status, err := c.Get(path)
 	if err != nil {

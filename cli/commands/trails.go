@@ -93,17 +93,6 @@ var trailsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new trail",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		for flag, val := range map[string]string{
-			"--flow-id":      trailCreateFlowID,
-			"--commit":       trailCreateCommit,
-			"--branch":       trailCreateBranch,
-			"--author":       trailCreateAuthor,
-			"--author-email": trailCreateAuthorEmail,
-		} {
-			if val == "" {
-				return fmt.Errorf("%s is required", flag)
-			}
-		}
 		c, err := newClient()
 		if err != nil {
 			return err
@@ -149,6 +138,11 @@ func init() {
 	trailsCreateCmd.Flags().StringVar(&trailCreatePRID, "pr-id", "", "Pull request ID")
 	trailsCreateCmd.Flags().StringVar(&trailCreatePRReviewer, "pr-reviewer", "", "Pull request reviewer")
 	trailsCreateCmd.Flags().StringVar(&trailCreateDeployActor, "deployment-actor", "", "Deployment actor")
+	_ = trailsCreateCmd.MarkFlagRequired("flow-id")
+	_ = trailsCreateCmd.MarkFlagRequired("commit")
+	_ = trailsCreateCmd.MarkFlagRequired("branch")
+	_ = trailsCreateCmd.MarkFlagRequired("author")
+	_ = trailsCreateCmd.MarkFlagRequired("author-email")
 
 	trailsCmd.AddCommand(trailsListCmd, trailsGetCmd, trailsCreateCmd)
 }

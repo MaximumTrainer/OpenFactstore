@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/MaximumTrainer/Factstore/cli/internal/client"
 	"github.com/MaximumTrainer/Factstore/cli/pkg/api"
 )
 
@@ -22,7 +21,7 @@ func TestListTrails(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	trails, err := api.ListTrails(c, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -42,7 +41,7 @@ func TestListTrailsWithFlowID(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	trails, err := api.ListTrails(c, "flow-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -62,7 +61,7 @@ func TestGetTrail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	trail, err := api.GetTrail(c, "trail-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -80,7 +79,7 @@ func TestGetTrailNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	_, err := api.GetTrail(c, "missing")
 	if err == nil {
 		t.Fatal("expected error for 404")
@@ -103,7 +102,7 @@ func TestCreateTrail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	trail, err := api.CreateTrail(c, api.CreateTrailRequest{
 		FlowID:         "flow-1",
 		GitCommitSha:   "abc123",

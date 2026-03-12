@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/MaximumTrainer/Factstore/cli/internal/client"
 	"github.com/MaximumTrainer/Factstore/cli/pkg/api"
 )
 
@@ -29,7 +28,7 @@ func TestAssert(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	result, err := api.Assert(c, api.AssertRequest{
 		Sha256Digest: "sha256:abc",
 		FlowID:       "flow-1",
@@ -57,7 +56,7 @@ func TestGetChainOfCustody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	coc, err := api.GetChainOfCustody(c, "sha256:abc")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -82,7 +81,7 @@ func TestAssertNonCompliant(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	result, err := api.Assert(c, api.AssertRequest{Sha256Digest: "sha256:def", FlowID: "flow-1"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

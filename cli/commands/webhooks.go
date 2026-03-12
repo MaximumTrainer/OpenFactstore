@@ -52,15 +52,6 @@ var webhooksCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new webhook configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		for flag, val := range map[string]string{
-			"--source":  webhookCreateSource,
-			"--secret":  webhookCreateSecret,
-			"--flow-id": webhookCreateFlowID,
-		} {
-			if val == "" {
-				return fmt.Errorf("%s is required", flag)
-			}
-		}
 		c, err := newClient()
 		if err != nil {
 			return err
@@ -129,6 +120,9 @@ func init() {
 	webhooksCreateCmd.Flags().StringVar(&webhookCreateSource, "source", "", "Webhook source (required)")
 	webhooksCreateCmd.Flags().StringVar(&webhookCreateSecret, "secret", "", "Webhook secret (required)")
 	webhooksCreateCmd.Flags().StringVar(&webhookCreateFlowID, "flow-id", "", "Flow ID (required)")
+	_ = webhooksCreateCmd.MarkFlagRequired("source")
+	_ = webhooksCreateCmd.MarkFlagRequired("secret")
+	_ = webhooksCreateCmd.MarkFlagRequired("flow-id")
 
 	webhooksCmd.AddCommand(webhooksListCmd, webhooksCreateCmd, webhooksDeleteCmd, webhooksDeliveriesCmd)
 }

@@ -26,7 +26,7 @@ func TestClientGet(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "test-token")
+	c := mustNewClient(t, server.URL, "test-token")
 	body, status, err := c.Get("/api/v1/flows")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -53,7 +53,7 @@ func TestClientPost(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "test-token")
+	c := mustNewClient(t, server.URL, "test-token")
 	body, status, err := c.Post("/api/v1/flows", map[string]string{"name": "test"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -77,7 +77,7 @@ func TestClientPut(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "test-token")
+	c := mustNewClient(t, server.URL, "test-token")
 	body, status, err := c.Put("/api/v1/flows/1", map[string]string{"name": "updated"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -99,7 +99,7 @@ func TestClientDelete(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "test-token")
+	c := mustNewClient(t, server.URL, "test-token")
 	_, status, err := c.Delete("/api/v1/flows/1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -126,5 +126,26 @@ func TestParseErrorFallback(t *testing.T) {
 	}
 	if err.Error() != "API error 500: internal server error" {
 		t.Errorf("unexpected error message: %s", err.Error())
+	}
+}
+
+func TestNewClientRejectsNonLocalhostHTTP(t *testing.T) {
+	_, err := client.New("http://api.example.com", "token")
+	if err == nil {
+		t.Fatal("expected error for non-localhost http:// host")
+	}
+}
+
+func TestNewClientAllowsLocalhost(t *testing.T) {
+	_, err := client.New("http://localhost:8080", "token")
+	if err != nil {
+		t.Fatalf("expected no error for http://localhost, got: %v", err)
+	}
+}
+
+func TestNewClientAllows127(t *testing.T) {
+	_, err := client.New("http://127.0.0.1:8080", "token")
+	if err != nil {
+		t.Fatalf("expected no error for http://127.0.0.1, got: %v", err)
 	}
 }

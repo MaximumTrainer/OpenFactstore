@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/MaximumTrainer/Factstore/cli/internal/client"
 	"github.com/MaximumTrainer/Factstore/cli/pkg/api"
 )
 
@@ -22,7 +21,7 @@ func TestListArtifacts(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	artifacts, err := api.ListArtifacts(c, "trail-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -45,7 +44,7 @@ func TestFindArtifact(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	artifact, err := api.FindArtifact(c, "sha256:abc")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -63,7 +62,7 @@ func TestFindArtifactNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	_, err := api.FindArtifact(c, "sha256:notexist")
 	if err == nil {
 		t.Fatal("expected error for 404")
@@ -89,7 +88,7 @@ func TestCreateArtifact(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	artifact, err := api.CreateArtifact(c, "trail-1", api.CreateArtifactRequest{
 		ImageName:    "myapp",
 		ImageTag:     "v2.0",

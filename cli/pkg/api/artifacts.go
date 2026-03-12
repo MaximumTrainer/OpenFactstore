@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/MaximumTrainer/Factstore/cli/internal/client"
 )
@@ -47,7 +48,9 @@ func ListArtifacts(c *client.Client, trailID string) ([]ArtifactResponse, error)
 
 // FindArtifact looks up an artifact by SHA-256 digest.
 func FindArtifact(c *client.Client, sha256 string) (*ArtifactResponse, error) {
-	body, status, err := c.Get("/api/v1/artifacts?sha256=" + sha256)
+	q := url.Values{}
+	q.Set("sha256", sha256)
+	body, status, err := c.Get("/api/v1/artifacts?" + q.Encode())
 	if err != nil {
 		return nil, err
 	}

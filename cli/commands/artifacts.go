@@ -19,9 +19,6 @@ var artifactsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List artifacts for a trail",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if artifactsListTrailID == "" {
-			return fmt.Errorf("--trail-id is required")
-		}
 		c, err := newClient()
 		if err != nil {
 			return err
@@ -49,9 +46,6 @@ var artifactsFindCmd = &cobra.Command{
 	Use:   "find",
 	Short: "Find an artifact by SHA-256 digest",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if artifactsFindSha256 == "" {
-			return fmt.Errorf("--sha256 is required")
-		}
 		c, err := newClient()
 		if err != nil {
 			return err
@@ -94,17 +88,6 @@ var artifactsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Register a new artifact on a trail",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		for flag, val := range map[string]string{
-			"--trail-id":    artifactCreateTrailID,
-			"--image-name":  artifactCreateImageName,
-			"--image-tag":   artifactCreateImageTag,
-			"--sha256":      artifactCreateSha256,
-			"--reported-by": artifactCreateReportedBy,
-		} {
-			if val == "" {
-				return fmt.Errorf("%s is required", flag)
-			}
-		}
 		c, err := newClient()
 		if err != nil {
 			return err
@@ -130,7 +113,10 @@ var artifactsCreateCmd = &cobra.Command{
 
 func init() {
 	artifactsListCmd.Flags().StringVar(&artifactsListTrailID, "trail-id", "", "Trail ID (required)")
+	_ = artifactsListCmd.MarkFlagRequired("trail-id")
+
 	artifactsFindCmd.Flags().StringVar(&artifactsFindSha256, "sha256", "", "SHA-256 digest (required)")
+	_ = artifactsFindCmd.MarkFlagRequired("sha256")
 
 	artifactsCreateCmd.Flags().StringVar(&artifactCreateTrailID, "trail-id", "", "Trail ID (required)")
 	artifactsCreateCmd.Flags().StringVar(&artifactCreateImageName, "image-name", "", "Image name (required)")
@@ -138,6 +124,11 @@ func init() {
 	artifactsCreateCmd.Flags().StringVar(&artifactCreateSha256, "sha256", "", "SHA-256 digest (required)")
 	artifactsCreateCmd.Flags().StringVar(&artifactCreateReportedBy, "reported-by", "", "Reporter name (required)")
 	artifactsCreateCmd.Flags().StringVar(&artifactCreateRegistry, "registry", "", "Container registry")
+	_ = artifactsCreateCmd.MarkFlagRequired("trail-id")
+	_ = artifactsCreateCmd.MarkFlagRequired("image-name")
+	_ = artifactsCreateCmd.MarkFlagRequired("image-tag")
+	_ = artifactsCreateCmd.MarkFlagRequired("sha256")
+	_ = artifactsCreateCmd.MarkFlagRequired("reported-by")
 
 	artifactsCmd.AddCommand(artifactsListCmd, artifactsFindCmd, artifactsCreateCmd)
 }

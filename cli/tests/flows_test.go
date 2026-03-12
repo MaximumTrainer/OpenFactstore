@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/MaximumTrainer/Factstore/cli/internal/client"
 	"github.com/MaximumTrainer/Factstore/cli/pkg/api"
 )
 
@@ -22,7 +21,7 @@ func TestListFlows(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	flows, err := api.ListFlows(c)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -45,7 +44,7 @@ func TestGetFlow(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	flow, err := api.GetFlow(c, "flow-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -71,7 +70,7 @@ func TestCreateFlow(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	flow, err := api.CreateFlow(c, api.CreateFlowRequest{Name: "New Flow", RequiredAttestationTypes: []string{"SBOM"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -91,7 +90,7 @@ func TestUpdateFlow(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	flow, err := api.UpdateFlow(c, "flow-1", api.UpdateFlowRequest{Name: "Updated"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -110,7 +109,7 @@ func TestDeleteFlow(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	if err := api.DeleteFlow(c, "flow-1"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,13 +117,16 @@ func TestDeleteFlow(t *testing.T) {
 
 func TestGetFlowNotFound(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/flows/missing" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]string{"message": "not found"})
 	}))
 	defer server.Close()
 
-	c := client.New(server.URL, "tok")
+	c := mustNewClient(t, server.URL, "tok")
 	_, err := api.GetFlow(c, "missing")
 	if err == nil {
 		t.Fatal("expected error for 404")

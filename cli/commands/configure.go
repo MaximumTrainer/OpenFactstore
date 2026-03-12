@@ -9,6 +9,7 @@ import (
 	"github.com/MaximumTrainer/Factstore/cli/internal/config"
 	"github.com/MaximumTrainer/Factstore/cli/internal/output"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 var configureCmd = &cobra.Command{
@@ -26,11 +27,12 @@ var configureCmd = &cobra.Command{
 		host = strings.TrimSpace(host)
 
 		fmt.Print("Bearer token: ")
-		token, err := reader.ReadString('\n')
+		tokenBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Println() // newline after the hidden input
 		if err != nil {
 			return fmt.Errorf("read token: %w", err)
 		}
-		token = strings.TrimSpace(token)
+		token := strings.TrimSpace(string(tokenBytes))
 
 		if err := config.Save(host, token); err != nil {
 			return fmt.Errorf("save config: %w", err)
