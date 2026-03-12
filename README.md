@@ -33,6 +33,7 @@ The [Getting Started guide](./docs/getting-started/01-overview.md) walks you thr
 - [Running the Project](#running-the-project)
 - [Running Tests](#running-tests)
 - [API Documentation](#api-documentation)
+- [Deployment](#deployment)
 - [Contributing](#contributing)
 
 ---
@@ -296,6 +297,25 @@ All REST endpoints are grouped under the `/api/v1` base path.
 GitHub Actions runs on every push to `main` or any `copilot/**` branch, and on pull requests targeting `main`. The pipeline runs backend build + tests and frontend build in parallel.
 
 See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for details.
+
+---
+
+## Deployment
+
+Pre-built Docker images and executable JARs are available on the [Releases page](https://github.com/MaximumTrainer/Factstore/releases).
+
+```bash
+# Pull and run the latest Docker image (no Java required)
+docker run -d -p 8080:8080 ghcr.io/maximumtrainer/factstore:latest
+```
+
+See **[DEPLOY.md](./DEPLOY.md)** for the full deployment guide, including:
+
+- Docker quick-start
+- JAR quick-start (`--help` / `--version` flags)
+- CI/CD pipeline details and how to create a release
+- Step-by-step build-from-source instructions
+- Verification checklist
 
 ---
 

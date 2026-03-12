@@ -1,0 +1,27 @@
+# Version control
+.git
+.github
+
+# Documentation (not needed for build)
+*.md
+docs/
+requirements/
+
+# Frontend — keep sources, exclude caches and build output
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend — exclude Gradle caches and build output
+backend/build/
+backend/.gradle/
+
+# IDE and OS artifacts
+.idea/
+*.iml
+.DS_Store
+*.swp
+
+# Environment files
+.env
+.env.*

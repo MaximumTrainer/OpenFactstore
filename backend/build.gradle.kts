@@ -38,3 +38,9 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+tasks.bootJar {
+    manifest {
+        attributes["Implementation-Version"] = project.version
+    }
+}
