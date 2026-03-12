@@ -9,9 +9,12 @@ import com.factstore.dto.SlackNotification
 import com.factstore.dto.TrailNonCompliantNotificationRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 @RestController
 @Tag(name = "Slack Integration", description = "Slack app configuration and slash command handling")
@@ -40,8 +43,8 @@ class SlackController(private val slackService: ISlackService) {
         ResponseEntity.ok(slackService.getConfig(slug))
 
     // ── Slack slash command handler ─────────────────────────────────────────
-    // Slack sends application/x-www-form-urlencoded with fields:
-    //   command, text, user_id, user_name, team_id, channel_id, response_url
+    // Slack sends application/x-www-form-urlencoded. We read the raw body so
+    // we can verify the X-Slack-Signature before delegating to the service.
 
     @PostMapping(
         "/api/v1/organisations/{slug}/slack/commands",
@@ -50,15 +53,26 @@ class SlackController(private val slackService: ISlackService) {
     @Operation(summary = "Handle Slack slash commands for an organisation")
     fun handleSlashCommand(
         @PathVariable slug: String,
-        @RequestParam(value = "text", defaultValue = "") text: String,
-        @RequestParam(value = "user_id", defaultValue = "") userId: String,
-        @RequestParam(value = "user_name", defaultValue = "") userName: String
-    ): ResponseEntity<SlackCommandResponse> =
-        ResponseEntity.ok(slackService.handleSlashCommand(slug, text, userId, userName))
+        @RequestHeader("X-Slack-Signature", required = false) signature: String?,
+        @RequestHeader("X-Slack-Request-Timestamp", required = false) timestamp: String?,
+        request: HttpServletRequest
+    ): ResponseEntity<SlackCommandResponse> {
+        val rawBody = request.inputStream.readBytes().toString(Charsets.UTF_8)
+        slackService.verifySlackRequest(slug, timestamp, signature, rawBody)
+        val params = parseFormParams(rawBody)
+        return ResponseEntity.ok(
+            slackService.handleSlashCommand(
+                slug,
+                params["text"] ?: "",
+                params["user_id"] ?: "",
+                params["user_name"] ?: ""
+            )
+        )
+    }
 
     // ── Slack interactive actions (button clicks) ───────────────────────────
-    // Slack sends application/x-www-form-urlencoded with a single "payload" field
-    // containing a JSON string.
+    // Slack sends application/x-www-form-urlencoded with a single "payload"
+    // field containing a JSON string.
 
     @PostMapping(
         "/api/v1/organisations/{slug}/slack/actions",
@@ -67,9 +81,18 @@ class SlackController(private val slackService: ISlackService) {
     @Operation(summary = "Handle Slack interactive actions (button clicks) for an organisation")
     fun handleInteractiveAction(
         @PathVariable slug: String,
-        @RequestParam("payload") payloadJson: String
-    ): ResponseEntity<SlackCommandResponse> =
-        ResponseEntity.ok(slackService.handleInteractiveAction(slug, payloadJson))
+        @RequestHeader("X-Slack-Signature", required = false) signature: String?,
+        @RequestHeader("X-Slack-Request-Timestamp", required = false) timestamp: String?,
+        request: HttpServletRequest
+    ): ResponseEntity<SlackCommandResponse> {
+        val rawBody = request.inputStream.readBytes().toString(Charsets.UTF_8)
+        slackService.verifySlackRequest(slug, timestamp, signature, rawBody)
+        val params = parseFormParams(rawBody)
+        val payloadJson = params["payload"]
+            ?: return ResponseEntity.badRequest()
+                .body(SlackCommandResponse(text = "Missing payload parameter"))
+        return ResponseEntity.ok(slackService.handleInteractiveAction(slug, payloadJson))
+    }
 
     // ── Outbound notification triggers ─────────────────────────────────────
 
@@ -109,4 +132,17 @@ class SlackController(private val slackService: ISlackService) {
         )
         return ResponseEntity.accepted().build()
     }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+
+    private fun parseFormParams(rawBody: String): Map<String, String> =
+        rawBody.split("&").mapNotNull { param ->
+            val eq = param.indexOf('=')
+            if (eq < 0) null
+            else {
+                val key = URLDecoder.decode(param.substring(0, eq), StandardCharsets.UTF_8)
+                val value = URLDecoder.decode(param.substring(eq + 1), StandardCharsets.UTF_8)
+                key to value
+            }
+        }.toMap()
 }

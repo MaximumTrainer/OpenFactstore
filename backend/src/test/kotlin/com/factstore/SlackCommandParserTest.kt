@@ -43,9 +43,8 @@ class SlackCommandParserTest {
     }
 
     @Test
-    fun `search without argument returns Unknown`() {
-        val cmd = parser.parse("search") as SlackCommand.Unknown
-        assertTrue(cmd.input.contains("search"))
+    fun `search without argument returns Help`() {
+        assertEquals(SlackCommand.Help, parser.parse("search"))
     }
 
     @Test
@@ -55,9 +54,8 @@ class SlackCommandParserTest {
     }
 
     @Test
-    fun `env without argument returns Unknown`() {
-        val cmd = parser.parse("env") as SlackCommand.Unknown
-        assertTrue(cmd.input.contains("env"))
+    fun `env without argument returns Help`() {
+        assertEquals(SlackCommand.Help, parser.parse("env"))
     }
 
     @Test
@@ -68,15 +66,13 @@ class SlackCommandParserTest {
     }
 
     @Test
-    fun `trail with invalid UUID returns Unknown`() {
-        val cmd = parser.parse("trail not-a-uuid") as SlackCommand.Unknown
-        assertTrue(cmd.input.contains("not-a-uuid"))
+    fun `trail with invalid UUID returns Help`() {
+        assertEquals(SlackCommand.Help, parser.parse("trail not-a-uuid"))
     }
 
     @Test
-    fun `trail without argument returns Unknown`() {
-        val cmd = parser.parse("trail") as SlackCommand.Unknown
-        assertTrue(cmd.input.contains("trail"))
+    fun `trail without argument returns Help`() {
+        assertEquals(SlackCommand.Help, parser.parse("trail"))
     }
 
     @Test
@@ -94,9 +90,8 @@ class SlackCommandParserTest {
     }
 
     @Test
-    fun `approve without argument returns Unknown`() {
-        val cmd = parser.parse("approve") as SlackCommand.Unknown
-        assertTrue(cmd.input.contains("approve"))
+    fun `approve without argument returns Help`() {
+        assertEquals(SlackCommand.Help, parser.parse("approve"))
     }
 
     @Test
@@ -114,9 +109,8 @@ class SlackCommandParserTest {
     }
 
     @Test
-    fun `reject without argument returns Unknown`() {
-        val cmd = parser.parse("reject") as SlackCommand.Unknown
-        assertTrue(cmd.input.contains("reject"))
+    fun `reject without argument returns Help`() {
+        assertEquals(SlackCommand.Help, parser.parse("reject"))
     }
 
     @Test

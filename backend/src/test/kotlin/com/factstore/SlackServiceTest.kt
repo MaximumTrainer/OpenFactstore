@@ -7,6 +7,7 @@ import com.factstore.dto.CreateAttestationRequest
 import com.factstore.dto.CreateFlowRequest
 import com.factstore.dto.CreateTrailRequest
 import com.factstore.dto.SlackNotification
+import com.factstore.exception.BadRequestException
 import com.factstore.exception.NotFoundException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -220,16 +221,70 @@ class SlackServiceTest {
     }
 
     @Test
-    fun `sendNotification returns false when no slack config exists`() {
-        val result = slackService.sendNotification(
-            "no-such-org",
-            SlackNotification.TrailNonCompliant(
-                trailId = UUID.randomUUID(),
-                flowName = "test-flow",
-                missingAttestationTypes = listOf("BUILD"),
-                failedAttestationTypes = emptyList()
+    fun `sendNotification throws NotFoundException when no slack config exists`() {
+        assertThrows<NotFoundException> {
+            slackService.sendNotification(
+                "no-such-org",
+                SlackNotification.TrailNonCompliant(
+                    trailId = UUID.randomUUID(),
+                    flowName = "test-flow",
+                    missingAttestationTypes = listOf("BUILD"),
+                    failedAttestationTypes = emptyList()
+                )
             )
-        )
-        assertFalse(result)
+        }
+    }
+
+    @Test
+    fun `verifySlackRequest passes with valid signature`() {
+        slackService.configureSlack("my-org", testRequest)
+        val timestamp = java.time.Instant.now().epochSecond.toString()
+        val body = "command=%2Ffactstore&text=help"
+        val sigBaseString = "v0:$timestamp:$body"
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        mac.init(javax.crypto.spec.SecretKeySpec("test-secret".toByteArray(), "HmacSHA256"))
+        val signature = "v0=" + mac.doFinal(sigBaseString.toByteArray()).joinToString("") { "%02x".format(it) }
+        // should not throw
+        slackService.verifySlackRequest("my-org", timestamp, signature, body)
+    }
+
+    @Test
+    fun `verifySlackRequest throws BadRequestException with invalid signature`() {
+        slackService.configureSlack("my-org", testRequest)
+        val timestamp = java.time.Instant.now().epochSecond.toString()
+        assertThrows<BadRequestException> {
+            slackService.verifySlackRequest("my-org", timestamp, "v0=invalidsignature", "body")
+        }
+    }
+
+    @Test
+    fun `verifySlackRequest throws BadRequestException with missing signature headers`() {
+        slackService.configureSlack("my-org", testRequest)
+        assertThrows<BadRequestException> {
+            slackService.verifySlackRequest("my-org", null, null, "body")
+        }
+    }
+
+    @Test
+    fun `verifySlackRequest throws BadRequestException with stale timestamp`() {
+        slackService.configureSlack("my-org", testRequest)
+        val staleTimestamp = (java.time.Instant.now().epochSecond - 400).toString()
+        assertThrows<BadRequestException> {
+            slackService.verifySlackRequest("my-org", staleTimestamp, "v0=sig", "body")
+        }
+    }
+
+    @Test
+    fun `verifySlackRequest throws NotFoundException for unknown org`() {
+        assertThrows<NotFoundException> {
+            slackService.verifySlackRequest("no-such-org", "12345", "v0=sig", "body")
+        }
+    }
+
+    @Test
+    fun `handleInteractiveAction returns error for malformed JSON payload`() {
+        slackService.configureSlack("my-org", testRequest)
+        val response = slackService.handleInteractiveAction("my-org", "not-valid-json{{{")
+        assertTrue(response.text.contains("Invalid payload"))
     }
 }

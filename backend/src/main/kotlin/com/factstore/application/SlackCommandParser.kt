@@ -36,32 +36,32 @@ class SlackCommandParser {
             "help" -> SlackCommand.Help
 
             "search" -> {
-                if (parts.size < 2) SlackCommand.Unknown("search requires a SHA-256 prefix")
+                if (parts.size < 2) SlackCommand.Help
                 else SlackCommand.Search(parts[1])
             }
 
             "env" -> {
-                if (parts.size < 2) SlackCommand.Unknown("env requires an environment name")
+                if (parts.size < 2) SlackCommand.Help
                 else SlackCommand.Env(parts[1])
             }
 
             "trail" -> {
-                if (parts.size < 2) SlackCommand.Unknown("trail requires a trail ID")
+                if (parts.size < 2) SlackCommand.Help
                 else {
                     runCatching { UUID.fromString(parts[1]) }.fold(
                         onSuccess = { SlackCommand.TrailDetails(it) },
-                        onFailure = { SlackCommand.Unknown("Invalid trail ID: ${parts[1]}") }
+                        onFailure = { SlackCommand.Help }
                     )
                 }
             }
 
             "approve" -> {
-                if (parts.size < 2) SlackCommand.Unknown("approve requires an approval ID")
+                if (parts.size < 2) SlackCommand.Help
                 else SlackCommand.Approve(parts[1], parts.getOrNull(2))
             }
 
             "reject" -> {
-                if (parts.size < 2) SlackCommand.Unknown("reject requires an approval ID")
+                if (parts.size < 2) SlackCommand.Help
                 else SlackCommand.Reject(parts[1], parts.getOrNull(2))
             }
 

@@ -2,17 +2,24 @@ package com.factstore.adapter.outbound
 
 import com.factstore.core.port.outbound.ISlackNotificationSender
 import org.slf4j.LoggerFactory
+import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
+import java.time.Duration
 
 @Component
-class HttpSlackNotificationSender : ISlackNotificationSender {
+class HttpSlackNotificationSender(
+    restTemplateBuilder: RestTemplateBuilder
+) : ISlackNotificationSender {
 
     private val log = LoggerFactory.getLogger(HttpSlackNotificationSender::class.java)
-    private val restTemplate = RestTemplate()
+    private val restTemplate: RestTemplate = restTemplateBuilder
+        .setConnectTimeout(Duration.ofSeconds(5))
+        .setReadTimeout(Duration.ofSeconds(10))
+        .build()
 
     override fun send(botToken: String, channel: String, message: String): Boolean {
         return try {
@@ -22,7 +29,23 @@ class HttpSlackNotificationSender : ISlackNotificationSender {
             }
             val body = mapOf("channel" to channel, "text" to message)
             val entity = HttpEntity(body, headers)
-            restTemplate.postForEntity("https://slack.com/api/chat.postMessage", entity, Map::class.java)
+            val response = restTemplate.postForEntity(
+                "https://slack.com/api/chat.postMessage",
+                entity,
+                Map::class.java
+            )
+            @Suppress("UNCHECKED_CAST")
+            val responseBody = response.body as? Map<*, *>
+            val ok = responseBody?.get("ok") as? Boolean ?: false
+            if (!ok) {
+                val error = responseBody?.get("error") as? String
+                if (error != null) {
+                    log.error("Slack API returned ok=false when sending to channel $channel: $error")
+                } else {
+                    log.error("Slack API returned ok=false with no error when sending to channel $channel")
+                }
+                return false
+            }
             log.info("Sent Slack message to channel: $channel")
             true
         } catch (e: Exception) {

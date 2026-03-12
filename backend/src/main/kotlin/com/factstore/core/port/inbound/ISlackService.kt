@@ -9,6 +9,7 @@ interface ISlackService {
     fun configureSlack(orgSlug: String, request: ConfigureSlackRequest): SlackConfigResponse
     fun removeSlack(orgSlug: String)
     fun getConfig(orgSlug: String): SlackConfigResponse
+    fun verifySlackRequest(orgSlug: String, timestamp: String?, signature: String?, rawBody: String)
     fun handleSlashCommand(orgSlug: String, text: String, userId: String, userName: String): SlackCommandResponse
     fun handleInteractiveAction(orgSlug: String, payloadJson: String): SlackCommandResponse
     fun sendNotification(orgSlug: String, notification: SlackNotification): Boolean

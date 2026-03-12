@@ -15,8 +15,6 @@ class SlackMessageFormatter {
         • `/factstore search <sha-prefix>` — Search artifact by SHA-256 prefix
         • `/factstore trail <trailId>` — Show trail details and compliance status
         • `/factstore env <name>` — Show latest environment snapshot
-        • `/factstore env <name>#<N>` — Show snapshot number N
-        • `/factstore env <name>@{YYYY-MM-DDTHH:MM:SS}` — Show snapshot at timestamp
         • `/factstore approve <approvalId> [comment]` — Approve a pending release approval
         • `/factstore reject <approvalId> [comment]` — Reject a pending release approval
     """.trimIndent()

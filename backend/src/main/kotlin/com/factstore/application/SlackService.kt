@@ -12,6 +12,7 @@ import com.factstore.dto.ConfigureSlackRequest
 import com.factstore.dto.SlackCommandResponse
 import com.factstore.dto.SlackConfigResponse
 import com.factstore.dto.SlackNotification
+import com.factstore.exception.BadRequestException
 import com.factstore.exception.NotFoundException
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 @Service
 @Transactional
@@ -69,6 +72,35 @@ class SlackService(
             .toResponse()
 
     @Transactional(readOnly = true)
+    override fun verifySlackRequest(orgSlug: String, timestamp: String?, signature: String?, rawBody: String) {
+        val config = slackConfigRepository.findByOrgSlug(orgSlug)
+            ?: throw NotFoundException("No Slack configuration found for organisation: $orgSlug")
+
+        if (timestamp.isNullOrBlank() || signature.isNullOrBlank()) {
+            throw BadRequestException("Missing Slack request signature headers")
+        }
+
+        val requestTimestamp = timestamp.toLongOrNull()
+            ?: throw BadRequestException("Invalid X-Slack-Request-Timestamp: $timestamp")
+
+        // Replay attack prevention: reject requests older than 5 minutes
+        if (kotlin.math.abs(Instant.now().epochSecond - requestTimestamp) > 300) {
+            throw BadRequestException("Slack request timestamp is too old")
+        }
+
+        // Compute expected signature: v0=HMAC-SHA256("v0:{timestamp}:{body}", signingSecret)
+        val sigBaseString = "v0:$timestamp:$rawBody"
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(config.signingSecret.toByteArray(Charsets.UTF_8), "HmacSHA256"))
+        val computed = "v0=" + mac.doFinal(sigBaseString.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+
+        if (!computed.equals(signature, ignoreCase = true)) {
+            throw BadRequestException("Invalid Slack request signature")
+        }
+    }
+
+    @Transactional(readOnly = true)
     override fun handleSlashCommand(
         orgSlug: String,
         text: String,
@@ -89,7 +121,12 @@ class SlackService(
     }
 
     override fun handleInteractiveAction(orgSlug: String, payloadJson: String): SlackCommandResponse {
-        val payload = objectMapper.readTree(payloadJson)
+        val payload = try {
+            objectMapper.readTree(payloadJson)
+        } catch (e: Exception) {
+            log.warn("Failed to parse Slack interactive action payload: ${e.message}")
+            return SlackCommandResponse(text = "Invalid payload: unable to parse JSON")
+        }
         val actions = payload.get("actions")
             ?: return SlackCommandResponse(text = "No actions found in payload")
         val firstAction = actions.firstOrNull()
@@ -107,10 +144,7 @@ class SlackService(
 
     override fun sendNotification(orgSlug: String, notification: SlackNotification): Boolean {
         val config = slackConfigRepository.findByOrgSlug(orgSlug)
-        if (config == null) {
-            log.warn("No Slack config found for org: $orgSlug, skipping notification")
-            return false
-        }
+            ?: throw NotFoundException("No Slack configuration found for organisation: $orgSlug")
         val message = when (notification) {
             is SlackNotification.TrailNonCompliant -> messageFormatter.formatTrailNonCompliant(
                 notification.trailId, notification.flowName,
@@ -130,7 +164,9 @@ class SlackService(
     }
 
     private fun handleSearch(shaPrefix: String): String {
-        val artifacts = artifactRepository.findBySha256DigestStartingWith(shaPrefix)
+        // Limit the number of results processed in-memory to avoid loading an unbounded set
+        val maxResultsToProcess = 11
+        val artifacts = artifactRepository.findBySha256DigestStartingWith(shaPrefix).take(maxResultsToProcess)
         return messageFormatter.formatArtifactSearch(shaPrefix, artifacts.map { it.toResponse() })
     }
 
