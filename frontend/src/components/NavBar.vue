@@ -104,6 +104,7 @@ const links = [
   { to: '/audit', label: 'Audit Log' },
   { to: '/ledger', label: 'Ledger' },
   { to: '/notifications/rules', label: 'Alerts' }
+  { to: '/ledger', label: 'Ledger' }
 ]
 
 function isActive(path: string): boolean {

@@ -454,6 +454,56 @@ data class UserResponse(
     val updatedAt: Instant
 )
 
+// Environment DTOs
+data class CreateEnvironmentRequest(
+    val name: String,
+    val type: EnvironmentType,
+    val description: String = ""
+)
+
+data class UpdateEnvironmentRequest(
+    val name: String? = null,
+    val type: EnvironmentType? = null,
+    val description: String? = null
+)
+
+data class EnvironmentResponse(
+    val id: UUID,
+    val name: String,
+    val type: EnvironmentType,
+    val description: String,
+    val createdAt: Instant,
+    val updatedAt: Instant
+)
+
+data class SnapshotArtifactRequest(
+    val artifactSha256: String,
+    val artifactName: String,
+    val artifactTag: String,
+    val instanceCount: Int = 1
+)
+
+data class RecordSnapshotRequest(
+    val recordedBy: String,
+    val artifacts: List<SnapshotArtifactRequest> = emptyList()
+)
+
+data class SnapshotArtifactResponse(
+    val artifactSha256: String,
+    val artifactName: String,
+    val artifactTag: String,
+    val instanceCount: Int
+)
+
+data class EnvironmentSnapshotResponse(
+    val id: UUID,
+    val environmentId: UUID,
+    val snapshotIndex: Long,
+    val recordedAt: Instant,
+    val recordedBy: String,
+    val artifacts: List<SnapshotArtifactResponse>
+)
+
 // Organisation Member DTOs
 data class InviteMemberRequest(
     val email: String,
