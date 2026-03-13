@@ -27,4 +27,6 @@ class InMemoryFlowRepository : IFlowRepository {
     override fun deleteById(id: UUID) {
         store.remove(id)
     }
+
+    override fun countAll(): Long = store.size.toLong()
 }

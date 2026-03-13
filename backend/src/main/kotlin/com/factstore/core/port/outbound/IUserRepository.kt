@@ -9,6 +9,7 @@ interface IUserRepository {
     fun findByEmail(email: String): User?
     fun findByGithubId(githubId: String): User?
     fun findAll(): List<User>
+    fun findAllById(ids: Collection<UUID>): List<User>
     fun existsById(id: UUID): Boolean
     fun existsByEmail(email: String): Boolean
     fun deleteById(id: UUID)

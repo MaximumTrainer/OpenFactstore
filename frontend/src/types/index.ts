@@ -213,9 +213,109 @@ export interface AuditEvent {
 
 export interface AuditEventPage {
   events: AuditEvent[]
+// Ledger types
+export interface LedgerEntry {
+  entryId: string
+  factId: string
+  eventType: string
+  contentHash: string
+  previousHash: string
+  timestamp: string
+  metadata: Record<string, string>
+}
+
+export interface PagedLedgerEntries {
+  entries: LedgerEntry[]
   page: number
   size: number
   totalElements: number
   totalPages: number
+}
+
+export interface LedgerVerification {
+  factId: string
+  verified: boolean
+  contentHash: string | null
+  chainPosition: number | null
+  previousHash: string | null
+  ledgerTimestamp: string | null
+  verifiedAt: string
+  message: string
+}
+
+export interface ChainVerification {
+  valid: boolean
+  entriesChecked: number
+  firstEntryTimestamp: string | null
+  lastEntryTimestamp: string | null
+  brokenAt: string | null
+  message: string
+}
+
+export interface LedgerStatus {
+  enabled: boolean
+  type: string
+  totalEntries: number
+  healthy: boolean
+  message: string
+}
+// Search types
+export interface SearchResultItem {
+  type: 'trail' | 'artifact'
+  id: string
+  title: string
+  description: string
+  metadata: Record<string, string | null>
+}
+
+export interface SearchResponse {
+  results: SearchResultItem[]
+  total: number
+  query: string
+  type: string | null
+}
+
+// Dashboard stats
+export interface DashboardStats {
+  totalFlows: number
+  totalTrails: number
+  compliantTrails: number
+  nonCompliantTrails: number
+  pendingTrails: number
+  complianceRate: number
+}
+
+// Compliance report
+export interface TrailComplianceSummary {
+  id: string
+  gitCommitSha: string
+  gitBranch: string
+  gitAuthor: string
+  status: string
+  createdAt: string
+}
+
+export interface FlowComplianceReport {
+  flowId: string | null
+  flowName: string
+  from: string | null
+  to: string | null
+  totalTrails: number
+  compliantTrails: number
+  nonCompliantTrails: number
+  pendingTrails: number
+  complianceRate: number
+  nonCompliantTrailList: TrailComplianceSummary[]
+}
+
+// Audit trail export
+export interface AuditTrailExport {
+  trailId: string
+  exportedAt: string
+  trail: Trail
+  flow: Flow
+  artifacts: Artifact[]
+  attestations: Attestation[]
+  evidenceFiles: EvidenceFile[]
 }
 

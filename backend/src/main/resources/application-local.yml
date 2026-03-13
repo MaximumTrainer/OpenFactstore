@@ -6,3 +6,7 @@ spring:
     url: jdbc:postgresql://localhost:5432/factstore
     username: factstore
     password: factstore
+
+ledger:
+  enabled: true
+  type: local
