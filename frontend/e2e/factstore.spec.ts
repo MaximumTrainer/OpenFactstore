@@ -20,3 +20,10 @@ test('Evidence Vault page loads', async ({ page }) => {
   await page.goto('/evidence')
   await expect(page.getByText('Evidence Vault')).toBeVisible()
 })
+
+test('Audit Log page loads with filter controls', async ({ page }) => {
+  await page.goto('/audit')
+  await expect(page.getByRole('heading', { name: 'Audit Log' })).toBeVisible()
+  await expect(page.getByLabel('Event Type')).toBeVisible()
+  await expect(page.getByPlaceholder('Filter by actor')).toBeVisible()
+})
