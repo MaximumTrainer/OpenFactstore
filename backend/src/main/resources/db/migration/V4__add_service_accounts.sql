@@ -1,4 +1,4 @@
--- V3: Service accounts and updated API keys schema
+-- V4: Service accounts and updated API keys schema
 
 -- Service accounts table (machine identities for CI/CD pipelines)
 CREATE TABLE service_accounts (
