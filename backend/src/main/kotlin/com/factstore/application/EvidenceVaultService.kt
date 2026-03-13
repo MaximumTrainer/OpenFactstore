@@ -81,6 +81,14 @@ class EvidenceVaultService(private val evidenceFileRepository: IEvidenceFileRepo
         return true
     }
 
+    @Transactional(readOnly = true)
+    override fun findBySha256Hash(sha256Hash: String): EvidenceFile? =
+        evidenceFileRepository.findFirstBySha256Hash(sha256Hash)
+
+    @Transactional(readOnly = true)
+    override fun findByTrailId(trailId: UUID): List<EvidenceFile> =
+        evidenceFileRepository.findByTrailId(trailId)
+
     fun computeSha256(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(bytes)

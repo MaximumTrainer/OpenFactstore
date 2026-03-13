@@ -50,6 +50,9 @@ ledger:
   local:
     storage-path: ${LEDGER_STORAGE_PATH:./data/ledger}
 
+audit:
+  hmac-secret: ${AUDIT_HMAC_SECRET:change-me-in-production}
+
 server:
   port: 8080
   # HTTPS / TLS configuration (production)

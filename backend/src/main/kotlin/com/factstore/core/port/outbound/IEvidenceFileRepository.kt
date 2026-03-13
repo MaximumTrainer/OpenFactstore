@@ -7,4 +7,6 @@ interface IEvidenceFileRepository {
     fun save(evidenceFile: EvidenceFile): EvidenceFile
     fun findById(id: UUID): EvidenceFile?
     fun findByAttestationId(attestationId: UUID): List<EvidenceFile>
+    fun findFirstBySha256Hash(sha256Hash: String): EvidenceFile?
+    fun findByTrailId(trailId: UUID): List<EvidenceFile>
 }

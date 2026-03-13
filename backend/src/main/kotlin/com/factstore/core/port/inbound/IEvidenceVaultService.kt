@@ -21,5 +21,9 @@ interface IEvidenceVaultService {
     ): EvidenceFile
     fun findByAttestationId(attestationId: UUID): List<EvidenceFile>
     fun verifyIntegrity(id: UUID): Boolean
+    /** Returns the first evidence file matching the given SHA-256 hash, or null if not found. */
+    fun findBySha256Hash(sha256Hash: String): EvidenceFile?
+    /** Returns all evidence files attached to attestations that belong to the given trail. */
+    fun findByTrailId(trailId: UUID): List<EvidenceFile>
 }
 

@@ -466,6 +466,21 @@ data class MemberResponse(
     val joinedAt: Instant
 )
 
+// Audit Package DTOs
+data class AuditManifestEntry(
+    val path: String,
+    val sha256: String,
+    val sizeBytes: Long
+)
+
+data class AuditManifest(
+    val generatedAt: String,
+    val trailId: String,
+    val files: List<AuditManifestEntry>,
+    /** HMAC-SHA256 of the JSON-serialised [files] list, keyed with the server-side secret. */
+    val hmacSha256: String
+)
+
 // API Key DTOs
 data class CreateApiKeyRequest(
     val userId: UUID,
