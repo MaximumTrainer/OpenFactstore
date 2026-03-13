@@ -1,4 +1,4 @@
--- V5: Environments (with snapshots), Policies, PolicyAttachments, LogicalEnvironments, Organisations
+-- V6: Environments (with snapshots), Policies, PolicyAttachments, LogicalEnvironments, Organisations
 
 CREATE TABLE environments (
     id          UUID         NOT NULL,
