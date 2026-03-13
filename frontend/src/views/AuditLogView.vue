@@ -68,6 +68,7 @@
         </h2>
       </div>
       <div v-if="loading" class="p-6 text-center text-gray-500">Loading...</div>
+      <div v-else-if="loadError" class="p-6 text-center text-red-600">Failed to load audit events. Please try again.</div>
       <div v-else-if="events.length === 0" class="p-6 text-center text-gray-500">No audit events found.</div>
       <div v-else>
         <table class="min-w-full divide-y divide-gray-200">
@@ -137,6 +138,7 @@ import type { AuditEvent, AuditEventPage, AuditEventType } from '../types'
 const events = ref<AuditEvent[]>([])
 const page = ref<AuditEventPage | null>(null)
 const loading = ref(true)
+const loadError = ref(false)
 const currentPage = ref(0)
 
 const eventTypes: AuditEventType[] = [
@@ -186,6 +188,7 @@ function eventTypeBadgeClass(eventType: AuditEventType): string {
 
 async function loadEvents(p = 0) {
   loading.value = true
+  loadError.value = false
   try {
     const params: Record<string, string | number | boolean | undefined> = {
       page: p,
@@ -201,7 +204,9 @@ async function loadEvents(p = 0) {
     page.value = res.data
     events.value = res.data.events
     currentPage.value = p
-  } catch {
+  } catch (err) {
+    console.error('Failed to load audit events', err)
+    loadError.value = true
     events.value = []
   } finally {
     loading.value = false

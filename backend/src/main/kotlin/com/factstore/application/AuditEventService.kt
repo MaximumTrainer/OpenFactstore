@@ -7,6 +7,7 @@ import com.factstore.core.port.outbound.IAuditEventRepository
 import com.factstore.dto.AuditEventPage
 import com.factstore.dto.AuditEventResponse
 import com.factstore.exception.NotFoundException
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -15,7 +16,10 @@ import java.util.UUID
 
 @Service
 @Transactional
-class AuditEventService(private val auditEventRepository: IAuditEventRepository) : IAuditService {
+class AuditEventService(
+    private val auditEventRepository: IAuditEventRepository,
+    private val objectMapper: ObjectMapper
+) : IAuditService {
 
     private val log = LoggerFactory.getLogger(AuditEventService::class.java)
 
@@ -30,7 +34,7 @@ class AuditEventService(private val auditEventRepository: IAuditEventRepository)
         val event = AuditEvent(
             eventType = eventType,
             actor = actor,
-            payload = payload.toJsonString(),
+            payload = objectMapper.writeValueAsString(payload),
             trailId = trailId,
             artifactSha256 = artifactSha256,
             environmentId = environmentId
@@ -82,16 +86,3 @@ fun AuditEvent.toResponse() = AuditEventResponse(
     payload = payload,
     occurredAt = occurredAt
 )
-
-private fun Map<String, Any?>.toJsonString(): String {
-    val entries = entries.joinToString(",") { (k, v) ->
-        val value = when (v) {
-            null -> "null"
-            is String -> "\"${v.replace("\\", "\\\\").replace("\"", "\\\"")}\""
-            is Number, is Boolean -> v.toString()
-            else -> "\"${v.toString().replace("\\", "\\\\").replace("\"", "\\\"")}\""
-        }
-        "\"$k\":$value"
-    }
-    return "{$entries}"
-}

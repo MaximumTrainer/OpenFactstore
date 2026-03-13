@@ -14,6 +14,7 @@ import com.factstore.exception.NotFoundException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 @Service
 @Transactional
@@ -111,7 +112,7 @@ class AssertService(
         return response
     }
 
-    private fun emitPolicyEvent(response: AssertResponse, trailId: java.util.UUID? = null) {
+    private fun emitPolicyEvent(response: AssertResponse, trailId: UUID? = null) {
         val eventType = if (response.status == ComplianceStatus.COMPLIANT)
             AuditEventType.GATE_ALLOWED else AuditEventType.GATE_BLOCKED
         auditService.record(
