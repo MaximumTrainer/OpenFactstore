@@ -1,0 +1,8 @@
+# Profile: local — use this when running against a local Docker Compose PostgreSQL instance.
+# Activate with: --spring.profiles.active=local
+# Start PostgreSQL with: docker compose up -d postgres
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/factstore
+    username: factstore
+    password: factstore

@@ -29,6 +29,7 @@ The [Getting Started guide](./docs/getting-started/01-overview.md) walks you thr
 - [Architecture](#architecture)
 - [Technology Stack](#technology-stack)
 - [Prerequisites](#prerequisites)
+- [PostgreSQL Setup](#postgresql-setup)
 - [Building the Project](#building-the-project)
 - [Running the Project](#running-the-project)
 - [Running Tests](#running-tests)
@@ -98,7 +99,7 @@ Factstore is built on **Hexagonal Architecture** (Ports and Adapters), where the
 └─────────────┼────────────────────────────────────────────────────┘
               │ JDBC
 ┌─────────────▼────────────────────────────────────────────────────┐
-│                   H2 In-Memory Database                          │
+│                    PostgreSQL Database                            │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -177,12 +178,15 @@ Flow  ──< Trail ──< Artifact
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Kotlin | 1.9 | Primary language |
+| Kotlin | 2.0.20 | Primary language |
 | Spring Boot | 3.2.5 | Web framework |
 | Spring Data JPA / Hibernate | — | ORM and data access |
-| H2 Database | — | In-memory relational database |
+| PostgreSQL | 16 | Persistent relational database |
+| Flyway | — | Versioned schema migrations |
+| HikariCP | — | Connection pooling (bundled with Spring Boot) |
 | Springdoc OpenAPI | 2.5.0 | Auto-generated Swagger docs |
 | JUnit 5 + Mockito-Kotlin | 5.4.0 | Unit testing |
+| H2 Database | — | In-memory database for unit tests |
 | Java | 21 | Runtime |
 | Gradle (Kotlin DSL) | — | Build tool |
 
@@ -206,6 +210,59 @@ Flow  ──< Trail ──< Artifact
 
 - **Java 21** (e.g. Eclipse Temurin)
 - **Node.js 20** and npm
+- **PostgreSQL 16** (for production/local development — see [PostgreSQL Setup](#postgresql-setup) below)
+- **Docker & Docker Compose** (recommended for local PostgreSQL)
+
+---
+
+## PostgreSQL Setup
+
+Factstore uses **PostgreSQL 16** for persistent storage. Schema migrations are managed by **Flyway** and run automatically on startup.
+
+### Option A: Docker Compose (Recommended)
+
+The included `docker-compose.yml` starts PostgreSQL and the backend (built from the root `Dockerfile`):
+
+```bash
+# Start only the database (for local development with `./gradlew bootRun`)
+docker compose up -d postgres
+
+# Start the full stack (database + backend)
+docker compose up --build
+```
+
+The Docker Compose stack uses these credentials — set them as environment variables or update `docker-compose.yml` before starting:
+
+| Variable | Default in Compose |
+|----------|--------------------|
+| `DB_HOST` | `postgres` (Docker network) / `localhost` (from host) |
+| `DB_PORT` | `5432` |
+| `DB_NAME` | `factstore` |
+| `DB_USERNAME` | `factstore` *(set explicitly — no application default)* |
+| `DB_PASSWORD` | `factstore` *(set explicitly — no application default)* |
+
+### Option B: External PostgreSQL
+
+Set environment variables before starting the backend:
+
+```bash
+export DB_HOST=your-db-host
+export DB_PORT=5432
+export DB_NAME=factstore
+export DB_USERNAME=factstore
+export DB_PASSWORD=your-password
+
+cd backend
+./gradlew bootRun
+```
+
+### Database Schema
+
+All schema changes are managed as numbered Flyway migrations in `backend/src/main/resources/db/migration/`. Migrations run automatically on application startup. Do not edit committed migration scripts — add a new numbered script instead.
+
+### Unit Tests
+
+Unit tests use an **H2 in-memory database** and do not require PostgreSQL. The test configuration in `backend/src/test/resources/application.yml` overrides the datasource automatically when running tests.
 
 ---
 
@@ -286,7 +343,6 @@ When the backend is running, interactive API documentation is available via Swag
 
 - **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
 - **OpenAPI JSON**: [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
-- **H2 Console** (dev only): [http://localhost:8080/h2-console](http://localhost:8080/h2-console) — username `sa`, no password
 
 All REST endpoints are grouped under the `/api/v1` base path.
 

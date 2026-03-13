@@ -12,6 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: factstore
+          POSTGRES_USER: factstore
+          POSTGRES_PASSWORD: factstore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: backend
@@ -26,6 +40,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
       - name: Build and test
         run: ./gradlew build
+      - name: Run Flyway migration tests
+        run: ./gradlew migrationTest
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: factstore
+          DB_USERNAME: factstore
+          DB_PASSWORD: factstore
 
   frontend:
     name: Frontend Build
