@@ -20,3 +20,8 @@ test('Evidence Vault page loads', async ({ page }) => {
   await page.goto('/evidence')
   await expect(page.getByText('Evidence Vault')).toBeVisible()
 })
+
+test('Environments page loads', async ({ page }) => {
+  await page.goto('/environments')
+  await expect(page.getByText('Environments')).toBeVisible()
+})

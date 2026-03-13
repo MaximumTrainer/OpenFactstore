@@ -23,6 +23,6 @@ class InMemoryEnvironmentSnapshotRepository : IEnvironmentSnapshotRepository {
     override fun findLatestByEnvironmentId(environmentId: UUID): EnvironmentSnapshot? =
         store.values.filter { it.environmentId == environmentId }.maxByOrNull { it.snapshotIndex }
 
-    override fun countByEnvironmentId(environmentId: UUID): Long =
-        store.values.count { it.environmentId == environmentId }.toLong()
+    override fun findMaxSnapshotIndexByEnvironmentId(environmentId: UUID): Long? =
+        store.values.filter { it.environmentId == environmentId }.maxOfOrNull { it.snapshotIndex }
 }

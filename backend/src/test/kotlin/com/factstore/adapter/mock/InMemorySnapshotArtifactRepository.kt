@@ -15,6 +15,9 @@ class InMemorySnapshotArtifactRepository : ISnapshotArtifactRepository {
     override fun findAllBySnapshotId(snapshotId: UUID): List<SnapshotArtifact> =
         store.values.filter { it.snapshotId == snapshotId }
 
+    override fun findAllBySnapshotIdIn(snapshotIds: List<UUID>): List<SnapshotArtifact> =
+        store.values.filter { it.snapshotId in snapshotIds }
+
     override fun findAllByArtifactSha256(artifactSha256: String): List<SnapshotArtifact> =
         store.values.filter { it.artifactSha256 == artifactSha256 }
 }

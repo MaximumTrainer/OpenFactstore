@@ -5,7 +5,10 @@ import java.time.Instant
 import java.util.UUID
 
 @Entity
-@Table(name = "environment_snapshots")
+@Table(
+    name = "environment_snapshots",
+    uniqueConstraints = [UniqueConstraint(columnNames = ["environment_id", "snapshot_index"])]
+)
 class EnvironmentSnapshot(
     @Id
     val id: UUID = UUID.randomUUID(),

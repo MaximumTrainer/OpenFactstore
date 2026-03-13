@@ -10,12 +10,12 @@ import java.util.UUID
 
 @Repository
 interface EnvironmentSnapshotRepositoryJpa : JpaRepository<EnvironmentSnapshot, UUID> {
-    fun findAllByEnvironmentId(environmentId: UUID): List<EnvironmentSnapshot>
+    fun findAllByEnvironmentIdOrderBySnapshotIndexAsc(environmentId: UUID): List<EnvironmentSnapshot>
     fun findByEnvironmentIdAndSnapshotIndex(environmentId: UUID, snapshotIndex: Long): EnvironmentSnapshot?
-    fun countByEnvironmentId(environmentId: UUID): Long
-
-    @Query("SELECT s FROM EnvironmentSnapshot s WHERE s.environmentId = :environmentId ORDER BY s.snapshotIndex DESC LIMIT 1")
     fun findTopByEnvironmentIdOrderBySnapshotIndexDesc(environmentId: UUID): EnvironmentSnapshot?
+
+    @Query("SELECT MAX(s.snapshotIndex) FROM EnvironmentSnapshot s WHERE s.environmentId = :environmentId")
+    fun findMaxSnapshotIndexByEnvironmentId(environmentId: UUID): Long?
 }
 
 @Component
@@ -23,10 +23,11 @@ class EnvironmentSnapshotRepositoryAdapter(private val jpa: EnvironmentSnapshotR
     override fun save(snapshot: EnvironmentSnapshot): EnvironmentSnapshot = jpa.save(snapshot)
     override fun findById(id: UUID): EnvironmentSnapshot? = jpa.findById(id).orElse(null)
     override fun findAllByEnvironmentId(environmentId: UUID): List<EnvironmentSnapshot> =
-        jpa.findAllByEnvironmentId(environmentId)
+        jpa.findAllByEnvironmentIdOrderBySnapshotIndexAsc(environmentId)
     override fun findByEnvironmentIdAndSnapshotIndex(environmentId: UUID, snapshotIndex: Long): EnvironmentSnapshot? =
         jpa.findByEnvironmentIdAndSnapshotIndex(environmentId, snapshotIndex)
     override fun findLatestByEnvironmentId(environmentId: UUID): EnvironmentSnapshot? =
         jpa.findTopByEnvironmentIdOrderBySnapshotIndexDesc(environmentId)
-    override fun countByEnvironmentId(environmentId: UUID): Long = jpa.countByEnvironmentId(environmentId)
+    override fun findMaxSnapshotIndexByEnvironmentId(environmentId: UUID): Long? =
+        jpa.findMaxSnapshotIndexByEnvironmentId(environmentId)
 }

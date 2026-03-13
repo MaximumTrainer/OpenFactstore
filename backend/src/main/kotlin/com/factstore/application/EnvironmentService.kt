@@ -77,7 +77,7 @@ class EnvironmentService(
         if (!environmentRepository.existsById(environmentId)) {
             throw NotFoundException("Environment not found: $environmentId")
         }
-        val nextIndex = snapshotRepository.countByEnvironmentId(environmentId) + 1
+        val nextIndex = (snapshotRepository.findMaxSnapshotIndexByEnvironmentId(environmentId) ?: 0L) + 1
         val snapshot = snapshotRepository.save(
             EnvironmentSnapshot(
                 environmentId = environmentId,
@@ -105,8 +105,12 @@ class EnvironmentService(
         if (!environmentRepository.existsById(environmentId)) {
             throw NotFoundException("Environment not found: $environmentId")
         }
-        return snapshotRepository.findAllByEnvironmentId(environmentId).map { snapshot ->
-            snapshot.toResponse(snapshotArtifactRepository.findAllBySnapshotId(snapshot.id))
+        val snapshots = snapshotRepository.findAllByEnvironmentId(environmentId)
+        val snapshotIds = snapshots.map { it.id }
+        val artifactsBySnapshot = snapshotArtifactRepository.findAllBySnapshotIdIn(snapshotIds)
+            .groupBy { it.snapshotId }
+        return snapshots.map { snapshot ->
+            snapshot.toResponse(artifactsBySnapshot[snapshot.id] ?: emptyList())
         }
     }
 

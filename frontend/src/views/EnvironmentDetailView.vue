@@ -51,7 +51,7 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="artifact in latestSnapshot.artifacts" :key="artifact.artifactSha256" class="hover:bg-gray-50">
+              <tr v-for="(artifact, idx) in latestSnapshot.artifacts" :key="`latest-${idx}`" class="hover:bg-gray-50">
                 <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ artifact.artifactName }}</td>
                 <td class="px-4 py-2 text-sm text-gray-500">{{ artifact.artifactTag }}</td>
                 <td class="px-4 py-2 text-sm text-gray-500 font-mono text-xs">{{ artifact.artifactSha256.slice(0, 20) }}…</td>
@@ -105,7 +105,7 @@
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="artifact in snap.artifacts" :key="artifact.artifactSha256" class="hover:bg-gray-50">
+                  <tr v-for="(artifact, artifactIdx) in snap.artifacts" :key="`${snap.id}-${artifactIdx}`" class="hover:bg-gray-50">
                     <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ artifact.artifactName }}</td>
                     <td class="px-4 py-2 text-sm text-gray-500">{{ artifact.artifactTag }}</td>
                     <td class="px-4 py-2 text-sm text-gray-500 font-mono text-xs">{{ artifact.artifactSha256.slice(0, 20) }}…</td>

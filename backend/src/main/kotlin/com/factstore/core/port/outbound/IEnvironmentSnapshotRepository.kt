@@ -9,5 +9,5 @@ interface IEnvironmentSnapshotRepository {
     fun findAllByEnvironmentId(environmentId: UUID): List<EnvironmentSnapshot>
     fun findByEnvironmentIdAndSnapshotIndex(environmentId: UUID, snapshotIndex: Long): EnvironmentSnapshot?
     fun findLatestByEnvironmentId(environmentId: UUID): EnvironmentSnapshot?
-    fun countByEnvironmentId(environmentId: UUID): Long
+    fun findMaxSnapshotIndexByEnvironmentId(environmentId: UUID): Long?
 }

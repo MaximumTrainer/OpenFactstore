@@ -10,6 +10,7 @@ import java.util.UUID
 @Repository
 interface SnapshotArtifactRepositoryJpa : JpaRepository<SnapshotArtifact, UUID> {
     fun findAllBySnapshotId(snapshotId: UUID): List<SnapshotArtifact>
+    fun findAllBySnapshotIdIn(snapshotIds: List<UUID>): List<SnapshotArtifact>
     fun findAllByArtifactSha256(artifactSha256: String): List<SnapshotArtifact>
 }
 
@@ -18,6 +19,8 @@ class SnapshotArtifactRepositoryAdapter(private val jpa: SnapshotArtifactReposit
     override fun saveAll(artifacts: List<SnapshotArtifact>): List<SnapshotArtifact> = jpa.saveAll(artifacts)
     override fun findAllBySnapshotId(snapshotId: UUID): List<SnapshotArtifact> =
         jpa.findAllBySnapshotId(snapshotId)
+    override fun findAllBySnapshotIdIn(snapshotIds: List<UUID>): List<SnapshotArtifact> =
+        jpa.findAllBySnapshotIdIn(snapshotIds)
     override fun findAllByArtifactSha256(artifactSha256: String): List<SnapshotArtifact> =
         jpa.findAllByArtifactSha256(artifactSha256)
 }
