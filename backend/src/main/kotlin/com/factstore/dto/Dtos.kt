@@ -227,7 +227,7 @@ data class TrailComplianceSummary(
 )
 
 data class FlowComplianceReport(
-    val flowId: UUID,
+    val flowId: UUID?,
     val flowName: String,
     val from: Instant?,
     val to: Instant?,

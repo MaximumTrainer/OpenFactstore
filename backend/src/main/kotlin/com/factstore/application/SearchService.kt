@@ -62,11 +62,6 @@ class SearchService(
             }
         }
 
-        if (type == null || type.equals("attestation", ignoreCase = true)) {
-            // Search attestations by type keyword or details keyword via trail search fallback
-            // Attestations don't have a standalone search, so we search trails and include their attestations
-        }
-
         log.info("Search query='$query' type=$type returned ${results.size} results")
         return SearchResponse(results = results, total = results.size, query = query, type = type)
     }

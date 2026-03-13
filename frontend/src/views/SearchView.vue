@@ -29,7 +29,8 @@
     </div>
 
     <div v-if="searched">
-      <div v-if="results.length === 0" class="text-center text-gray-500 py-12">
+      <div v-if="searchError" class="text-center text-red-600 py-12">{{ searchError }}</div>
+      <div v-else-if="results.length === 0" class="text-center text-gray-500 py-12">
         No results found for <strong>{{ lastQuery }}</strong>.
       </div>
       <div v-else>
@@ -89,11 +90,13 @@ const results = ref<SearchResultItem[]>([])
 const searching = ref(false)
 const searched = ref(false)
 const lastQuery = ref('')
+const searchError = ref('')
 
 async function doSearch() {
   if (!query.value.trim()) return
   searching.value = true
   searched.value = false
+  searchError.value = ''
   lastQuery.value = query.value
   try {
     const res = await search(query.value, typeFilter.value || undefined)
@@ -102,6 +105,7 @@ async function doSearch() {
   } catch {
     results.value = []
     searched.value = true
+    searchError.value = 'Search failed. Please check your connection and try again.'
   } finally {
     searching.value = false
   }

@@ -17,6 +17,10 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.UUID
 
+/** Computes compliance rate as a percentage rounded to two decimal places. */
+internal fun complianceRateOf(compliant: Int, total: Int): Double =
+    if (total == 0) 0.0 else Math.round((compliant.toDouble() / total) * 10000.0) / 100.0
+
 @Service
 @Transactional(readOnly = true)
 class ReportService(
@@ -56,8 +60,7 @@ class ReportService(
         val pending = trails.count { it.status == TrailStatus.PENDING }
         val total = trails.size
 
-        val complianceRate = if (total == 0) 0.0
-        else Math.round((compliant.toDouble() / total) * 10000.0) / 100.0
+        val complianceRate = complianceRateOf(compliant, total)
 
         val nonCompliantList = trails
             .filter { it.status == TrailStatus.NON_COMPLIANT }
@@ -78,7 +81,7 @@ class ReportService(
 
         log.info("Compliance report: flowId=$flowId total=$total compliant=$compliant")
         return FlowComplianceReport(
-            flowId = flowId ?: UUID(0, 0),
+            flowId = flowId,
             flowName = flowName,
             from = from,
             to = to,

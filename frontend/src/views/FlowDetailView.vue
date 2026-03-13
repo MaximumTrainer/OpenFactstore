@@ -29,6 +29,7 @@
             <span v-else>⬇ Export Compliance Report</span>
           </button>
         </div>
+        <p v-if="exportError" class="mt-3 text-sm text-red-600">{{ exportError }}</p>
       </div>
 
       <div class="bg-white rounded-lg shadow">
@@ -82,6 +83,7 @@ const trails = ref<Trail[]>([])
 const loading = ref(true)
 const trailsLoading = ref(true)
 const exportingReport = ref(false)
+const exportError = ref('')
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleString()
@@ -90,6 +92,7 @@ function formatDate(dateStr: string): string {
 async function exportComplianceReport() {
   if (!flow.value) return
   exportingReport.value = true
+  exportError.value = ''
   try {
     const res = await getComplianceReport(flow.value.id)
     const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
@@ -100,7 +103,7 @@ async function exportComplianceReport() {
     a.click()
     URL.revokeObjectURL(url)
   } catch {
-    // silently fail
+    exportError.value = 'Failed to export report. Please try again.'
   } finally {
     exportingReport.value = false
   }

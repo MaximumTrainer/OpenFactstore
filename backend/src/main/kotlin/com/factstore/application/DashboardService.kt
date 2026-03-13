@@ -24,16 +24,13 @@ class DashboardService(
         val pending = trails.count { it.status == TrailStatus.PENDING }
         val total = trails.size
 
-        val complianceRate = if (total == 0) 0.0
-        else Math.round((compliant.toDouble() / total) * 10000.0) / 100.0
-
         return DashboardStatsResponse(
             totalFlows = flows.size,
             totalTrails = total,
             compliantTrails = compliant,
             nonCompliantTrails = nonCompliant,
             pendingTrails = pending,
-            complianceRate = complianceRate
+            complianceRate = complianceRateOf(compliant, total)
         )
     }
 }
