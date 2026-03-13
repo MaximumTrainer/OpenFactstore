@@ -375,3 +375,74 @@ export interface RecordSnapshotRequest {
   }>
 }
 
+
+// Notification types
+export type TriggerEvent =
+  | 'ATTESTATION_FAILED'
+  | 'GATE_BLOCKED'
+  | 'DRIFT_DETECTED'
+  | 'APPROVAL_REQUIRED'
+  | 'TRAIL_NON_COMPLIANT'
+  | 'APPROVAL_REJECTED'
+
+export type ChannelType = 'SLACK' | 'WEBHOOK' | 'IN_APP'
+
+export type NotificationDeliveryStatus = 'SENT' | 'FAILED' | 'SKIPPED'
+
+export type NotificationSeverity = 'INFO' | 'WARNING' | 'CRITICAL'
+
+export interface NotificationRule {
+  id: string
+  name: string
+  isActive: boolean
+  triggerEvent: TriggerEvent
+  channelType: ChannelType
+  channelConfig: string
+  filterFlowId: string | null
+  filterEnvironmentId: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateNotificationRuleRequest {
+  name: string
+  triggerEvent: TriggerEvent
+  channelType: ChannelType
+  channelConfig?: string
+  filterFlowId?: string | null
+  filterEnvironmentId?: string | null
+}
+
+export interface UpdateNotificationRuleRequest {
+  name?: string
+  isActive?: boolean
+  triggerEvent?: TriggerEvent
+  channelType?: ChannelType
+  channelConfig?: string
+  filterFlowId?: string | null
+  filterEnvironmentId?: string | null
+  clearFilterFlowId?: boolean
+  clearFilterEnvironmentId?: boolean
+}
+
+export interface NotificationDelivery {
+  id: string
+  ruleId: string
+  eventType: string
+  payload: string | null
+  status: NotificationDeliveryStatus
+  sentAt: string
+  error: string | null
+  attemptCount: number
+}
+
+export interface Notification {
+  id: string
+  title: string
+  message: string
+  severity: NotificationSeverity
+  isRead: boolean
+  entityType: string | null
+  entityId: string | null
+  createdAt: string
+}
