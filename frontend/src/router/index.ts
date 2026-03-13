@@ -14,6 +14,7 @@ import LedgerView from '../views/LedgerView.vue'
 import SearchView from '../views/SearchView.vue'
 import NotificationsView from '../views/NotificationsView.vue'
 import NotificationRulesView from '../views/NotificationRulesView.vue'
+import SsoConfigView from '../views/SsoConfigView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,6 +28,7 @@ const router = createRouter({
     { path: '/search', component: SearchView },
     { path: '/integrations', component: IntegrationsView },
     { path: '/integrations/atlassian', component: AtlassianIntegrationsView },
+    { path: '/integrations/sso', component: SsoConfigView },
     { path: '/environments', component: EnvironmentsView },
     { path: '/environments/:id', component: EnvironmentDetailView },
     { path: '/audit', component: AuditLogView },

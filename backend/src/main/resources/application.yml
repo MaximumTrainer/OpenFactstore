@@ -50,6 +50,13 @@ ledger:
   local:
     storage-path: ${LEDGER_STORAGE_PATH:./data/ledger}
 
+sso:
+  jwt:
+    # Secret used to sign Factstore JWTs issued after successful SSO login.
+    # Override with a strong random value in production via the SSO_JWT_SECRET environment variable.
+    secret: ${SSO_JWT_SECRET:changeme-in-production}
+    expiry-hours: ${SSO_JWT_EXPIRY_HOURS:8}
+
 server:
   port: 8080
   # HTTPS / TLS configuration (production)

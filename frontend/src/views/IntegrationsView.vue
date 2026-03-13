@@ -9,6 +9,12 @@
         >
           <span>🔗</span> Jira &amp; Confluence
         </RouterLink>
+        <RouterLink
+          to="/integrations/sso"
+          class="inline-flex items-center gap-1.5 bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700"
+        >
+          <span>🔐</span> SSO / OIDC
+        </RouterLink>
         <button
           class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
           @click="showModal = true"
