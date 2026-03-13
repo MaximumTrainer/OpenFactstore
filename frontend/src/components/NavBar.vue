@@ -33,7 +33,7 @@
             <span
               v-if="unreadCount > 0"
               class="absolute top-1 right-1 inline-flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full"
-            >{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+            >{{ unreadCount > MAX_BADGE_COUNT ? `${MAX_BADGE_COUNT}+` : unreadCount }}</span>
           </button>
           <!-- Notification dropdown -->
           <div
@@ -109,6 +109,7 @@ function isActive(path: string): boolean {
   return route.path.startsWith(path)
 }
 
+const MAX_BADGE_COUNT = 9
 const showDropdown = ref(false)
 const notifications = ref<Notification[]>([])
 const unreadCount = ref(0)

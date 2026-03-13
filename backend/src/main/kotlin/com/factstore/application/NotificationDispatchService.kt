@@ -49,7 +49,7 @@ class NotificationDispatchService(
         val channel = channels.find { it.channelType == rule.channelType }
         if (channel == null) {
             log.warn("No channel implementation found for type=${rule.channelType} rule=${rule.id}")
-            saveDelivery(rule, event, NotificationDeliveryStatus.SKIPPED, null, 0,
+            saveDelivery(rule, event, NotificationDeliveryStatus.SKIPPED, 0,
                 "No channel implementation for ${rule.channelType}")
             return
         }
@@ -58,7 +58,7 @@ class NotificationDispatchService(
         for (attempt in 1..maxAttempts) {
             try {
                 channel.send(rule, event)
-                saveDelivery(rule, event, NotificationDeliveryStatus.SENT, null, attempt, null)
+                saveDelivery(rule, event, NotificationDeliveryStatus.SENT, attempt, null)
                 return
             } catch (e: Exception) {
                 lastError = e.message ?: "Unknown error"
@@ -70,14 +70,13 @@ class NotificationDispatchService(
         }
 
         log.error("All $maxAttempts attempts failed for rule=${rule.id}. Dead-lettering delivery.")
-        saveDelivery(rule, event, NotificationDeliveryStatus.FAILED, null, maxAttempts, lastError)
+        saveDelivery(rule, event, NotificationDeliveryStatus.FAILED, maxAttempts, lastError)
     }
 
     private fun saveDelivery(
         rule: NotificationRule,
         event: NotificationEvent,
         status: NotificationDeliveryStatus,
-        @Suppress("UNUSED_PARAMETER") deliveryId: Any?,
         attemptCount: Int,
         error: String?
     ) {
@@ -107,5 +106,9 @@ class NotificationDispatchService(
     }
 
     private fun exponentialBackoffMs(attempt: Int): Long =
-        Duration.ofSeconds(2L.shl(attempt - 1)).toMillis() // 2s, 4s, 8s
+        Duration.ofSeconds(BASE_BACKOFF_SECONDS.shl(attempt - 1)).toMillis()
+
+    companion object {
+        private const val BASE_BACKOFF_SECONDS = 2L
+    }
 }

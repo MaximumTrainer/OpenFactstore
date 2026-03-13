@@ -11,6 +11,16 @@
       >+ New Rule</button>
     </div>
 
+    <!-- Status banner -->
+    <div
+      v-if="statusMessage"
+      :class="statusError ? 'bg-red-50 border-red-300 text-red-700' : 'bg-green-50 border-green-300 text-green-700'"
+      class="mb-4 px-4 py-3 rounded-md border text-sm font-medium flex items-center justify-between"
+    >
+      {{ statusMessage }}
+      <button @click="statusMessage = ''" class="ml-4 text-current opacity-60 hover:opacity-100">✕</button>
+    </div>
+
     <!-- Rules table -->
     <div v-if="loading" class="text-center py-12 text-gray-400">Loading…</div>
     <div v-else-if="rules.length === 0" class="text-center py-12 text-gray-400">
@@ -160,6 +170,14 @@ const showDeliveriesModal = ref(false)
 const selectedRule = ref<NotificationRule | null>(null)
 const deliveries = ref<NotificationDelivery[]>([])
 const webhookUrl = ref('')
+const statusMessage = ref('')
+const statusError = ref(false)
+
+function showStatus(message: string, isError: boolean) {
+  statusMessage.value = message
+  statusError.value = isError
+  setTimeout(() => { statusMessage.value = '' }, 4000)
+}
 
 const triggerEvents: TriggerEvent[] = [
   'ATTESTATION_FAILED',
@@ -228,9 +246,9 @@ async function toggleActive(rule: NotificationRule) {
 async function sendTest(rule: NotificationRule) {
   try {
     await notificationRulesApi.test(rule.id)
-    alert(`Test notification sent for rule "${rule.name}"`)
+    showStatus(`Test notification sent for rule "${rule.name}"`, false)
   } catch {
-    alert('Failed to send test notification')
+    showStatus('Failed to send test notification', true)
   }
 }
 
