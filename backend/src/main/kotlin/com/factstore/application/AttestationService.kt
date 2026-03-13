@@ -2,7 +2,9 @@ package com.factstore.application
 
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
+import com.factstore.core.domain.AuditEventType
 import com.factstore.core.domain.TrailStatus
+import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.inbound.IAttestationService
 import com.factstore.core.port.inbound.IEvidenceVaultService
 import com.factstore.core.port.outbound.IAttestationRepository
@@ -22,7 +24,8 @@ import java.util.UUID
 class AttestationService(
     private val attestationRepository: IAttestationRepository,
     private val trailRepository: ITrailRepository,
-    private val evidenceVaultService: IEvidenceVaultService
+    private val evidenceVaultService: IEvidenceVaultService,
+    private val auditService: IAuditService
 ) : IAttestationService {
 
     private val log = LoggerFactory.getLogger(AttestationService::class.java)
@@ -39,6 +42,17 @@ class AttestationService(
         if (request.status == AttestationStatus.FAILED) {
             markTrailNonCompliant(trailId)
         }
+        auditService.record(
+            eventType = AuditEventType.ATTESTATION_RECORDED,
+            actor = "system",
+            payload = mapOf(
+                "attestationId" to saved.id.toString(),
+                "trailId" to trailId.toString(),
+                "type" to saved.type,
+                "status" to saved.status.name
+            ),
+            trailId = trailId
+        )
         log.info("Recorded attestation: ${saved.id} type=${saved.type} status=${saved.status}")
         return saved.toResponse()
     }
