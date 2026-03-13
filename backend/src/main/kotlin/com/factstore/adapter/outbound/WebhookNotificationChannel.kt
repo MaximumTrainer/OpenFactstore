@@ -33,6 +33,8 @@ class WebhookNotificationChannel(
         val webhookUrl = config["webhookUrl"] as? String
             ?: throw IllegalArgumentException("WebhookChannel requires 'webhookUrl' in channelConfig")
 
+        UrlValidator.validate(webhookUrl)
+
         val payload = mapOf(
             "triggerEvent" to event.triggerEvent.name,
             "title" to event.title,

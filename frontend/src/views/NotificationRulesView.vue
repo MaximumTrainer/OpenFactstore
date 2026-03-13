@@ -96,16 +96,19 @@
             </select>
           </div>
           <div v-if="form.channelType === 'SLACK' || form.channelType === 'WEBHOOK'">
-            <label class="block text-sm font-medium text-gray-700">Webhook URL</label>
-            <input v-model="webhookUrl" type="url" placeholder="https://..."
+            <label class="block text-sm font-medium text-gray-700">
+              Webhook URL <span class="text-red-500">*</span>
+            </label>
+            <input v-model="webhookUrl" type="url" placeholder="https://..." required
               class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <p class="mt-1 text-xs text-gray-400">Must be a public HTTPS URL (private/internal addresses are blocked).</p>
           </div>
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="showCreateModal = false"
               class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
               Cancel
             </button>
-            <button type="submit" :disabled="saving"
+            <button type="submit" :disabled="saving || isSubmitDisabled"
               class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">
               {{ saving ? 'Creating…' : 'Create' }}
             </button>
@@ -158,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { notificationRulesApi } from '../api/notificationRules'
 import type { NotificationRule, NotificationDelivery, TriggerEvent, ChannelType } from '../types'
 
@@ -196,6 +199,13 @@ const form = ref<{
   name: '',
   triggerEvent: 'TRAIL_NON_COMPLIANT',
   channelType: 'IN_APP'
+})
+
+const isSubmitDisabled = computed(() => {
+  if (form.value.channelType === 'SLACK' || form.value.channelType === 'WEBHOOK') {
+    return !webhookUrl.value.trim()
+  }
+  return false
 })
 
 async function loadRules() {

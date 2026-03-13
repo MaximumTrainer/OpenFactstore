@@ -1,7 +1,9 @@
 package com.factstore.application
 
 import com.factstore.core.domain.Artifact
+import com.factstore.core.domain.AuditEventType
 import com.factstore.core.port.inbound.IArtifactService
+import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.outbound.IArtifactRepository
 import com.factstore.core.port.outbound.ITrailRepository
 import com.factstore.dto.ArtifactResponse
@@ -16,7 +18,8 @@ import java.util.UUID
 @Transactional
 class ArtifactService(
     private val artifactRepository: IArtifactRepository,
-    private val trailRepository: ITrailRepository
+    private val trailRepository: ITrailRepository,
+    private val auditService: IAuditService
 ) : IArtifactService {
 
     private val log = LoggerFactory.getLogger(ArtifactService::class.java)
@@ -32,6 +35,20 @@ class ArtifactService(
             reportedBy = request.reportedBy
         )
         val saved = artifactRepository.save(artifact)
+        auditService.record(
+            eventType = AuditEventType.ARTIFACT_DEPLOYED,
+            actor = request.reportedBy,
+            payload = mapOf(
+                "artifactId" to saved.id.toString(),
+                "trailId" to trailId.toString(),
+                "imageName" to saved.imageName,
+                "imageTag" to saved.imageTag,
+                "sha256Digest" to saved.sha256Digest,
+                "registry" to saved.registry
+            ),
+            trailId = trailId,
+            artifactSha256 = saved.sha256Digest
+        )
         log.info("Reported artifact: ${saved.id} digest=${saved.sha256Digest}")
         return saved.toResponse()
     }

@@ -9,11 +9,11 @@ import java.util.UUID
 
 @Repository
 interface NotificationDeliveryRepositoryJpa : JpaRepository<NotificationDelivery, UUID> {
-    fun findAllByRuleId(ruleId: UUID): List<NotificationDelivery>
+    fun findAllByRuleIdOrderBySentAtDesc(ruleId: UUID): List<NotificationDelivery>
 }
 
 @Component
 class NotificationDeliveryRepositoryAdapter(private val jpa: NotificationDeliveryRepositoryJpa) : INotificationDeliveryRepository {
     override fun save(delivery: NotificationDelivery): NotificationDelivery = jpa.save(delivery)
-    override fun findByRuleId(ruleId: UUID): List<NotificationDelivery> = jpa.findAllByRuleId(ruleId)
+    override fun findByRuleId(ruleId: UUID): List<NotificationDelivery> = jpa.findAllByRuleIdOrderBySentAtDesc(ruleId)
 }

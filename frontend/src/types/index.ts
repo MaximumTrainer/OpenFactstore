@@ -186,6 +186,39 @@ export interface CreateApiKeyRequest {
   type: ApiKeyType
 }
 
+// Audit Log
+export type AuditEventType =
+  | 'ARTIFACT_DEPLOYED'
+  | 'ARTIFACT_REMOVED'
+  | 'ARTIFACT_UPDATED'
+  | 'ENVIRONMENT_CREATED'
+  | 'ENVIRONMENT_DELETED'
+  | 'POLICY_EVALUATED'
+  | 'ATTESTATION_RECORDED'
+  | 'APPROVAL_GRANTED'
+  | 'APPROVAL_REJECTED'
+  | 'GATE_BLOCKED'
+  | 'GATE_ALLOWED'
+
+export interface AuditEvent {
+  id: string
+  eventType: AuditEventType
+  environmentId: string | null
+  trailId: string | null
+  artifactSha256: string | null
+  actor: string
+  payload: string
+  occurredAt: string
+}
+
+export interface AuditEventPage {
+  events: AuditEvent[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
 // Ledger types
 export interface LedgerEntry {
   entryId: string
@@ -292,6 +325,57 @@ export interface AuditTrailExport {
   evidenceFiles: EvidenceFile[]
 }
 
+// Environment Tracking
+export type EnvironmentType = 'K8S' | 'S3' | 'LAMBDA' | 'GENERIC'
+
+export interface Environment {
+  id: string
+  name: string
+  type: EnvironmentType
+  description: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SnapshotArtifact {
+  artifactSha256: string
+  artifactName: string
+  artifactTag: string
+  instanceCount: number
+}
+
+export interface EnvironmentSnapshot {
+  id: string
+  environmentId: string
+  snapshotIndex: number
+  recordedAt: string
+  recordedBy: string
+  artifacts: SnapshotArtifact[]
+}
+
+export interface CreateEnvironmentRequest {
+  name: string
+  type: EnvironmentType
+  description?: string
+}
+
+export interface UpdateEnvironmentRequest {
+  name?: string
+  type?: EnvironmentType
+  description?: string
+}
+
+export interface RecordSnapshotRequest {
+  recordedBy: string
+  artifacts: Array<{
+    artifactSha256: string
+    artifactName: string
+    artifactTag: string
+    instanceCount: number
+  }>
+}
+
+
 // Notification types
 export type TriggerEvent =
   | 'ATTESTATION_FAILED'
@@ -337,6 +421,8 @@ export interface UpdateNotificationRuleRequest {
   channelConfig?: string
   filterFlowId?: string | null
   filterEnvironmentId?: string | null
+  clearFilterFlowId?: boolean
+  clearFilterEnvironmentId?: boolean
 }
 
 export interface NotificationDelivery {
@@ -360,4 +446,3 @@ export interface Notification {
   entityId: string | null
   createdAt: string
 }
-

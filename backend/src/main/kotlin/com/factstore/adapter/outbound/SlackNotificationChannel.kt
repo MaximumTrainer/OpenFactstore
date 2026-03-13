@@ -33,6 +33,8 @@ class SlackNotificationChannel(
         val webhookUrl = config["webhookUrl"] as? String
             ?: throw IllegalArgumentException("SlackChannel requires 'webhookUrl' in channelConfig")
 
+        UrlValidator.validate(webhookUrl)
+
         val text = buildSlackMessage(event)
         val body = mapOf("text" to text)
 

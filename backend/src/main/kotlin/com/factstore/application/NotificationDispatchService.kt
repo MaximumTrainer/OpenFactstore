@@ -11,8 +11,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Propagation
-import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
 
@@ -21,14 +19,14 @@ class NotificationDispatchService(
     private val notificationRuleRepository: INotificationRuleRepository,
     private val notificationDeliveryRepository: INotificationDeliveryRepository,
     private val channels: List<INotificationChannel>,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val baseBackoffSeconds: Long = BASE_BACKOFF_SECONDS
 ) {
 
     private val log = LoggerFactory.getLogger(NotificationDispatchService::class.java)
     private val maxAttempts = 3
 
     @Async("notificationExecutor")
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun dispatch(event: NotificationEvent) {
         val matchingRules = notificationRuleRepository
             .findAllActiveByTriggerEvent(event.triggerEvent)
@@ -73,7 +71,7 @@ class NotificationDispatchService(
         saveDelivery(rule, event, NotificationDeliveryStatus.FAILED, maxAttempts, lastError)
     }
 
-    private fun saveDelivery(
+    fun saveDelivery(
         rule: NotificationRule,
         event: NotificationEvent,
         status: NotificationDeliveryStatus,
@@ -106,7 +104,7 @@ class NotificationDispatchService(
     }
 
     private fun exponentialBackoffMs(attempt: Int): Long =
-        Duration.ofSeconds(BASE_BACKOFF_SECONDS.shl(attempt - 1)).toMillis()
+        Duration.ofSeconds(baseBackoffSeconds.shl(attempt - 1)).toMillis()
 
     companion object {
         private const val BASE_BACKOFF_SECONDS = 2L

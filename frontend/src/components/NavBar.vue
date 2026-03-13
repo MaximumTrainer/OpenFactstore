@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { notificationsApi } from '../api/notifications'
 import type { Notification } from '../types'
@@ -96,11 +96,13 @@ const route = useRoute()
 const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/flows', label: 'Flows' },
+  { to: '/environments', label: 'Environments' },
   { to: '/search', label: 'Search' },
   { to: '/assert', label: 'Assert' },
   { to: '/evidence', label: 'Evidence Vault' },
-  { to: '/ledger', label: 'Ledger' },
   { to: '/integrations', label: 'Integrations' },
+  { to: '/audit', label: 'Audit Log' },
+  { to: '/ledger', label: 'Ledger' },
   { to: '/notifications/rules', label: 'Alerts' }
 ]
 
@@ -113,6 +115,7 @@ const MAX_BADGE_COUNT = 9
 const showDropdown = ref(false)
 const notifications = ref<Notification[]>([])
 const unreadCount = ref(0)
+let pollIntervalId: ReturnType<typeof setInterval> | null = null
 
 async function fetchUnreadCount() {
   try {
@@ -176,7 +179,13 @@ function formatTime(iso: string): string {
 
 onMounted(() => {
   fetchUnreadCount()
-  // Poll every 60 seconds
-  setInterval(fetchUnreadCount, 60_000)
+  pollIntervalId = setInterval(fetchUnreadCount, 60_000)
+})
+
+onUnmounted(() => {
+  if (pollIntervalId !== null) {
+    clearInterval(pollIntervalId)
+    pollIntervalId = null
+  }
 })
 </script>

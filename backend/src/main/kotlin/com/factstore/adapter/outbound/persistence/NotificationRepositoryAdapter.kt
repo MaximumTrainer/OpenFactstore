@@ -12,9 +12,9 @@ import java.util.UUID
 
 @Repository
 interface NotificationRepositoryJpa : JpaRepository<Notification, UUID> {
-    fun findAllByIsRead(isRead: Boolean): List<Notification>
-    fun findAllBySeverity(severity: NotificationSeverity): List<Notification>
-    fun findAllByIsReadAndSeverity(isRead: Boolean, severity: NotificationSeverity): List<Notification>
+    fun findAllByIsReadOrderByCreatedAtDesc(isRead: Boolean): List<Notification>
+    fun findAllBySeverityOrderByCreatedAtDesc(severity: NotificationSeverity): List<Notification>
+    fun findAllByIsReadAndSeverityOrderByCreatedAtDesc(isRead: Boolean, severity: NotificationSeverity): List<Notification>
     fun countByIsReadFalse(): Long
 
     @Modifying
@@ -30,10 +30,10 @@ class NotificationRepositoryAdapter(private val jpa: NotificationRepositoryJpa) 
 
     override fun findAll(isRead: Boolean?, severity: NotificationSeverity?): List<Notification> =
         when {
-            isRead != null && severity != null -> jpa.findAllByIsReadAndSeverity(isRead, severity)
-            isRead != null -> jpa.findAllByIsRead(isRead)
-            severity != null -> jpa.findAllBySeverity(severity)
-            else -> jpa.findAll()
+            isRead != null && severity != null -> jpa.findAllByIsReadAndSeverityOrderByCreatedAtDesc(isRead, severity)
+            isRead != null -> jpa.findAllByIsReadOrderByCreatedAtDesc(isRead)
+            severity != null -> jpa.findAllBySeverityOrderByCreatedAtDesc(severity)
+            else -> jpa.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"))
         }
 
     override fun countUnread(): Long = jpa.countByIsReadFalse()
