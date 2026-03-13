@@ -41,6 +41,15 @@ springdoc:
     title: Factstore API
     version: v1
 
+ledger:
+  enabled: ${LEDGER_ENABLED:false}
+  type: ${LEDGER_TYPE:local}
+  qldb:
+    ledger-name: ${QLDB_LEDGER_NAME:factstore-ledger}
+    region: ${AWS_REGION:us-east-1}
+  local:
+    storage-path: ${LEDGER_STORAGE_PATH:./data/ledger}
+
 server:
   port: 8080
   # HTTPS / TLS configuration (production)

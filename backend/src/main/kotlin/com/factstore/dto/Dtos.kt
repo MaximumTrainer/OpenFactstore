@@ -375,6 +375,58 @@ sealed class SlackNotification {
     ) : SlackNotification()
 }
 
+// Ledger DTOs
+data class LedgerEntryResponse(
+    val entryId: String,
+    val factId: UUID,
+    val eventType: String,
+    val contentHash: String,
+    val previousHash: String,
+    val timestamp: Instant,
+    val metadata: Map<String, String>
+)
+
+data class PagedLedgerEntriesResponse(
+    val entries: List<LedgerEntryResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int
+)
+
+data class VerificationResponse(
+    val factId: UUID,
+    val verified: Boolean,
+    val contentHash: String?,
+    val chainPosition: Int?,
+    val previousHash: String?,
+    val ledgerTimestamp: Instant?,
+    val verifiedAt: Instant,
+    val message: String
+)
+
+data class VerifyChainRequest(
+    val from: Instant,
+    val to: Instant
+)
+
+data class ChainVerificationResponse(
+    val valid: Boolean,
+    val entriesChecked: Int,
+    val firstEntryTimestamp: Instant?,
+    val lastEntryTimestamp: Instant?,
+    val brokenAt: String?,
+    val message: String
+)
+
+data class LedgerStatusResponse(
+    val enabled: Boolean,
+    val type: String,
+    val totalEntries: Long,
+    val healthy: Boolean,
+    val message: String
+)
+
 // User DTOs
 data class CreateUserRequest(
     val email: String,

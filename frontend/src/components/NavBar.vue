@@ -33,6 +33,7 @@ const links = [
   { to: '/search', label: 'Search' },
   { to: '/assert', label: 'Assert' },
   { to: '/evidence', label: 'Evidence Vault' },
+  { to: '/ledger', label: 'Ledger' },
   { to: '/integrations', label: 'Integrations' }
 ]
 
