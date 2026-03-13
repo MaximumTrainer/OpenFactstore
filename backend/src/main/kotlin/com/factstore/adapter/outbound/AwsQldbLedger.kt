@@ -32,6 +32,16 @@ import java.util.UUID
  * Setup QLDB table with:
  *   CREATE TABLE FactLedger
  *   CREATE INDEX ON FactLedger (factId)
+ *   CREATE INDEX ON FactLedger (entryId)
+ *
+ * Each document stores `entryId` and `createdAt` as explicit fields so they survive
+ * round-trips through SELECT * without relying on QLDB system metadata projection.
+ *
+ * Chain integrity verification is delegated to QLDB's native journal-digest mechanism
+ * (GetDigest + GetRevision API) rather than being re-implemented client-side, since QLDB
+ * provides cryptographic guarantees at the storage layer. The verifyChainIntegrity method
+ * therefore returns verified=false with an explanatory message directing callers to use
+ * the QLDB control-plane API for independent verification.
  */
 @Component
 @ConditionalOnExpression("\${ledger.enabled:false} and '\${ledger.type:local}' == 'qldb'")
@@ -60,24 +70,23 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
     override fun recordFact(fact: LedgerFact): LedgerReceipt {
         log.debug("Recording fact {} to QLDB ledger {}", fact.factId, properties.qldb.ledgerName)
         val contentHash = sha256(fact.content)
-        var entryId = UUID.randomUUID().toString()
+        val entryId = UUID.randomUUID().toString()
         val timestamp = Instant.now()
 
         driver.execute { txn: TransactionExecutor ->
             val document = ionSystem.newEmptyStruct().apply {
+                // Store entryId and createdAt as explicit document fields so they can be read
+                // back reliably via SELECT * without needing system-metadata projection.
+                put("entryId", ionSystem.newString(entryId))
                 put("factId", ionSystem.newString(fact.factId.toString()))
                 put("eventType", ionSystem.newString(fact.eventType))
                 put("contentHash", ionSystem.newString(contentHash))
+                put("createdAt", ionSystem.newString(timestamp.toString()))
                 put("metadata", ionSystem.newString(
                     fact.metadata.entries.joinToString(";") { "${it.key}=${it.value}" }
                 ))
             }
-            val result = txn.execute("INSERT INTO FactLedger ?", document)
-            result.forEach { doc ->
-                val struct = doc as? IonStruct ?: return@forEach
-                val id = (struct.get("documentId") as? IonText)?.stringValue()
-                if (id != null) entryId = id
-            }
+            txn.execute("INSERT INTO FactLedger ?", document)
         }
 
         return LedgerReceipt(
@@ -94,20 +103,12 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
 
         driver.execute { txn: TransactionExecutor ->
             val result = txn.execute(
-                "SELECT * FROM FactLedger WHERE factId = ?",
+                "SELECT entryId, factId, eventType, contentHash, createdAt FROM FactLedger WHERE factId = ?",
                 ionSystem.newString(factId.toString())
             )
             result.forEach { doc ->
                 val struct = doc as? IonStruct ?: return@forEach
-                entry = LedgerEntry(
-                    entryId = (struct.get("documentId") as? IonText)?.stringValue() ?: "",
-                    factId = factId,
-                    eventType = (struct.get("eventType") as? IonText)?.stringValue() ?: "",
-                    contentHash = (struct.get("contentHash") as? IonText)?.stringValue() ?: "",
-                    previousHash = "",
-                    timestamp = Instant.now(),
-                    metadata = emptyMap()
-                )
+                entry = struct.toLedgerEntry(factId)
             }
         }
 
@@ -143,21 +144,33 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
         val history = mutableListOf<LedgerEntry>()
         driver.execute { txn: TransactionExecutor ->
             val result = txn.execute(
-                "SELECT * FROM history(FactLedger) AS h WHERE h.data.factId = ?",
+                "SELECT h.metadata.id AS metaId, h.metadata.txTime AS txTime, h.data.* " +
+                    "FROM history(FactLedger) AS h WHERE h.data.factId = ?",
                 ionSystem.newString(factId.toString())
             )
             result.forEach { doc ->
-                val outer = doc as? IonStruct ?: return@forEach
-                val metadata = outer.get("metadata") as? IonStruct
-                val data = outer.get("data") as? IonStruct ?: return@forEach
+                val struct = doc as? IonStruct ?: return@forEach
+                val data = struct
+                val resolvedEntryId = (data.get("entryId") as? IonText)?.stringValue()
+                    ?: (data.get("metaId") as? IonText)?.stringValue()
+                    ?: ""
+                // Prefer the QLDB transaction time from metadata for accurate audit timestamps
+                val txTimeStr = (data.get("txTime") as? IonText)?.stringValue()
+                val resolvedTimestamp = if (txTimeStr != null) {
+                    runCatching { Instant.parse(txTimeStr) }.getOrNull()
+                } else null
+                val createdAtStr = (data.get("createdAt") as? IonText)?.stringValue()
+                val timestamp = resolvedTimestamp
+                    ?: (if (createdAtStr != null) runCatching { Instant.parse(createdAtStr) }.getOrNull() else null)
+                    ?: Instant.now()
                 history.add(
                     LedgerEntry(
-                        entryId = (metadata?.get("id") as? IonText)?.stringValue() ?: "",
+                        entryId = resolvedEntryId,
                         factId = factId,
                         eventType = (data.get("eventType") as? IonText)?.stringValue() ?: "",
                         contentHash = (data.get("contentHash") as? IonText)?.stringValue() ?: "",
                         previousHash = "",
-                        timestamp = Instant.now(),
+                        timestamp = timestamp,
                         metadata = emptyMap()
                     )
                 )
@@ -168,16 +181,21 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
 
     override fun verifyChainIntegrity(from: Instant, to: Instant): ChainVerificationResult {
         // QLDB cryptographic integrity is provided natively by the ledger journal.
-        // GetDigest returns the SHA-256 hash of the journal up to a block address,
-        // which can be independently verified by any party with journal export access.
-        log.info("QLDB chain integrity: delegated to native QLDB journal digest (from={}, to={})", from, to)
+        // Client-side chain verification is not implemented for the QLDB adapter — integrity
+        // must be confirmed via the QLDB control-plane GetDigest + GetRevision API, which
+        // returns a cryptographic proof rooted in QLDB's immutable journal.
+        //
+        // Returning valid=false here is intentional: it signals to callers that no verification
+        // was actually performed (rather than falsely asserting the chain is intact).
+        log.info("QLDB chain integrity requested (from={}, to={}); delegating to QLDB native journal digest", from, to)
         return ChainVerificationResult(
-            valid = true,
+            valid = false,
             entriesChecked = 0,
-            firstEntryTimestamp = from,
-            lastEntryTimestamp = to,
+            firstEntryTimestamp = null,
+            lastEntryTimestamp = null,
             brokenAt = null,
-            message = "QLDB provides native cryptographic integrity — use GetDigest API for independent verification"
+            message = "Client-side chain verification is not supported for the QLDB adapter. " +
+                "Use the QLDB GetDigest + GetRevision API for cryptographic proof of ledger integrity."
         )
     }
 
@@ -185,28 +203,20 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
         val page = mutableListOf<LedgerEntry>()
         val safeOffset = offset.coerceAtLeast(0)
         driver.execute { txn: TransactionExecutor ->
-            // Iterate with an index counter so only the requested window is collected,
-            // avoiding loading the entire ledger into memory.
-            val result = txn.execute("SELECT * FROM FactLedger")
+            // Sort by createdAt for deterministic ordering before applying the offset window.
+            val result = txn.execute(
+                "SELECT entryId, factId, eventType, contentHash, createdAt " +
+                    "FROM FactLedger ORDER BY createdAt"
+            )
             var index = 0
             result.forEach { doc ->
                 if (index >= safeOffset && page.size < limit) {
                     val struct = doc as? IonStruct
                     if (struct != null) {
-                        page.add(
-                            LedgerEntry(
-                                entryId = (struct.get("documentId") as? IonText)?.stringValue() ?: "",
-                                factId = UUID.fromString(
-                                    (struct.get("factId") as? IonText)?.stringValue()
-                                        ?: UUID.randomUUID().toString()
-                                ),
-                                eventType = (struct.get("eventType") as? IonText)?.stringValue() ?: "",
-                                contentHash = (struct.get("contentHash") as? IonText)?.stringValue() ?: "",
-                                previousHash = "",
-                                timestamp = Instant.now(),
-                                metadata = emptyMap()
-                            )
-                        )
+                        val factIdStr = (struct.get("factId") as? IonText)?.stringValue()
+                        val parsedFactId = factIdStr?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                            ?: UUID.randomUUID()
+                        page.add(struct.toLedgerEntry(parsedFactId))
                     }
                 }
                 index++
@@ -225,6 +235,28 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
             }
         }
         return count
+    }
+
+    /**
+     * Maps an Ion struct (from a SELECT query row) to a [LedgerEntry].
+     * Reads `entryId` and `createdAt` from the document fields stored at insert time.
+     */
+    private fun IonStruct.toLedgerEntry(factId: UUID): LedgerEntry {
+        val createdAtStr = (this.get("createdAt") as? IonText)?.stringValue()
+        val timestamp = if (createdAtStr != null) {
+            runCatching { Instant.parse(createdAtStr) }.getOrElse { Instant.now() }
+        } else {
+            Instant.now()
+        }
+        return LedgerEntry(
+            entryId = (this.get("entryId") as? IonText)?.stringValue() ?: "",
+            factId = factId,
+            eventType = (this.get("eventType") as? IonText)?.stringValue() ?: "",
+            contentHash = (this.get("contentHash") as? IonText)?.stringValue() ?: "",
+            previousHash = "",
+            timestamp = timestamp,
+            metadata = emptyMap()
+        )
     }
 
     private fun sha256(input: String): String {

@@ -9,11 +9,11 @@ import com.factstore.dto.LedgerStatusResponse
 import com.factstore.dto.PagedLedgerEntriesResponse
 import com.factstore.dto.VerificationResponse
 import com.factstore.dto.VerifyChainRequest
+import com.factstore.exception.BadRequestException
 import com.factstore.exception.NotFoundException
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
-import java.time.Instant
 import java.util.UUID
 import kotlin.math.ceil
 
@@ -27,6 +27,8 @@ class LedgerService(
     private val log = LoggerFactory.getLogger(LedgerService::class.java)
 
     override fun listEntries(page: Int, size: Int): PagedLedgerEntriesResponse {
+        if (page < 0) throw BadRequestException("page must be >= 0")
+        if (size <= 0) throw BadRequestException("size must be > 0")
         val offset = page * size
         val entries = ledger.listEntries(offset, size)
         val total = ledger.countEntries()
@@ -42,7 +44,7 @@ class LedgerService(
 
     override fun getEntry(factId: UUID): LedgerEntryResponse {
         val history = ledger.getHistory(factId)
-        return history.firstOrNull()?.toResponse()
+        return history.lastOrNull()?.toResponse()
             ?: throw NotFoundException("No ledger entry found for factId: $factId")
     }
 

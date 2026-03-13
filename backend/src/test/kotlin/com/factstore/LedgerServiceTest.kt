@@ -5,6 +5,7 @@ import com.factstore.application.LedgerService
 import com.factstore.config.LedgerProperties
 import com.factstore.core.domain.LedgerFact
 import com.factstore.dto.VerifyChainRequest
+import com.factstore.exception.BadRequestException
 import com.factstore.exception.NotFoundException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -16,6 +17,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 
 class LedgerServiceTest {
 
@@ -77,6 +80,17 @@ class LedgerServiceTest {
     }
 
     @Test
+    fun `getEntry returns the latest entry when a fact has multiple history entries`() {
+        val factId = UUID.randomUUID()
+        ledger.recordFact(LedgerFact(factId, "ATTESTATION_RECORDED", """{"type":"junit","status":"PASSED"}"""))
+        ledger.recordFact(LedgerFact(factId, "ATTESTATION_UPDATED", """{"type":"junit","status":"FAILED"}"""))
+
+        val entry = service.getEntry(factId)
+
+        assertEquals("ATTESTATION_UPDATED", entry.eventType)
+    }
+
+    @Test
     fun `hash chain links entries correctly`() {
         val factId1 = UUID.randomUUID()
         val factId2 = UUID.randomUUID()
@@ -107,6 +121,20 @@ class LedgerServiceTest {
         assertEquals(2, page1.entries.size)
         assertEquals(5L, page0.totalElements)
         assertEquals(2, page0.totalPages)
+    }
+
+    @Test
+    fun `listEntries throws BadRequestException for size zero`() {
+        assertThrows<BadRequestException> {
+            service.listEntries(0, 0)
+        }
+    }
+
+    @Test
+    fun `listEntries throws BadRequestException for negative page`() {
+        assertThrows<BadRequestException> {
+            service.listEntries(-1, 10)
+        }
     }
 
     @Test
@@ -159,5 +187,30 @@ class LedgerServiceTest {
 
         assertTrue(result.valid)
         assertEquals(0, result.entriesChecked)
+    }
+
+    @Test
+    fun `concurrent recordFact calls produce a valid chain`() {
+        val threadCount = 10
+        val executor = Executors.newFixedThreadPool(threadCount)
+        val latch = CountDownLatch(threadCount)
+        repeat(threadCount) {
+            executor.submit {
+                try {
+                    ledger.recordFact(LedgerFact(UUID.randomUUID(), "CONCURRENT_EVENT", """{"thread":$it}"""))
+                } finally {
+                    latch.countDown()
+                }
+            }
+        }
+        latch.await()
+        executor.shutdown()
+
+        val before = Instant.now().minusSeconds(5)
+        val after = Instant.now().plusSeconds(1)
+        val result = service.verifyChain(VerifyChainRequest(from = before, to = after))
+
+        assertTrue(result.valid, "Chain must be intact after concurrent writes: ${result.message}")
+        assertEquals(threadCount, result.entriesChecked)
     }
 }

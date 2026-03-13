@@ -1,6 +1,5 @@
 package com.factstore.adapter.inbound.web
 
-import com.factstore.config.LedgerProperties
 import com.factstore.core.port.inbound.ILedgerService
 import com.factstore.dto.ChainVerificationResponse
 import com.factstore.dto.LedgerEntryResponse
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.time.Instant
 import java.util.UUID
 
 @RestController
@@ -27,8 +25,7 @@ import java.util.UUID
 @Tag(name = "Ledger", description = "Immutable ledger — hash-chain verification and audit trail")
 @ConditionalOnProperty(name = ["ledger.enabled"], havingValue = "true")
 class LedgerController(
-    private val ledgerService: ILedgerService,
-    private val ledgerProperties: LedgerProperties
+    private val ledgerService: ILedgerService
 ) {
 
     @GetMapping("/entries")

@@ -22,39 +22,49 @@ class LocalHashChainLedger(properties: LedgerProperties) : IImmutableLedger {
     private val log = LoggerFactory.getLogger(LocalHashChainLedger::class.java)
 
     private val entries: CopyOnWriteArrayList<LedgerEntry> = CopyOnWriteArrayList()
+    private val appendLock = Any()
 
     companion object {
         private const val GENESIS_HASH = "0000000000000000000000000000000000000000000000000000000000000000"
     }
 
     init {
-        log.info("Local hash-chain ledger initialised (storage-path={})", properties.local.storagePath)
+        log.info(
+            "Local in-memory hash-chain ledger initialised (note: data is not persisted; storage-path={} is unused in this adapter)",
+            properties.local.storagePath
+        )
     }
 
     override fun recordFact(fact: LedgerFact): LedgerReceipt {
-        val contentHash = sha256(fact.content)
-        val previousHash = if (entries.isEmpty()) GENESIS_HASH else computeEntryHash(entries.last())
-        val entryId = UUID.randomUUID().toString()
-        val timestamp = Instant.now()
+        // Synchronize the read-compute-append sequence to maintain a strictly sequential chain.
+        // CopyOnWriteArrayList guarantees safe concurrent reads, but the "read tail → compute
+        // previousHash → append" operation must be atomic to prevent two concurrent writers
+        // from each observing the same last entry and generating duplicate previousHash values.
+        synchronized(appendLock) {
+            val contentHash = sha256(fact.content)
+            val previousHash = if (entries.isEmpty()) GENESIS_HASH else computeEntryHash(entries.last())
+            val entryId = UUID.randomUUID().toString()
+            val timestamp = Instant.now()
 
-        val entry = LedgerEntry(
-            entryId = entryId,
-            factId = fact.factId,
-            eventType = fact.eventType,
-            contentHash = contentHash,
-            previousHash = previousHash,
-            timestamp = timestamp,
-            metadata = fact.metadata
-        )
-        entries.add(entry)
-        log.debug("Recorded ledger entry id={} factId={} position={}", entryId, fact.factId, entries.size - 1)
+            val entry = LedgerEntry(
+                entryId = entryId,
+                factId = fact.factId,
+                eventType = fact.eventType,
+                contentHash = contentHash,
+                previousHash = previousHash,
+                timestamp = timestamp,
+                metadata = fact.metadata
+            )
+            entries.add(entry)
+            log.debug("Recorded ledger entry id={} factId={} position={}", entryId, fact.factId, entries.size - 1)
 
-        return LedgerReceipt(
-            entryId = entryId,
-            factId = fact.factId,
-            contentHash = contentHash,
-            timestamp = timestamp
-        )
+            return LedgerReceipt(
+                entryId = entryId,
+                factId = fact.factId,
+                contentHash = contentHash,
+                timestamp = timestamp
+            )
+        }
     }
 
     override fun verifyFact(factId: UUID): VerificationResult {
