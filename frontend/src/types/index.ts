@@ -186,3 +186,53 @@ export interface CreateApiKeyRequest {
   type: ApiKeyType
 }
 
+// Environment Tracking
+export type EnvironmentType = 'K8S' | 'S3' | 'LAMBDA' | 'GENERIC'
+
+export interface Environment {
+  id: string
+  name: string
+  type: EnvironmentType
+  description: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SnapshotArtifact {
+  artifactSha256: string
+  artifactName: string
+  artifactTag: string
+  instanceCount: number
+}
+
+export interface EnvironmentSnapshot {
+  id: string
+  environmentId: string
+  snapshotIndex: number
+  recordedAt: string
+  recordedBy: string
+  artifacts: SnapshotArtifact[]
+}
+
+export interface CreateEnvironmentRequest {
+  name: string
+  type: EnvironmentType
+  description?: string
+}
+
+export interface UpdateEnvironmentRequest {
+  name?: string
+  type?: EnvironmentType
+  description?: string
+}
+
+export interface RecordSnapshotRequest {
+  recordedBy: string
+  artifacts: Array<{
+    artifactSha256: string
+    artifactName: string
+    artifactTag: string
+    instanceCount: number
+  }>
+}
+

@@ -30,6 +30,7 @@ const route = useRoute()
 const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/flows', label: 'Flows' },
+  { to: '/environments', label: 'Environments' },
   { to: '/assert', label: 'Assert' },
   { to: '/evidence', label: 'Evidence Vault' },
   { to: '/integrations', label: 'Integrations' }
