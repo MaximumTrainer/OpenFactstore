@@ -186,3 +186,49 @@ export interface CreateApiKeyRequest {
   type: ApiKeyType
 }
 
+// Ledger types
+export interface LedgerEntry {
+  entryId: string
+  factId: string
+  eventType: string
+  contentHash: string
+  previousHash: string
+  timestamp: string
+  metadata: Record<string, string>
+}
+
+export interface PagedLedgerEntries {
+  entries: LedgerEntry[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+export interface LedgerVerification {
+  factId: string
+  verified: boolean
+  contentHash: string | null
+  chainPosition: number | null
+  previousHash: string | null
+  ledgerTimestamp: string | null
+  verifiedAt: string
+  message: string
+}
+
+export interface ChainVerification {
+  valid: boolean
+  entriesChecked: number
+  firstEntryTimestamp: string | null
+  lastEntryTimestamp: string | null
+  brokenAt: string | null
+  message: string
+}
+
+export interface LedgerStatus {
+  enabled: boolean
+  type: string
+  totalEntries: number
+  healthy: boolean
+  message: string
+}

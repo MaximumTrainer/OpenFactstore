@@ -32,6 +32,7 @@ const links = [
   { to: '/flows', label: 'Flows' },
   { to: '/assert', label: 'Assert' },
   { to: '/evidence', label: 'Evidence Vault' },
+  { to: '/ledger', label: 'Ledger' },
   { to: '/integrations', label: 'Integrations' }
 ]
 

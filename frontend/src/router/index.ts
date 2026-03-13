@@ -7,6 +7,7 @@ import AssertView from '../views/AssertView.vue'
 import EvidenceVaultView from '../views/EvidenceVaultView.vue'
 import IntegrationsView from '../views/IntegrationsView.vue'
 import AtlassianIntegrationsView from '../views/AtlassianIntegrationsView.vue'
+import LedgerView from '../views/LedgerView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -18,7 +19,8 @@ const router = createRouter({
     { path: '/assert', component: AssertView },
     { path: '/evidence', component: EvidenceVaultView },
     { path: '/integrations', component: IntegrationsView },
-    { path: '/integrations/atlassian', component: AtlassianIntegrationsView }
+    { path: '/integrations/atlassian', component: AtlassianIntegrationsView },
+    { path: '/ledger', component: LedgerView }
   ]
 })
 
