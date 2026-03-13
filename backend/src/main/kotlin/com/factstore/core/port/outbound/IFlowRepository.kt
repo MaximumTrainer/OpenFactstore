@@ -10,4 +10,5 @@ interface IFlowRepository {
     fun existsById(id: UUID): Boolean
     fun existsByName(name: String): Boolean
     fun deleteById(id: UUID)
+    fun countAll(): Long
 }

@@ -191,6 +191,66 @@ data class ErrorResponse(
     val timestamp: Instant = Instant.now()
 )
 
+// Search DTOs
+data class SearchResultItem(
+    val type: String,
+    val id: UUID,
+    val title: String,
+    val description: String,
+    val metadata: Map<String, String?> = emptyMap()
+)
+
+data class SearchResponse(
+    val results: List<SearchResultItem>,
+    val total: Int,
+    val query: String,
+    val type: String?
+)
+
+// Dashboard Stats DTO
+data class DashboardStatsResponse(
+    val totalFlows: Int,
+    val totalTrails: Int,
+    val compliantTrails: Int,
+    val nonCompliantTrails: Int,
+    val pendingTrails: Int,
+    val complianceRate: Double
+)
+
+// Compliance Report DTOs
+data class TrailComplianceSummary(
+    val id: UUID,
+    val gitCommitSha: String,
+    val gitBranch: String,
+    val gitAuthor: String,
+    val status: String,
+    val createdAt: Instant
+)
+
+data class FlowComplianceReport(
+    val flowId: UUID?,
+    val flowName: String,
+    val from: Instant?,
+    val to: Instant?,
+    val totalTrails: Int,
+    val compliantTrails: Int,
+    val nonCompliantTrails: Int,
+    val pendingTrails: Int,
+    val complianceRate: Double,
+    val nonCompliantTrailList: List<TrailComplianceSummary>
+)
+
+// Audit Trail Export DTO
+data class AuditTrailExportResponse(
+    val trailId: UUID,
+    val exportedAt: Instant,
+    val trail: TrailResponse,
+    val flow: FlowResponse,
+    val artifacts: List<ArtifactResponse>,
+    val attestations: List<AttestationResponse>,
+    val evidenceFiles: List<EvidenceFileResponse>
+)
+
 // Jira Integration DTOs
 data class JiraConfigRequest(
     val jiraBaseUrl: String,

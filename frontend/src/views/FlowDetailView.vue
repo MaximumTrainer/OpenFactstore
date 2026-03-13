@@ -8,15 +8,28 @@
     <div v-else-if="!flow" class="text-center text-gray-500 py-12">Flow not found.</div>
     <div v-else>
       <div class="bg-white rounded-lg shadow p-6 mb-6">
-        <h1 class="text-2xl font-bold text-gray-900 mb-1">{{ flow.name }}</h1>
-        <p class="text-gray-500 mb-4">{{ flow.description }}</p>
-        <div class="flex flex-wrap gap-2">
-          <span
-            v-for="type in flow.requiredAttestationTypes"
-            :key="type"
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
-          >{{ type }}</span>
+        <div class="flex items-start justify-between">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-1">{{ flow.name }}</h1>
+            <p class="text-gray-500 mb-4">{{ flow.description }}</p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-for="type in flow.requiredAttestationTypes"
+                :key="type"
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+              >{{ type }}</span>
+            </div>
+          </div>
+          <button
+            class="ml-4 flex-shrink-0 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-50 flex items-center gap-2"
+            :disabled="exportingReport"
+            @click="exportComplianceReport"
+          >
+            <span v-if="exportingReport">Exporting…</span>
+            <span v-else>⬇ Export Compliance Report</span>
+          </button>
         </div>
+        <p v-if="exportError" class="mt-3 text-sm text-red-600">{{ exportError }}</p>
       </div>
 
       <div class="bg-white rounded-lg shadow">
@@ -61,6 +74,7 @@ import { useRoute } from 'vue-router'
 import StatusBadge from '../components/StatusBadge.vue'
 import { getFlow } from '../api/flows'
 import { getTrails } from '../api/trails'
+import { getComplianceReport } from '../api/reports'
 import type { Flow, Trail } from '../types'
 
 const route = useRoute()
@@ -68,9 +82,34 @@ const flow = ref<Flow | null>(null)
 const trails = ref<Trail[]>([])
 const loading = ref(true)
 const trailsLoading = ref(true)
+const exportingReport = ref(false)
+const exportError = ref('')
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleString()
+}
+
+async function exportComplianceReport() {
+  if (!flow.value) return
+  exportingReport.value = true
+  exportError.value = ''
+  try {
+    const res = await getComplianceReport(flow.value.id)
+    const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const safeName = flow.value.name.replace(/[^\w\-]/g, '-')
+    a.href = url
+    a.download = `compliance-report-${safeName}-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
+  } catch {
+    exportError.value = 'Failed to export report. Please try again.'
+  } finally {
+    exportingReport.value = false
+  }
 }
 
 onMounted(async () => {

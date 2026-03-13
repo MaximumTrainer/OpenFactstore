@@ -21,4 +21,5 @@ class FlowRepositoryAdapter(private val jpa: FlowRepositoryJpa) : IFlowRepositor
     override fun existsById(id: UUID): Boolean = jpa.existsById(id)
     override fun existsByName(name: String): Boolean = jpa.existsByName(name)
     override fun deleteById(id: UUID) = jpa.deleteById(id)
+    override fun countAll(): Long = jpa.count()
 }
