@@ -143,6 +143,11 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
     override fun getHistory(factId: UUID): List<LedgerEntry> {
         val history = mutableListOf<LedgerEntry>()
         driver.execute { txn: TransactionExecutor ->
+            // Project metadata.id (QLDB document ID) and metadata.txTime (commit timestamp)
+            // alongside h.data.* so we have both fallback sources for entryId and timestamp.
+            // New documents store `entryId` and `createdAt` as explicit fields (preferred).
+            // The metaId/txTime projections provide a fallback for any documents inserted
+            // before this schema was in place, ensuring backward compatibility.
             val result = txn.execute(
                 "SELECT h.metadata.id AS metaId, h.metadata.txTime AS txTime, h.data.* " +
                     "FROM history(FactLedger) AS h WHERE h.data.factId = ?",
@@ -150,25 +155,22 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
             )
             result.forEach { doc ->
                 val struct = doc as? IonStruct ?: return@forEach
-                val data = struct
-                val resolvedEntryId = (data.get("entryId") as? IonText)?.stringValue()
-                    ?: (data.get("metaId") as? IonText)?.stringValue()
+                // Prefer explicit entryId field; fall back to QLDB metadata.id for older documents.
+                // TODO: remove metaId fallback once all existing documents have been migrated.
+                val resolvedEntryId = (struct.get("entryId") as? IonText)?.stringValue()
+                    ?: (struct.get("metaId") as? IonText)?.stringValue()
                     ?: ""
-                // Prefer the QLDB transaction time from metadata for accurate audit timestamps
-                val txTimeStr = (data.get("txTime") as? IonText)?.stringValue()
-                val resolvedTimestamp = if (txTimeStr != null) {
-                    runCatching { Instant.parse(txTimeStr) }.getOrNull()
-                } else null
-                val createdAtStr = (data.get("createdAt") as? IonText)?.stringValue()
-                val timestamp = resolvedTimestamp
-                    ?: (if (createdAtStr != null) runCatching { Instant.parse(createdAtStr) }.getOrNull() else null)
-                    ?: Instant.now()
+                // Prefer QLDB txTime (accurate commit time) over createdAt (client time).
+                val timestamp = resolveTimestamp(
+                    txTimeStr = (struct.get("txTime") as? IonText)?.stringValue(),
+                    createdAtStr = (struct.get("createdAt") as? IonText)?.stringValue()
+                )
                 history.add(
                     LedgerEntry(
                         entryId = resolvedEntryId,
                         factId = factId,
-                        eventType = (data.get("eventType") as? IonText)?.stringValue() ?: "",
-                        contentHash = (data.get("contentHash") as? IonText)?.stringValue() ?: "",
+                        eventType = (struct.get("eventType") as? IonText)?.stringValue() ?: "",
+                        contentHash = (struct.get("contentHash") as? IonText)?.stringValue() ?: "",
                         previousHash = "",
                         timestamp = timestamp,
                         metadata = emptyMap()
@@ -241,23 +243,24 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
      * Maps an Ion struct (from a SELECT query row) to a [LedgerEntry].
      * Reads `entryId` and `createdAt` from the document fields stored at insert time.
      */
-    private fun IonStruct.toLedgerEntry(factId: UUID): LedgerEntry {
-        val createdAtStr = (this.get("createdAt") as? IonText)?.stringValue()
-        val timestamp = if (createdAtStr != null) {
-            runCatching { Instant.parse(createdAtStr) }.getOrElse { Instant.now() }
-        } else {
-            Instant.now()
-        }
-        return LedgerEntry(
-            entryId = (this.get("entryId") as? IonText)?.stringValue() ?: "",
-            factId = factId,
-            eventType = (this.get("eventType") as? IonText)?.stringValue() ?: "",
-            contentHash = (this.get("contentHash") as? IonText)?.stringValue() ?: "",
-            previousHash = "",
-            timestamp = timestamp,
-            metadata = emptyMap()
-        )
-    }
+    private fun IonStruct.toLedgerEntry(factId: UUID): LedgerEntry = LedgerEntry(
+        entryId = (this.get("entryId") as? IonText)?.stringValue() ?: "",
+        factId = factId,
+        eventType = (this.get("eventType") as? IonText)?.stringValue() ?: "",
+        contentHash = (this.get("contentHash") as? IonText)?.stringValue() ?: "",
+        previousHash = "",
+        timestamp = resolveTimestamp(createdAtStr = (this.get("createdAt") as? IonText)?.stringValue()),
+        metadata = emptyMap()
+    )
+
+    /**
+     * Resolves an [Instant] from QLDB history metadata timestamps or a stored `createdAt` field.
+     * Priority: txTime (QLDB commit time) → createdAt (client-recorded ISO string) → now().
+     */
+    private fun resolveTimestamp(txTimeStr: String? = null, createdAtStr: String? = null): Instant =
+        txTimeStr?.let { runCatching { Instant.parse(it) }.getOrNull() }
+            ?: createdAtStr?.let { runCatching { Instant.parse(it) }.getOrNull() }
+            ?: Instant.now()
 
     private fun sha256(input: String): String {
         val digest = MessageDigest.getInstance("SHA-256")

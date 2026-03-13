@@ -191,6 +191,7 @@ class LedgerServiceTest {
 
     @Test
     fun `concurrent recordFact calls produce a valid chain`() {
+        val startTime = Instant.now()
         val threadCount = 10
         val executor = Executors.newFixedThreadPool(threadCount)
         val latch = CountDownLatch(threadCount)
@@ -206,9 +207,9 @@ class LedgerServiceTest {
         latch.await()
         executor.shutdown()
 
-        val before = Instant.now().minusSeconds(5)
-        val after = Instant.now().plusSeconds(1)
-        val result = service.verifyChain(VerifyChainRequest(from = before, to = after))
+        val from = startTime.minusSeconds(1)
+        val to = startTime.plusSeconds(30)
+        val result = service.verifyChain(VerifyChainRequest(from = from, to = to))
 
         assertTrue(result.valid, "Chain must be intact after concurrent writes: ${result.message}")
         assertEquals(threadCount, result.entriesChecked)
