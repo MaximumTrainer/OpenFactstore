@@ -3,6 +3,7 @@ package com.factstore.dto
 import com.factstore.core.domain.ApiKeyType
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.DeliveryStatus
+import com.factstore.core.domain.MemberRole
 import com.factstore.core.domain.TrailStatus
 import com.factstore.core.domain.WebhookSource
 import java.time.Instant
@@ -188,6 +189,66 @@ data class ErrorResponse(
     val error: String,
     val message: String,
     val timestamp: Instant = Instant.now()
+)
+
+// Search DTOs
+data class SearchResultItem(
+    val type: String,
+    val id: UUID,
+    val title: String,
+    val description: String,
+    val metadata: Map<String, String?> = emptyMap()
+)
+
+data class SearchResponse(
+    val results: List<SearchResultItem>,
+    val total: Int,
+    val query: String,
+    val type: String?
+)
+
+// Dashboard Stats DTO
+data class DashboardStatsResponse(
+    val totalFlows: Int,
+    val totalTrails: Int,
+    val compliantTrails: Int,
+    val nonCompliantTrails: Int,
+    val pendingTrails: Int,
+    val complianceRate: Double
+)
+
+// Compliance Report DTOs
+data class TrailComplianceSummary(
+    val id: UUID,
+    val gitCommitSha: String,
+    val gitBranch: String,
+    val gitAuthor: String,
+    val status: String,
+    val createdAt: Instant
+)
+
+data class FlowComplianceReport(
+    val flowId: UUID?,
+    val flowName: String,
+    val from: Instant?,
+    val to: Instant?,
+    val totalTrails: Int,
+    val compliantTrails: Int,
+    val nonCompliantTrails: Int,
+    val pendingTrails: Int,
+    val complianceRate: Double,
+    val nonCompliantTrailList: List<TrailComplianceSummary>
+)
+
+// Audit Trail Export DTO
+data class AuditTrailExportResponse(
+    val trailId: UUID,
+    val exportedAt: Instant,
+    val trail: TrailResponse,
+    val flow: FlowResponse,
+    val artifacts: List<ArtifactResponse>,
+    val attestations: List<AttestationResponse>,
+    val evidenceFiles: List<EvidenceFileResponse>
 )
 
 // Jira Integration DTOs
@@ -385,6 +446,24 @@ data class UserResponse(
     val githubId: String?,
     val createdAt: Instant,
     val updatedAt: Instant
+)
+
+// Organisation Member DTOs
+data class InviteMemberRequest(
+    val email: String,
+    val role: MemberRole
+)
+
+data class UpdateMemberRoleRequest(
+    val role: MemberRole
+)
+
+data class MemberResponse(
+    val userId: UUID,
+    val email: String,
+    val name: String,
+    val role: MemberRole,
+    val joinedAt: Instant
 )
 
 // API Key DTOs

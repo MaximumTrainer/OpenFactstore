@@ -232,3 +232,63 @@ export interface LedgerStatus {
   healthy: boolean
   message: string
 }
+// Search types
+export interface SearchResultItem {
+  type: 'trail' | 'artifact'
+  id: string
+  title: string
+  description: string
+  metadata: Record<string, string | null>
+}
+
+export interface SearchResponse {
+  results: SearchResultItem[]
+  total: number
+  query: string
+  type: string | null
+}
+
+// Dashboard stats
+export interface DashboardStats {
+  totalFlows: number
+  totalTrails: number
+  compliantTrails: number
+  nonCompliantTrails: number
+  pendingTrails: number
+  complianceRate: number
+}
+
+// Compliance report
+export interface TrailComplianceSummary {
+  id: string
+  gitCommitSha: string
+  gitBranch: string
+  gitAuthor: string
+  status: string
+  createdAt: string
+}
+
+export interface FlowComplianceReport {
+  flowId: string | null
+  flowName: string
+  from: string | null
+  to: string | null
+  totalTrails: number
+  compliantTrails: number
+  nonCompliantTrails: number
+  pendingTrails: number
+  complianceRate: number
+  nonCompliantTrailList: TrailComplianceSummary[]
+}
+
+// Audit trail export
+export interface AuditTrailExport {
+  trailId: string
+  exportedAt: string
+  trail: Trail
+  flow: Flow
+  artifacts: Artifact[]
+  attestations: Attestation[]
+  evidenceFiles: EvidenceFile[]
+}
+

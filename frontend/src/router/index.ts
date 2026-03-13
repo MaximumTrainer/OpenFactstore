@@ -8,6 +8,7 @@ import EvidenceVaultView from '../views/EvidenceVaultView.vue'
 import IntegrationsView from '../views/IntegrationsView.vue'
 import AtlassianIntegrationsView from '../views/AtlassianIntegrationsView.vue'
 import LedgerView from '../views/LedgerView.vue'
+import SearchView from '../views/SearchView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -18,6 +19,7 @@ const router = createRouter({
     { path: '/trails/:id', component: TrailDetailView },
     { path: '/assert', component: AssertView },
     { path: '/evidence', component: EvidenceVaultView },
+    { path: '/search', component: SearchView },
     { path: '/integrations', component: IntegrationsView },
     { path: '/integrations/atlassian', component: AtlassianIntegrationsView },
     { path: '/ledger', component: LedgerView }

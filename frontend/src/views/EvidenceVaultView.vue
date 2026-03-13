@@ -80,7 +80,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import StatusBadge from '../components/StatusBadge.vue'
 import { getChainOfCustody } from '../api/assert'
 import type { Attestation, Artifact, Trail } from '../types'
@@ -91,6 +92,7 @@ interface ChainOfCustody {
   attestations?: Attestation[]
 }
 
+const route = useRoute()
 const sha256 = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -113,4 +115,12 @@ async function lookup() {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  const sha = route.query.sha256 as string | undefined
+  if (sha) {
+    sha256.value = sha
+    lookup()
+  }
+})
 </script>

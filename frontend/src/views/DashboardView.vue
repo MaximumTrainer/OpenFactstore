@@ -5,27 +5,34 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       <div class="bg-white rounded-lg shadow p-6">
         <div class="text-sm font-medium text-gray-500">Total Flows</div>
-        <div class="mt-1 text-3xl font-bold text-gray-900">{{ flows.length }}</div>
+        <div class="mt-1 text-3xl font-bold text-gray-900">{{ stats?.totalFlows ?? flows.length }}</div>
       </div>
       <div class="bg-white rounded-lg shadow p-6">
         <div class="text-sm font-medium text-gray-500">Total Trails</div>
-        <div class="mt-1 text-3xl font-bold text-gray-900">{{ trails.length }}</div>
+        <div class="mt-1 text-3xl font-bold text-gray-900">{{ stats?.totalTrails ?? trails.length }}</div>
         <div class="mt-2 flex gap-2 flex-wrap">
           <span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-            {{ statusCount('COMPLIANT') }} Compliant
+            {{ stats?.compliantTrails ?? statusCount('COMPLIANT') }} Compliant
           </span>
           <span class="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
-            {{ statusCount('NON_COMPLIANT') }} Non-Compliant
+            {{ stats?.nonCompliantTrails ?? statusCount('NON_COMPLIANT') }} Non-Compliant
           </span>
           <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
-            {{ statusCount('PENDING') }} Pending
+            {{ stats?.pendingTrails ?? statusCount('PENDING') }} Pending
           </span>
         </div>
       </div>
       <div class="bg-white rounded-lg shadow p-6">
         <div class="text-sm font-medium text-gray-500">Compliance Rate</div>
         <div class="mt-1 text-3xl font-bold text-gray-900">
-          {{ complianceRate }}%
+          {{ stats?.complianceRate ?? complianceRate }}%
+        </div>
+        <div class="mt-3 h-2 rounded-full bg-gray-200 overflow-hidden">
+          <div
+            class="h-2 rounded-full transition-all duration-500"
+            :class="complianceBarColor"
+            :style="{ width: `${stats?.complianceRate ?? complianceRate}%` }"
+          />
         </div>
       </div>
     </div>
@@ -61,10 +68,12 @@ import { ref, computed, onMounted } from 'vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { getFlows } from '../api/flows'
 import { getTrails } from '../api/trails'
-import type { Flow, Trail } from '../types'
+import { getDashboardStats } from '../api/dashboard'
+import type { Flow, Trail, DashboardStats } from '../types'
 
 const flows = ref<Flow[]>([])
 const trails = ref<Trail[]>([])
+const stats = ref<DashboardStats | null>(null)
 const loading = ref(true)
 
 const recentTrails = computed(() => [...trails.value].slice(0, 5))
@@ -77,6 +86,13 @@ const complianceRate = computed(() => {
   if (completed.length === 0) return 0
   const compliant = completed.filter(t => t.status === 'COMPLIANT').length
   return Math.round((compliant / completed.length) * 100)
+})
+
+const complianceBarColor = computed(() => {
+  const rate = stats.value?.complianceRate ?? complianceRate.value
+  if (rate >= 80) return 'bg-green-500'
+  if (rate >= 50) return 'bg-yellow-500'
+  return 'bg-red-500'
 })
 
 function formatDate(dateStr: string): string {
@@ -92,6 +108,12 @@ onMounted(async () => {
     // silently fail on load error
   } finally {
     loading.value = false
+  }
+  try {
+    const statsRes = await getDashboardStats()
+    stats.value = statsRes.data
+  } catch {
+    // fall back to locally computed stats
   }
 })
 </script>

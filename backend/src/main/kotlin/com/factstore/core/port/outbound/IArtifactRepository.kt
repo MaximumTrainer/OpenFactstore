@@ -8,4 +8,6 @@ interface IArtifactRepository {
     fun findByTrailId(trailId: UUID): List<Artifact>
     fun findBySha256Digest(sha256Digest: String): List<Artifact>
     fun findBySha256DigestStartingWith(prefix: String): List<Artifact>
+    fun findAll(): List<Artifact>
+    fun searchByQuery(query: String): List<Artifact>
 }

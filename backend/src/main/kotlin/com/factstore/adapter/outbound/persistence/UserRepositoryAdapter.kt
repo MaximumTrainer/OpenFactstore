@@ -21,6 +21,7 @@ class UserRepositoryAdapter(private val jpa: UserRepositoryJpa) : IUserRepositor
     override fun findByEmail(email: String): User? = jpa.findByEmail(email)
     override fun findByGithubId(githubId: String): User? = jpa.findByGithubId(githubId)
     override fun findAll(): List<User> = jpa.findAll()
+    override fun findAllById(ids: Collection<UUID>): List<User> = jpa.findAllById(ids)
     override fun existsById(id: UUID): Boolean = jpa.existsById(id)
     override fun existsByEmail(email: String): Boolean = jpa.existsByEmail(email)
     override fun deleteById(id: UUID) = jpa.deleteById(id)
