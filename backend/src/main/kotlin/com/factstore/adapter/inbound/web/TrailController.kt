@@ -1,6 +1,8 @@
 package com.factstore.adapter.inbound.web
 
+import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.inbound.ITrailService
+import com.factstore.dto.AuditEventResponse
 import com.factstore.dto.CreateTrailRequest
 import com.factstore.dto.TrailResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -12,7 +14,10 @@ import java.util.UUID
 
 @RestController
 @Tag(name = "Trails", description = "Trail management")
-class TrailController(private val trailService: ITrailService) {
+class TrailController(
+    private val trailService: ITrailService,
+    private val auditService: IAuditService
+) {
 
     @PostMapping("/api/v1/trails")
     @Operation(summary = "Create/begin a trail")
@@ -33,4 +38,9 @@ class TrailController(private val trailService: ITrailService) {
     @Operation(summary = "List trails for a flow")
     fun listTrailsForFlow(@PathVariable flowId: UUID): ResponseEntity<List<TrailResponse>> =
         ResponseEntity.ok(trailService.listTrailsForFlow(flowId))
+
+    @GetMapping("/api/v1/trails/{id}/audit")
+    @Operation(summary = "Get audit events for a specific trail")
+    fun getTrailAuditEvents(@PathVariable id: UUID): ResponseEntity<List<AuditEventResponse>> =
+        ResponseEntity.ok(auditService.getEventsForTrail(id))
 }

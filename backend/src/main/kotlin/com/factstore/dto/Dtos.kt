@@ -2,6 +2,7 @@ package com.factstore.dto
 
 import com.factstore.core.domain.ApiKeyType
 import com.factstore.core.domain.AttestationStatus
+import com.factstore.core.domain.AuditEventType
 import com.factstore.core.domain.DeliveryStatus
 import com.factstore.core.domain.EnvironmentType
 import com.factstore.core.domain.MemberRole
@@ -551,4 +552,24 @@ data class ApiKeyCreatedResponse(
     val lastUsedAt: Instant?,
     /** The full plain-text key. Shown exactly once; never persisted in clear text. */
     val plainTextKey: String
+)
+
+// Audit Log DTOs
+data class AuditEventResponse(
+    val id: UUID,
+    val eventType: AuditEventType,
+    val environmentId: UUID?,
+    val trailId: UUID?,
+    val artifactSha256: String?,
+    val actor: String,
+    val payload: String,
+    val occurredAt: Instant
+)
+
+data class AuditEventPage(
+    val events: List<AuditEventResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int
 )

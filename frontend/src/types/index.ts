@@ -186,6 +186,39 @@ export interface CreateApiKeyRequest {
   type: ApiKeyType
 }
 
+// Audit Log
+export type AuditEventType =
+  | 'ARTIFACT_DEPLOYED'
+  | 'ARTIFACT_REMOVED'
+  | 'ARTIFACT_UPDATED'
+  | 'ENVIRONMENT_CREATED'
+  | 'ENVIRONMENT_DELETED'
+  | 'POLICY_EVALUATED'
+  | 'ATTESTATION_RECORDED'
+  | 'APPROVAL_GRANTED'
+  | 'APPROVAL_REJECTED'
+  | 'GATE_BLOCKED'
+  | 'GATE_ALLOWED'
+
+export interface AuditEvent {
+  id: string
+  eventType: AuditEventType
+  environmentId: string | null
+  trailId: string | null
+  artifactSha256: string | null
+  actor: string
+  payload: string
+  occurredAt: string
+}
+
+export interface AuditEventPage {
+  events: AuditEvent[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
 // Ledger types
 export interface LedgerEntry {
   entryId: string

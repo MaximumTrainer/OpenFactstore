@@ -34,8 +34,9 @@ const links = [
   { to: '/search', label: 'Search' },
   { to: '/assert', label: 'Assert' },
   { to: '/evidence', label: 'Evidence Vault' },
-  { to: '/ledger', label: 'Ledger' },
-  { to: '/integrations', label: 'Integrations' }
+  { to: '/integrations', label: 'Integrations' },
+  { to: '/audit', label: 'Audit Log' },
+  { to: '/ledger', label: 'Ledger' }
 ]
 
 function isActive(path: string): boolean {
