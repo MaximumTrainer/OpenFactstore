@@ -56,6 +56,20 @@ sso:
     # Override with a strong random value in production via the SSO_JWT_SECRET environment variable.
     secret: ${SSO_JWT_SECRET:changeme-in-production}
     expiry-hours: ${SSO_JWT_EXPIRY_HOURS:8}
+vault:
+  enabled: ${VAULT_ENABLED:false}
+  uri: ${VAULT_ADDR:http://localhost:8200}
+  authentication: ${VAULT_AUTH_METHOD:TOKEN}
+  token: ${VAULT_TOKEN:}
+  app-role:
+    role-id: ${VAULT_ROLE_ID:}
+    secret-id: ${VAULT_SECRET_ID:}
+  kv:
+    enabled: true
+    backend: secret
+    default-context: factstore
+  tls:
+    enabled: false
 
 server:
   port: 8080

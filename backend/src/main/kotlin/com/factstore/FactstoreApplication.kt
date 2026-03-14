@@ -1,13 +1,17 @@
 package com.factstore
 
 import com.factstore.config.LedgerProperties
+import com.factstore.config.VaultProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import kotlin.system.exitProcess
 
 @SpringBootApplication
-@EnableConfigurationProperties(LedgerProperties::class)
+@EnableConfigurationProperties(
+    LedgerProperties::class,
+    VaultProperties::class
+)
 class FactstoreApplication
 
 internal val APP_VERSION: String =
