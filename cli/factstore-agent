@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+# factstore-agent — Lightweight CLI for continuous evidence collection
+# Reports security scans, test coverage, build provenance, and compliance
+# status to a Factstore instance from CI/CD pipelines.
+#
+# Usage:
+#   factstore-agent <command> [options]
+#
+# Commands:
+#   report-coverage    Report test coverage results
+#   report-scan        Report security scan results
+#   report-build       Report build provenance
+#   check-compliance   Check compliance status for a trail
+#
+# Environment Variables:
+#   FACTSTORE_URL      Base URL of the Factstore instance (required)
+#   FACTSTORE_API_KEY  API key for authentication (optional)
+#
+# Examples:
+#   factstore-agent report-coverage \
+#       --trail-id $TRAIL_ID --tool jacoco \
+#       --coverage-file build/reports/jacoco/test/jacocoTestReport.xml \
+#       --min-coverage 80
+#
+#   factstore-agent report-scan \
+#       --trail-id $TRAIL_ID --tool owasp-zap \
+#       --report-file zap-report.json
+#
+#   factstore-agent report-build \
+#       --trail-id $TRAIL_ID --artifact-sha $IMAGE_SHA \
+#       --source-commit $GIT_SHA --builder github-actions
+#
+#   factstore-agent check-compliance \
+#       --trail-id $TRAIL_ID --flow-id $FLOW_ID
+
+set -euo pipefail
+
+FACTSTORE_URL="${FACTSTORE_URL:-http://localhost:8080}"
+FACTSTORE_API_KEY="${FACTSTORE_API_KEY:-}"
+
+_usage() {
+    sed -n '/^# Usage:/,/^[^#]/{ /^#/!d; s/^# \{0,2\}//; p }' "$0" | head -40
+    exit 1
+}
+
+_curl() {
+    local args=(-s -f -H "Content-Type: application/json")
+    [[ -n "$FACTSTORE_API_KEY" ]] && args+=(-H "X-API-Key: $FACTSTORE_API_KEY")
+    curl "${args[@]}" "$@"
+}
+
+_die() { echo "ERROR: $*" >&2; exit 1; }
+
+_require() { command -v "$1" &>/dev/null || _die "'$1' is required but not found in PATH"; }
+
+_require curl
+_require jq
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+  report-coverage)
+    trail_id="" tool="" coverage_file="" line_coverage="" branch_coverage="" min_coverage=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --trail-id)      trail_id="$2"; shift 2 ;;
+        --tool)          tool="$2"; shift 2 ;;
+        --coverage-file) coverage_file="$2"; shift 2 ;;
+        --line-coverage) line_coverage="$2"; shift 2 ;;
+        --branch-coverage) branch_coverage="$2"; shift 2 ;;
+        --min-coverage)  min_coverage="$2"; shift 2 ;;
+        *) _die "Unknown option: $1" ;;
+      esac
+    done
+    [[ -n "$trail_id" ]] || _die "--trail-id is required"
+    [[ -n "$tool" ]]     || _die "--tool is required"
+
+    # If a coverage file is provided, attempt to extract line coverage from it
+    if [[ -n "$coverage_file" && -f "$coverage_file" ]]; then
+        if command -v xmllint &>/dev/null; then
+            _extracted=$(xmllint --xpath 'string(//counter[@type="LINE"]/@covered)' "$coverage_file" 2>/dev/null || true)
+            _missed=$(xmllint --xpath 'string(//counter[@type="LINE"]/@missed)' "$coverage_file" 2>/dev/null || true)
+            if [[ "$_extracted" =~ ^[0-9]+$ && "$_missed" =~ ^[0-9]+$ ]] && (( _extracted + _missed > 0 )); then
+                _total=$(( _extracted + _missed ))
+                line_coverage=$(awk "BEGIN { printf \"%.2f\", ($_extracted / $_total) * 100 }")
+            fi
+        fi
+    fi
+
+    payload=$(jq -n \
+        --arg tool "$tool" \
+        --argjson lineCoverage "${line_coverage:-null}" \
+        --argjson branchCoverage "${branch_coverage:-null}" \
+        --argjson minCoverage "${min_coverage:-null}" \
+        '{tool: $tool, lineCoverage: $lineCoverage, branchCoverage: $branchCoverage, minCoverage: $minCoverage}')
+
+    echo "Reporting coverage for trail $trail_id (tool=$tool)..."
+    response=$(_curl -X POST \
+        "${FACTSTORE_URL}/api/v1/trails/${trail_id}/coverage" \
+        -d "$payload")
+    echo "$response" | jq .
+    passed=$(echo "$response" | jq -r '.passed')
+    if [[ "$passed" == "false" ]]; then
+        echo "Coverage check FAILED (below minimum threshold)" >&2
+        exit 1
+    fi
+    echo "Coverage check PASSED"
+    ;;
+
+  report-scan)
+    trail_id="" tool="" report_file="" passed="true" details="" evidence_type="security-scan"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --trail-id)       trail_id="$2"; shift 2 ;;
+        --tool)           tool="$2"; shift 2 ;;
+        --report-file)    report_file="$2"; shift 2 ;;
+        --passed)         passed="$2"; shift 2 ;;
+        --details)        details="$2"; shift 2 ;;
+        --evidence-type)  evidence_type="$2"; shift 2 ;;
+        *) _die "Unknown option: $1" ;;
+      esac
+    done
+    [[ -n "$trail_id" ]] || _die "--trail-id is required"
+    [[ -n "$tool" ]]     || _die "--tool is required"
+
+    # Normalize --passed to a JSON boolean literal
+    case "${passed,,}" in
+      true|1|yes)  passed_json="true"  ;;
+      false|0|no)  passed_json="false" ;;
+      *) _die "--passed must be true or false (got: '$passed')" ;;
+    esac
+
+    if [[ -n "$report_file" && -f "$report_file" ]]; then
+        details="${details:-$(head -c 4096 "$report_file")}"
+    fi
+
+    payload=$(jq -n \
+        --arg trailId "$trail_id" \
+        --arg evidenceType "$evidence_type" \
+        --arg tool "$tool" \
+        --argjson passed "$passed_json" \
+        --arg details "${details:-Reported by factstore-agent}" \
+        '[{trailId: $trailId, evidenceType: $evidenceType, tool: $tool, passed: $passed, details: $details}]')
+
+    echo "Reporting ${evidence_type} for trail $trail_id (tool=$tool)..."
+    _curl -X POST \
+        "${FACTSTORE_URL}/api/v1/evidence/collect" \
+        -d "{\"items\": $payload}" | jq .
+    ;;
+
+  report-build)
+    trail_id="" artifact_sha="" source_commit="" builder="${CI:-unknown}"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --trail-id)       trail_id="$2"; shift 2 ;;
+        --artifact-sha)   artifact_sha="$2"; shift 2 ;;
+        --source-commit)  source_commit="$2"; shift 2 ;;
+        --builder)        builder="$2"; shift 2 ;;
+        *) _die "Unknown option: $1" ;;
+      esac
+    done
+    [[ -n "$trail_id" ]] || _die "--trail-id is required"
+
+    details="builder=${builder}"
+    [[ -n "$artifact_sha" ]]  && details="${details}, artifact_sha=${artifact_sha}"
+    [[ -n "$source_commit" ]] && details="${details}, source_commit=${source_commit}"
+
+    payload=$(jq -n \
+        --arg trailId "$trail_id" \
+        --arg details "$details" \
+        '[{trailId: $trailId, evidenceType: "build-provenance", tool: $trailId, passed: true, details: $details}]' \
+        | jq '.[0].tool = "'"$builder"'"')
+
+    echo "Reporting build provenance for trail $trail_id (builder=$builder)..."
+    _curl -X POST \
+        "${FACTSTORE_URL}/api/v1/evidence/collect" \
+        -d "{\"items\": $payload}" | jq .
+    ;;
+
+  check-compliance)
+    trail_id="" flow_id=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --trail-id) trail_id="$2"; shift 2 ;;
+        --flow-id)  flow_id="$2"; shift 2 ;;
+        *) _die "Unknown option: $1" ;;
+      esac
+    done
+    [[ -n "$trail_id" ]] || _die "--trail-id is required"
+    [[ -n "$flow_id" ]]  || _die "--flow-id is required"
+
+    # Verify the trail belongs to the expected flow before checking evidence completeness
+    echo "Verifying trail $trail_id belongs to flow $flow_id..."
+    trail_response=$(_curl "${FACTSTORE_URL}/api/v1/trails/${trail_id}")
+    actual_flow_id=$(echo "$trail_response" | jq -r '.flowId')
+    if [[ "$actual_flow_id" != "$flow_id" ]]; then
+        echo "ERROR: trail $trail_id belongs to flow $actual_flow_id, not $flow_id" >&2
+        exit 1
+    fi
+
+    echo "Checking compliance for trail $trail_id..."
+    response=$(_curl "${FACTSTORE_URL}/api/v1/trails/${trail_id}/evidence-summary")
+    echo "$response" | jq .
+    is_complete=$(echo "$response" | jq -r '.isComplete')
+    missing=$(echo "$response" | jq -r '.missingRequiredTypes | join(", ")')
+    if [[ "$is_complete" == "false" ]]; then
+        echo "Compliance check FAILED — missing required evidence types: $missing" >&2
+        exit 1
+    fi
+    echo "Compliance check PASSED — all required evidence collected"
+    ;;
+
+  help|--help|-h)
+    _usage
+    ;;
+
+  "")
+    echo "factstore-agent: no command specified. Use 'factstore-agent help' for usage."
+    exit 1
+    ;;
+
+  *)
+    _die "Unknown command: $cmd. Use 'factstore-agent help' for usage."
+    ;;
+esac

@@ -31,6 +31,7 @@ describe('Factstore CLI API Contract – Flows', () => {
           name: like('test-flow'),
           description: like('A test flow'),
           requiredAttestationTypes: like(['junit']),
+          tags: like({}),
           createdAt: like('2024-01-01T00:00:00Z'),
           updatedAt: like('2024-01-01T00:00:00Z'),
         }),
@@ -42,6 +43,7 @@ describe('Factstore CLI API Contract – Flows', () => {
         expect(response.data[0]).toHaveProperty('id')
         expect(response.data[0]).toHaveProperty('name')
         expect(response.data[0]).toHaveProperty('requiredAttestationTypes')
+        expect(response.data[0]).toHaveProperty('tags')
       })
   })
 })

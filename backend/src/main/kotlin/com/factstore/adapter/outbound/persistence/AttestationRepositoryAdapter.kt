@@ -10,6 +10,7 @@ import java.util.UUID
 @Repository
 interface AttestationRepositoryJpa : JpaRepository<Attestation, UUID> {
     fun findByTrailId(trailId: UUID): List<Attestation>
+    fun findByTrailIdIn(trailIds: Collection<UUID>): List<Attestation>
 }
 
 @Component

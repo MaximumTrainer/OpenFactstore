@@ -97,6 +97,7 @@ const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/flows', label: 'Flows' },
   { to: '/environments', label: 'Environments' },
+  { to: '/logical-environments', label: 'Logical Envs' },
   { to: '/search', label: 'Search' },
   { to: '/assert', label: 'Assert' },
   { to: '/evidence', label: 'Evidence Vault' },

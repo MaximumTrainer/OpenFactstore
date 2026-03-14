@@ -17,3 +17,6 @@ spring:
 ledger:
   enabled: true
   type: local
+
+audit:
+  hmac-secret: test-secret-for-unit-tests

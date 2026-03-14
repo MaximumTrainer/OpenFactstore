@@ -19,6 +19,7 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Required Attestations</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tags</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
@@ -34,6 +35,17 @@
                   class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
                 >
                   {{ type }}
+                </span>
+              </div>
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex flex-wrap gap-1">
+                <span
+                  v-for="(value, key) in flow.tags"
+                  :key="key"
+                  class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800"
+                >
+                  {{ key }}: {{ value }}
                 </span>
               </div>
             </td>
@@ -70,7 +82,7 @@
               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-          <div class="mb-6">
+          <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-1">
               Required Attestation Types <span class="text-gray-400">(comma-separated)</span>
             </label>
@@ -78,6 +90,17 @@
               v-model="form.attestationTypes"
               type="text"
               placeholder="e.g. SAST,SCA,DAST"
+              class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Tags <span class="text-gray-400">(key=value, comma-separated)</span>
+            </label>
+            <input
+              v-model="form.tags"
+              type="text"
+              placeholder="e.g. risk-level=high,team=payments"
               class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -111,11 +134,24 @@ const showModal = ref(false)
 const submitting = ref(false)
 const formError = ref('')
 
-const form = ref({ name: '', description: '', attestationTypes: '' })
+const form = ref({ name: '', description: '', attestationTypes: '', tags: '' })
+
+function parseTagsInput(raw: string): Record<string, string> {
+  const result: Record<string, string> = {}
+  raw.split(',').forEach(pair => {
+    const idx = pair.indexOf('=')
+    if (idx > 0) {
+      const key = pair.slice(0, idx).trim()
+      const value = pair.slice(idx + 1).trim()
+      if (key) result[key] = value
+    }
+  })
+  return result
+}
 
 function closeModal() {
   showModal.value = false
-  form.value = { name: '', description: '', attestationTypes: '' }
+  form.value = { name: '', description: '', attestationTypes: '', tags: '' }
   formError.value = ''
 }
 
@@ -127,7 +163,8 @@ async function submitFlow() {
       .split(',')
       .map(s => s.trim())
       .filter(Boolean)
-    await createFlow({ name: form.value.name, description: form.value.description, requiredAttestationTypes: types })
+    const tags = parseTagsInput(form.value.tags)
+    await createFlow({ name: form.value.name, description: form.value.description, requiredAttestationTypes: types, tags })
     const res = await getFlows()
     flows.value = res.data
     closeModal()

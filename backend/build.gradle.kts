@@ -37,6 +37,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.flywaydb:flyway-core")
+    implementation("org.apache.commons:commons-compress:1.26.1")
     // Ledger: AWS QLDB driver (used when ledger.type=qldb)
     implementation("software.amazon.qldb:amazon-qldb-driver-java:2.3.1")
     // Vault: Spring Vault core (used when vault.enabled=true)

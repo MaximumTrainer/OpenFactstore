@@ -31,6 +31,7 @@ describe('Factstore API Contract – Flows', () => {
           name: like('test-flow'),
           description: like('A test flow'),
           requiredAttestationTypes: like(['junit']),
+          tags: like({}),
           createdAt: like('2024-01-01T00:00:00Z'),
           updatedAt: like('2024-01-01T00:00:00Z'),
         }),
@@ -41,6 +42,7 @@ describe('Factstore API Contract – Flows', () => {
         expect(Array.isArray(response.data)).toBe(true)
         expect(response.data[0]).toHaveProperty('id')
         expect(response.data[0]).toHaveProperty('name')
+        expect(response.data[0]).toHaveProperty('tags')
       })
   })
 
@@ -49,6 +51,7 @@ describe('Factstore API Contract – Flows', () => {
       name: 'new-flow',
       description: 'A new flow',
       requiredAttestationTypes: ['junit', 'snyk'],
+      tags: { 'risk-level': 'high' },
     }
 
     await provider
@@ -66,6 +69,7 @@ describe('Factstore API Contract – Flows', () => {
           name: like('new-flow'),
           description: like('A new flow'),
           requiredAttestationTypes: like(['junit', 'snyk']),
+          tags: like({ 'risk-level': 'high' }),
           createdAt: like('2024-01-01T00:00:00Z'),
           updatedAt: like('2024-01-01T00:00:00Z'),
         }),
@@ -79,6 +83,7 @@ describe('Factstore API Contract – Flows', () => {
         expect(response.status).toBe(201)
         expect(response.data).toHaveProperty('id')
         expect(response.data.name).toBe('new-flow')
+        expect(response.data).toHaveProperty('tags')
       })
   })
 })

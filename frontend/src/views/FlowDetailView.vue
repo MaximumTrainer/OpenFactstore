@@ -12,12 +12,19 @@
           <div>
             <h1 class="text-2xl font-bold text-gray-900 mb-1">{{ flow.name }}</h1>
             <p class="text-gray-500 mb-4">{{ flow.description }}</p>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2 mb-3">
               <span
                 v-for="type in flow.requiredAttestationTypes"
                 :key="type"
                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
               >{{ type }}</span>
+            </div>
+            <div v-if="Object.keys(flow.tags).length > 0" class="flex flex-wrap gap-2">
+              <span
+                v-for="(value, key) in flow.tags"
+                :key="key"
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
+              >{{ key }}: {{ value }}</span>
             </div>
           </div>
           <button

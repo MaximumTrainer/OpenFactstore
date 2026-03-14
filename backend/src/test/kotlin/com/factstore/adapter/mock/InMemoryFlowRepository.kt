@@ -20,6 +20,8 @@ class InMemoryFlowRepository : IFlowRepository {
 
     override fun findAll(): List<Flow> = store.values.toList()
 
+    override fun findAllByIds(ids: Collection<UUID>): List<Flow> = ids.mapNotNull { store[it] }
+
     override fun existsById(id: UUID): Boolean = store.containsKey(id)
 
     override fun existsByName(name: String): Boolean = store.values.any { it.name == name }

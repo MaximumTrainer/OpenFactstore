@@ -50,6 +50,8 @@ ledger:
   local:
     storage-path: ${LEDGER_STORAGE_PATH:./data/ledger}
 
+audit:
+  hmac-secret: ${AUDIT_HMAC_SECRET:change-me-in-production}
 sso:
   jwt:
     # Secret used to sign Factstore JWTs issued after successful SSO login.

@@ -1,6 +1,7 @@
 package com.factstore.core.domain
 
 import jakarta.persistence.*
+import org.hibernate.annotations.BatchSize
 import java.time.Instant
 import java.util.UUID
 

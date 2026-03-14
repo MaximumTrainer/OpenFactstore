@@ -3,6 +3,7 @@ export interface Flow {
   name: string
   description: string
   requiredAttestationTypes: string[]
+  tags: Record<string, string>
   createdAt: string
   updatedAt: string
 }
@@ -424,6 +425,60 @@ export interface RecordSnapshotRequest {
   }>
 }
 
+// Logical Environment types
+export interface LogicalEnvironmentMember {
+  physicalEnvId: string
+  physicalEnvName: string
+  physicalEnvType: EnvironmentType
+  addedAt: string
+}
+
+export interface LogicalEnvironment {
+  id: string
+  name: string
+  description: string
+  members: LogicalEnvironmentMember[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateLogicalEnvironmentRequest {
+  name: string
+  description?: string
+}
+
+export interface UpdateLogicalEnvironmentRequest {
+  name?: string
+  description?: string
+}
+
+export interface MergedSnapshotArtifact {
+  artifactSha256: string
+  artifactName: string
+  artifactTag: string
+  instanceCount: number
+  physicalEnvId: string
+  physicalEnvName: string
+}
+
+export interface MemberSnapshotSummary {
+  physicalEnvId: string
+  physicalEnvName: string
+  snapshotIndex: number | null
+  recordedAt: string | null
+  artifactCount: number
+}
+
+export type MergedSnapshotComplianceStatus = 'COMPLIANT' | 'NON_COMPLIANT'
+
+export interface MergedSnapshotResponse {
+  logicalEnvId: string
+  logicalEnvName: string
+  complianceStatus: MergedSnapshotComplianceStatus
+  memberSnapshots: MemberSnapshotSummary[]
+  mergedArtifacts: MergedSnapshotArtifact[]
+}
+
 
 // Notification types
 export type TriggerEvent =
@@ -494,6 +549,81 @@ export interface Notification {
   entityType: string | null
   entityId: string | null
   createdAt: string
+}
+
+// Evidence Collection types
+export interface ReportCoverageRequest {
+  tool: string
+  lineCoverage?: number
+  branchCoverage?: number
+  minCoverage?: number
+  reportFileName?: string
+  details?: string
+}
+
+export interface CoverageReport {
+  id: string
+  trailId: string
+  tool: string
+  lineCoverage: number | null
+  branchCoverage: number | null
+  minCoverage: number | null
+  passed: boolean
+  reportFileName: string | null
+  reportFileHash: string | null
+  details: string | null
+  createdAt: string
+}
+
+export interface BulkEvidenceItem {
+  trailId: string
+  evidenceType: string
+  tool: string
+  passed: boolean
+  details?: string
+}
+
+export interface BulkEvidenceRequest {
+  items: BulkEvidenceItem[]
+}
+
+export interface BulkEvidenceResult {
+  trailId: string
+  evidenceType: string
+  attestationId: string
+  passed: boolean
+}
+
+export interface BulkEvidenceResponse {
+  results: BulkEvidenceResult[]
+  accepted: number
+  failed: number
+}
+
+export interface EvidenceSummary {
+  trailId: string
+  collectedTypes: string[]
+  coverageReports: CoverageReport[]
+  totalAttestations: number
+  passedAttestations: number
+  failedAttestations: number
+  pendingAttestations: number
+  isComplete: boolean
+  missingRequiredTypes: string[]
+}
+
+export interface EvidenceGapItem {
+  trailId: string
+  gitCommitSha: string
+  gitBranch: string
+  flowId: string
+  missingTypes: string[]
+  trailStatus: 'PENDING' | 'COMPLIANT' | 'NON_COMPLIANT'
+}
+
+export interface EvidenceGapsResponse {
+  gaps: EvidenceGapItem[]
+  totalTrailsWithGaps: number
 }
 
 export type SsoProvider = 'ENTRA_ID' | 'OKTA'
