@@ -717,6 +717,36 @@ data class NotificationEvent(
     val extraPayload: Map<String, Any?> = emptyMap()
 )
 
+// Vault Evidence DTOs
+data class StoreEvidenceRequest(
+    val evidenceType: String,
+    val data: Map<String, String>
+)
+
+data class VaultEvidenceResponse(
+    val entityType: String,
+    val entityId: String,
+    val evidenceType: String,
+    val vaultPath: String,
+    val version: Int,
+    val data: Map<String, String>? = null,
+    val storedAt: Instant
+)
+
+data class VaultEvidenceListResponse(
+    val entityType: String,
+    val entityId: String,
+    val evidenceTypes: List<String>
+)
+
+data class VaultHealthResponse(
+    val healthy: Boolean,
+    val vaultUri: String,
+    val authMethod: String,
+    val message: String,
+    val checkedAt: Instant = Instant.now()
+)
+
 // Policy DTOs
 data class CreatePolicyRequest(
     val name: String,

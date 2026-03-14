@@ -100,6 +100,7 @@ const links = [
   { to: '/search', label: 'Search' },
   { to: '/assert', label: 'Assert' },
   { to: '/evidence', label: 'Evidence Vault' },
+  { to: '/vault', label: 'Secure Vault' },
   { to: '/integrations', label: 'Integrations' },
   { to: '/audit', label: 'Audit Log' },
   { to: '/ledger', label: 'Ledger' },

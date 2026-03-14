@@ -5,6 +5,7 @@ import FlowDetailView from '../views/FlowDetailView.vue'
 import TrailDetailView from '../views/TrailDetailView.vue'
 import AssertView from '../views/AssertView.vue'
 import EvidenceVaultView from '../views/EvidenceVaultView.vue'
+import SecureVaultView from '../views/SecureVaultView.vue'
 import IntegrationsView from '../views/IntegrationsView.vue'
 import AtlassianIntegrationsView from '../views/AtlassianIntegrationsView.vue'
 import EnvironmentsView from '../views/EnvironmentsView.vue'
@@ -24,6 +25,7 @@ const router = createRouter({
     { path: '/trails/:id', component: TrailDetailView },
     { path: '/assert', component: AssertView },
     { path: '/evidence', component: EvidenceVaultView },
+    { path: '/vault', component: SecureVaultView },
     { path: '/search', component: SearchView },
     { path: '/integrations', component: IntegrationsView },
     { path: '/integrations/atlassian', component: AtlassianIntegrationsView },

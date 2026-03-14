@@ -495,3 +495,33 @@ export interface Notification {
   entityId: string | null
   createdAt: string
 }
+
+// Vault Evidence types
+export interface VaultEvidenceResponse {
+  entityType: string
+  entityId: string
+  evidenceType: string
+  vaultPath: string
+  version: number
+  data?: Record<string, string> | null
+  storedAt: string
+}
+
+export interface VaultEvidenceListResponse {
+  entityType: string
+  entityId: string
+  evidenceTypes: string[]
+}
+
+export interface VaultHealthResponse {
+  healthy: boolean
+  vaultUri: string
+  authMethod: string
+  message: string
+  checkedAt: string
+}
+
+export interface StoreEvidenceRequest {
+  evidenceType: string
+  data: Record<string, string>
+}
