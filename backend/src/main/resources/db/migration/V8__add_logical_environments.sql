@@ -1,14 +1,4 @@
--- V8: Logical environments for grouping physical environments
-
-CREATE TABLE logical_environments (
-    id          UUID         NOT NULL,
-    name        VARCHAR(255) NOT NULL,
-    description TEXT         NOT NULL DEFAULT '',
-    created_at  TIMESTAMPTZ  NOT NULL,
-    updated_at  TIMESTAMPTZ  NOT NULL,
-    CONSTRAINT pk_logical_environments PRIMARY KEY (id),
-    CONSTRAINT uq_logical_environments_name UNIQUE (name)
-);
+-- V8: Logical environment members (logical_environments table already created in V6)
 
 CREATE TABLE logical_environment_members (
     id               UUID        NOT NULL,
