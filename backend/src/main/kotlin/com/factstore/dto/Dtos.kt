@@ -1,5 +1,6 @@
 package com.factstore.dto
 
+import com.factstore.core.domain.AllowlistEntryStatus
 import com.factstore.core.domain.ApprovalDecisionType
 import com.factstore.core.domain.ApprovalStatus
 import com.factstore.core.domain.AttestationStatus
@@ -10,6 +11,7 @@ import com.factstore.core.domain.AuditEventType
 import com.factstore.core.domain.ChannelType
 import com.factstore.core.domain.DeliveryStatus
 import com.factstore.core.domain.EnvironmentType
+import com.factstore.core.domain.DriftPolicy
 import com.factstore.core.domain.MemberRole
 import com.factstore.core.domain.NotificationDeliveryStatus
 import com.factstore.core.domain.NotificationSeverity
@@ -538,13 +540,15 @@ data class CreateEnvironmentRequest(
     val name: String,
     val type: EnvironmentType,
     val description: String = "",
-    val orgSlug: String? = null
+    val orgSlug: String? = null,
+    val driftPolicy: DriftPolicy = DriftPolicy.WARN
 )
 
 data class UpdateEnvironmentRequest(
     val name: String? = null,
     val type: EnvironmentType? = null,
-    val description: String? = null
+    val description: String? = null,
+    val driftPolicy: DriftPolicy? = null
 )
 
 data class EnvironmentResponse(
@@ -553,6 +557,7 @@ data class EnvironmentResponse(
     val type: EnvironmentType,
     val description: String,
     val orgSlug: String? = null,
+    val driftPolicy: DriftPolicy,
     val createdAt: Instant,
     val updatedAt: Instant
 )
@@ -583,6 +588,53 @@ data class EnvironmentSnapshotResponse(
     val recordedAt: Instant,
     val recordedBy: String,
     val artifacts: List<SnapshotArtifactResponse>
+)
+
+// Environment Baseline DTOs
+data class CreateBaselineRequest(
+    val snapshotId: UUID? = null,
+    val approvedBy: String,
+    val description: String? = null
+)
+
+data class BaselineResponse(
+    val id: UUID,
+    val environmentId: UUID,
+    val snapshotId: UUID?,
+    val approvedBy: String,
+    val approvedAt: Instant,
+    val description: String?,
+    val isActive: Boolean
+)
+
+// Drift Detection DTOs
+data class SnapshotDiffEntry(
+    val artifactName: String,
+    val artifactTag: String,
+    val sha256From: String? = null,
+    val sha256To: String? = null
+)
+
+data class SnapshotDiffResponse(
+    val environmentId: UUID,
+    val fromSnapshotIndex: Long,
+    val toSnapshotIndex: Long,
+    val added: List<SnapshotDiffEntry>,
+    val removed: List<SnapshotDiffEntry>,
+    val updated: List<SnapshotDiffEntry>,
+    val unchanged: List<SnapshotDiffEntry>
+)
+
+data class DriftReportResponse(
+    val id: UUID,
+    val environmentId: UUID,
+    val baselineId: UUID?,
+    val snapshotId: UUID,
+    val generatedAt: Instant,
+    val hasDrift: Boolean,
+    val added: List<SnapshotDiffEntry>,
+    val removed: List<SnapshotDiffEntry>,
+    val updated: List<SnapshotDiffEntry>
 )
 
 // Organisation Member DTOs
@@ -900,6 +952,28 @@ data class LogicalEnvironmentResponse(
     val description: String,
     val createdAt: Instant,
     val updatedAt: Instant
+)
+
+// Environment Allowlist DTOs
+data class CreateAllowlistEntryRequest(
+    val sha256: String? = null,
+    val namePattern: String? = null,
+    val reason: String,
+    val approvedBy: String,
+    val expiresAt: Instant? = null
+)
+
+data class AllowlistEntryResponse(
+    val id: UUID,
+    val environmentId: UUID,
+    val sha256: String?,
+    val namePattern: String?,
+    val reason: String,
+    val approvedBy: String,
+    val createdAt: Instant,
+    val expiresAt: Instant?,
+    val status: AllowlistEntryStatus,
+    val isEffective: Boolean
 )
 
 // Organisation DTOs

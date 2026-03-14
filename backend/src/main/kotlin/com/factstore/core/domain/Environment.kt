@@ -6,6 +6,8 @@ import java.util.UUID
 
 enum class EnvironmentType { K8S, S3, LAMBDA, GENERIC }
 
+enum class DriftPolicy { WARN, BLOCK, IGNORE }
+
 @Entity
 @Table(name = "environments")
 class Environment(
@@ -29,5 +31,9 @@ class Environment(
     val createdAt: Instant = Instant.now(),
 
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant = Instant.now()
+    var updatedAt: Instant = Instant.now(),
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "drift_policy", nullable = false)
+    var driftPolicy: DriftPolicy = DriftPolicy.WARN
 )

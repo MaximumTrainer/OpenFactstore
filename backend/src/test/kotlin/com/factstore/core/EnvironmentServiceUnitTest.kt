@@ -3,6 +3,8 @@ package com.factstore.core
 import com.factstore.adapter.mock.InMemoryEnvironmentRepository
 import com.factstore.adapter.mock.InMemoryEnvironmentSnapshotRepository
 import com.factstore.adapter.mock.InMemorySnapshotArtifactRepository
+import com.factstore.adapter.mock.InMemoryEnvironmentBaselineRepository
+import com.factstore.adapter.mock.InMemoryDriftReportRepository
 import com.factstore.application.EnvironmentService
 import com.factstore.core.domain.EnvironmentType
 import com.factstore.dto.CreateEnvironmentRequest
@@ -26,7 +28,9 @@ class EnvironmentServiceUnitTest {
         environmentService = EnvironmentService(
             InMemoryEnvironmentRepository(),
             InMemoryEnvironmentSnapshotRepository(),
-            InMemorySnapshotArtifactRepository()
+            InMemorySnapshotArtifactRepository(),
+            InMemoryEnvironmentBaselineRepository(),
+            InMemoryDriftReportRepository()
         )
     }
 

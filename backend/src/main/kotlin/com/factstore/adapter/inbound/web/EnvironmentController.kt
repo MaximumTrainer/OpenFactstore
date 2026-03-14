@@ -1,10 +1,14 @@
 package com.factstore.adapter.inbound.web
 
 import com.factstore.core.port.inbound.IEnvironmentService
+import com.factstore.dto.BaselineResponse
+import com.factstore.dto.CreateBaselineRequest
 import com.factstore.dto.CreateEnvironmentRequest
+import com.factstore.dto.DriftReportResponse
 import com.factstore.dto.EnvironmentResponse
 import com.factstore.dto.EnvironmentSnapshotResponse
 import com.factstore.dto.RecordSnapshotRequest
+import com.factstore.dto.SnapshotDiffResponse
 import com.factstore.dto.UpdateEnvironmentRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -73,4 +77,37 @@ class EnvironmentController(private val environmentService: IEnvironmentService)
         @PathVariable snapshotIndex: Long
     ): ResponseEntity<EnvironmentSnapshotResponse> =
         ResponseEntity.ok(environmentService.getSnapshot(id, snapshotIndex))
+
+    @GetMapping("/{id}/diff")
+    @Operation(summary = "Diff two snapshots of an environment")
+    fun diffSnapshots(
+        @PathVariable id: UUID,
+        @RequestParam from: Long,
+        @RequestParam to: Long
+    ): ResponseEntity<SnapshotDiffResponse> =
+        ResponseEntity.ok(environmentService.diffSnapshots(id, from, to))
+
+    @PostMapping("/{id}/baselines")
+    @Operation(summary = "Create a new baseline for an environment")
+    fun createBaseline(
+        @PathVariable id: UUID,
+        @RequestBody request: CreateBaselineRequest
+    ): ResponseEntity<BaselineResponse> =
+        ResponseEntity.status(HttpStatus.CREATED).body(environmentService.createBaseline(id, request))
+
+    @GetMapping("/{id}/baselines/current")
+    @Operation(summary = "Get the current active baseline for an environment")
+    fun getCurrentBaseline(@PathVariable id: UUID): ResponseEntity<BaselineResponse> =
+        ResponseEntity.ok(environmentService.getCurrentBaseline(id))
+
+    @GetMapping("/{id}/drift")
+    @Operation(summary = "Check drift between current snapshot and baseline")
+    fun checkDrift(@PathVariable id: UUID): ResponseEntity<DriftReportResponse> =
+        ResponseEntity.ok(environmentService.checkDrift(id))
+
+    @GetMapping("/{id}/drift/history")
+    @Operation(summary = "List all drift reports for an environment")
+    fun listDriftHistory(@PathVariable id: UUID): ResponseEntity<List<DriftReportResponse>> =
+        ResponseEntity.ok(environmentService.listDriftHistory(id))
 }
+
