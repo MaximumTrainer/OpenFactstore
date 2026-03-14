@@ -751,6 +751,8 @@ data class SsoConfigResponse(
     val isMandatory: Boolean,
     val createdAt: Instant,
     val updatedAt: Instant
+)
+
 // Vault Evidence DTOs
 data class StoreEvidenceRequest(
     val evidenceType: String,
