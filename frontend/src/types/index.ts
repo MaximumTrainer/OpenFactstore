@@ -550,6 +550,81 @@ export interface Notification {
   createdAt: string
 }
 
+// Evidence Collection types
+export interface ReportCoverageRequest {
+  tool: string
+  lineCoverage?: number
+  branchCoverage?: number
+  minCoverage?: number
+  reportFileName?: string
+  details?: string
+}
+
+export interface CoverageReport {
+  id: string
+  trailId: string
+  tool: string
+  lineCoverage: number | null
+  branchCoverage: number | null
+  minCoverage: number | null
+  passed: boolean
+  reportFileName: string | null
+  reportFileHash: string | null
+  details: string | null
+  createdAt: string
+}
+
+export interface BulkEvidenceItem {
+  trailId: string
+  evidenceType: string
+  tool: string
+  passed: boolean
+  details?: string
+}
+
+export interface BulkEvidenceRequest {
+  items: BulkEvidenceItem[]
+}
+
+export interface BulkEvidenceResult {
+  trailId: string
+  evidenceType: string
+  attestationId: string
+  passed: boolean
+}
+
+export interface BulkEvidenceResponse {
+  results: BulkEvidenceResult[]
+  accepted: number
+  failed: number
+}
+
+export interface EvidenceSummary {
+  trailId: string
+  collectedTypes: string[]
+  coverageReports: CoverageReport[]
+  totalAttestations: number
+  passedAttestations: number
+  failedAttestations: number
+  pendingAttestations: number
+  isComplete: boolean
+  missingRequiredTypes: string[]
+}
+
+export interface EvidenceGapItem {
+  trailId: string
+  gitCommitSha: string
+  gitBranch: string
+  flowId: string
+  missingTypes: string[]
+  trailStatus: 'PENDING' | 'COMPLIANT' | 'NON_COMPLIANT'
+}
+
+export interface EvidenceGapsResponse {
+  gaps: EvidenceGapItem[]
+  totalTrailsWithGaps: number
+}
+
 export type SsoProvider = 'ENTRA_ID' | 'OKTA'
 
 export interface SsoConfig {

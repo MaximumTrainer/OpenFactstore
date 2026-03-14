@@ -10,6 +10,7 @@ import java.util.UUID
 @Repository
 interface AttestationRepositoryJpa : JpaRepository<Attestation, UUID> {
     fun findByTrailId(trailId: UUID): List<Attestation>
+    fun findByTrailIdIn(trailIds: Collection<UUID>): List<Attestation>
 }
 
 @Component
@@ -17,4 +18,5 @@ class AttestationRepositoryAdapter(private val jpa: AttestationRepositoryJpa) : 
     override fun save(attestation: Attestation): Attestation = jpa.save(attestation)
     override fun findById(id: UUID): Attestation? = jpa.findById(id).orElse(null)
     override fun findByTrailId(trailId: UUID): List<Attestation> = jpa.findByTrailId(trailId)
+    override fun findByTrailIdIn(trailIds: Collection<UUID>): List<Attestation> = jpa.findByTrailIdIn(trailIds)
 }

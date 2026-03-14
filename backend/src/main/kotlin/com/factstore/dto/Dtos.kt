@@ -733,6 +733,82 @@ data class NotificationEvent(
     val extraPayload: Map<String, Any?> = emptyMap()
 )
 
+// Evidence Collection DTOs
+data class ReportCoverageRequest(
+    val tool: String,
+    val lineCoverage: Double? = null,
+    val branchCoverage: Double? = null,
+    val minCoverage: Double? = null,
+    val reportFileName: String? = null,
+    val details: String? = null
+)
+
+data class CoverageReportResponse(
+    val id: UUID,
+    val trailId: UUID,
+    val tool: String,
+    val lineCoverage: Double?,
+    val branchCoverage: Double?,
+    val minCoverage: Double?,
+    val passed: Boolean,
+    val reportFileName: String?,
+    val reportFileHash: String?,
+    val details: String?,
+    val createdAt: Instant
+)
+
+data class BulkEvidenceItem(
+    val trailId: UUID,
+    /** Evidence type (e.g. test-coverage, security-scan, build-provenance, code-review, dependency-audit, license-compliance, container-scan) */
+    val evidenceType: String,
+    val tool: String,
+    val passed: Boolean,
+    val details: String? = null
+)
+
+data class BulkEvidenceRequest(
+    val items: List<BulkEvidenceItem>
+)
+
+data class BulkEvidenceResult(
+    val trailId: UUID,
+    val evidenceType: String,
+    val attestationId: UUID,
+    val passed: Boolean
+)
+
+data class BulkEvidenceResponse(
+    val results: List<BulkEvidenceResult>,
+    val accepted: Int,
+    val failed: Int
+)
+
+data class EvidenceSummaryResponse(
+    val trailId: UUID,
+    val collectedTypes: List<String>,
+    val coverageReports: List<CoverageReportResponse>,
+    val totalAttestations: Int,
+    val passedAttestations: Int,
+    val failedAttestations: Int,
+    val pendingAttestations: Int,
+    val isComplete: Boolean,
+    val missingRequiredTypes: List<String>
+)
+
+data class EvidenceGapItem(
+    val trailId: UUID,
+    val gitCommitSha: String,
+    val gitBranch: String,
+    val flowId: UUID,
+    val missingTypes: List<String>,
+    val trailStatus: TrailStatus
+)
+
+data class EvidenceGapsResponse(
+    val gaps: List<EvidenceGapItem>,
+    val totalTrailsWithGaps: Int
+)
+
 // SSO Configuration DTOs
 data class CreateSsoConfigRequest(
     val provider: SsoProvider,

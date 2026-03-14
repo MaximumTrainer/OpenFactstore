@@ -1,0 +1,146 @@
+# Factstore Compliance Pipeline — GitHub Actions Template
+#
+# Copy this file to .github/workflows/compliance.yml in your project.
+#
+# Required secrets:
+#   FACTSTORE_URL     — Base URL of your Factstore instance (e.g. https://factstore.company.com)
+#   FACTSTORE_API_KEY — API key for authentication (created via Service Accounts > API Keys)
+#
+# Required variables:
+#   FLOW_ID  — UUID of the Flow that governs compliance for this repository
+
+name: Compliance Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FACTSTORE_URL: ${{ secrets.FACTSTORE_URL }}
+  FACTSTORE_API_KEY: ${{ secrets.FACTSTORE_API_KEY }}
+  FLOW_ID: ${{ vars.FLOW_ID }}
+
+jobs:
+  compliance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Install factstore-agent ──────────────────────────────────────────
+      - name: Install factstore-agent
+        run: |
+          curl -fsSL "${{ secrets.FACTSTORE_URL }}/factstore-agent" -o /usr/local/bin/factstore-agent \
+            || curl -fsSL "https://raw.githubusercontent.com/MaximumTrainer/OpenFactstore/main/cli/factstore-agent" \
+                 -o /usr/local/bin/factstore-agent
+          chmod +x /usr/local/bin/factstore-agent
+
+      # ── Create Trail ─────────────────────────────────────────────────────
+      - name: Create Trail
+        id: create-trail
+        run: |
+          TRAIL_ID=$(curl -s -f \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: $FACTSTORE_API_KEY" \
+            -X POST "$FACTSTORE_URL/api/v1/trails" \
+            -d "$(jq -n \
+              --arg flowId    "$FLOW_ID" \
+              --arg sha       "${{ github.sha }}" \
+              --arg branch    "${{ github.ref_name }}" \
+              --arg author    "${{ github.actor }}" \
+              --arg email     "${{ github.actor }}@users.noreply.github.com" \
+              --arg prId      "${{ github.event.pull_request.number }}" \
+              '{flowId:$flowId, gitCommitSha:$sha, gitBranch:$branch,
+                gitAuthor:$author, gitAuthorEmail:$email,
+                pullRequestId: (if $prId != "" then $prId else null end)}')" \
+            | jq -r '.id')
+          echo "TRAIL_ID=$TRAIL_ID" >> "$GITHUB_ENV"
+          echo "trail_id=$TRAIL_ID" >> "$GITHUB_OUTPUT"
+          echo "Created trail: $TRAIL_ID"
+
+      # ── Run Tests ────────────────────────────────────────────────────────
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: Run Tests with Coverage
+        run: ./gradlew test jacocoTestReport
+
+      # ── Report Coverage ──────────────────────────────────────────────────
+      - name: Report Test Coverage
+        run: |
+          factstore-agent report-coverage \
+            --trail-id "$TRAIL_ID" \
+            --tool jacoco \
+            --coverage-file build/reports/jacoco/test/jacocoTestReport.xml \
+            --min-coverage 80
+
+      # ── Security Scan ────────────────────────────────────────────────────
+      # TODO: Replace with the dependency/security scanner appropriate for your project.
+      # The example below uses OWASP Dependency-Check for a Gradle project; adapt the
+      # tool, report path, and report-scan --evidence-type to match your scanner.
+      - name: Run Dependency Audit
+        id: dep-audit
+        run: |
+          ./gradlew dependencyCheckAnalyze --format JSON
+          echo "scan_passed=true" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Report Dependency Audit
+        run: |
+          REPORT="build/reports/dependency-check-report.json"
+          # Fail the step explicitly if the scanner did not produce a report
+          if [[ ! -f "$REPORT" ]]; then
+            echo "ERROR: dependency scan report not found at $REPORT" >&2
+            exit 1
+          fi
+          # Derive passed status from scanner exit code captured in previous step
+          PASSED=${{ steps.dep-audit.outcome == 'success' && 'true' || 'false' }}
+          factstore-agent report-scan \
+            --trail-id "$TRAIL_ID" \
+            --tool dependency-check \
+            --evidence-type dependency-audit \
+            --report-file "$REPORT" \
+            --passed "$PASSED"
+
+      # ── Container Build ──────────────────────────────────────────────────
+      - name: Build and Push Container Image
+        id: docker-build
+        uses: docker/build-push-action@v5
+        with:
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      - name: Report Artifact
+        if: github.ref == 'refs/heads/main'
+        run: |
+          curl -s -f \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: $FACTSTORE_API_KEY" \
+            -X POST "$FACTSTORE_URL/api/v1/trails/$TRAIL_ID/artifacts" \
+            -d "$(jq -n \
+              --arg image "ghcr.io/${{ github.repository }}" \
+              --arg tag   "${{ github.sha }}" \
+              --arg sha   "${{ steps.docker-build.outputs.digest }}" \
+              --arg actor "${{ github.actor }}" \
+              '{imageName:$image, imageTag:$tag, sha256Digest:$sha, reportedBy:$actor}')"
+
+      # ── Report Build Provenance ──────────────────────────────────────────
+      - name: Report Build Provenance
+        run: |
+          factstore-agent report-build \
+            --trail-id   "$TRAIL_ID" \
+            --source-commit "${{ github.sha }}" \
+            --builder    "github-actions"
+
+      # ── Compliance Check ─────────────────────────────────────────────────
+      - name: Check Compliance
+        run: |
+          factstore-agent check-compliance \
+            --trail-id "$TRAIL_ID" \
+            --flow-id  "$FLOW_ID"
