@@ -54,6 +54,32 @@ jobs:
             !backend/build/libs/*-plain.jar
           retention-days: 7
 
+  publish-website:
+    name: Publish Website to GitHub Pages
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
   docker:
     name: Build Docker Image
     needs: build-and-test
