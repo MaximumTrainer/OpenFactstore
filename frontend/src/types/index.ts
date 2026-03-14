@@ -541,6 +541,15 @@ export interface SsoTestConnectionResponse {
 export interface SsoLoginUrlResponse {
   loginUrl: string
   state: string
+}
+
+export interface SsoCallbackResponse {
+  token: string
+  userId: string
+  email: string
+  name: string
+}
+
 // Vault Evidence types
 export interface VaultEvidenceResponse {
   entityType: string

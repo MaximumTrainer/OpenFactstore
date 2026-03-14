@@ -1,4 +1,4 @@
--- V5: SSO (Single Sign-On) configuration per organisation.
+-- V8: SSO (Single Sign-On) configuration per organisation.
 -- Supports OIDC-based providers: Microsoft Entra ID (Azure AD) and Okta.
 
 CREATE TABLE sso_configs (
