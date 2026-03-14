@@ -1,8 +1,10 @@
 package com.factstore.adapter.inbound.web
 
 import com.factstore.core.port.inbound.IAttestationService
+import com.factstore.core.port.inbound.IPullRequestAttestationService
 import com.factstore.dto.AttestationResponse
 import com.factstore.dto.CreateAttestationRequest
+import com.factstore.dto.CreatePrAttestationRequest
 import com.factstore.dto.EvidenceFileResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -16,7 +18,10 @@ import java.util.UUID
 @RestController
 @RequestMapping("/api/v1/trails/{trailId}/attestations")
 @Tag(name = "Attestations", description = "Attestation management")
-class AttestationController(private val attestationService: IAttestationService) {
+class AttestationController(
+    private val attestationService: IAttestationService,
+    private val pullRequestAttestationService: IPullRequestAttestationService
+) {
 
     @PostMapping
     @Operation(summary = "Record an attestation for a trail")
@@ -44,4 +49,13 @@ class AttestationController(private val attestationService: IAttestationService)
             attestationService.uploadEvidence(trailId, attestationId, fileName, contentType, file.bytes)
         )
     }
+
+    @PostMapping("/pull-request")
+    @Operation(summary = "Record a pull request attestation by querying the SCM provider")
+    fun attestPullRequest(
+        @PathVariable trailId: UUID,
+        @RequestBody request: CreatePrAttestationRequest
+    ): ResponseEntity<AttestationResponse> =
+        ResponseEntity.status(HttpStatus.CREATED)
+            .body(pullRequestAttestationService.attestPullRequest(trailId, request))
 }

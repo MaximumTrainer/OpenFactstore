@@ -40,6 +40,13 @@ class GlobalExceptionHandler {
             .body(ErrorResponse(500, "Integrity Error", ex.message ?: "Data integrity error"))
     }
 
+    @ExceptionHandler(PullRequestNotFoundException::class)
+    fun handlePrNotFound(ex: PullRequestNotFoundException): ResponseEntity<ErrorResponse> {
+        log.warn("Pull request not found: ${ex.message}")
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+            .body(ErrorResponse(422, "Unprocessable Entity", ex.message ?: "No pull request found for commit"))
+    }
+
     @ExceptionHandler(Exception::class)
     fun handleGeneral(ex: Exception): ResponseEntity<ErrorResponse> {
         log.error("Unexpected error", ex)

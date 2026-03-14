@@ -4,7 +4,7 @@ import jakarta.persistence.*
 import java.time.Instant
 import java.util.UUID
 
-enum class EnvironmentType { K8S, S3, LAMBDA, GENERIC }
+enum class EnvironmentType { K8S, ECS, LAMBDA, S3, DOCKER, GENERIC }
 
 enum class DriftPolicy { WARN, BLOCK, IGNORE }
 
@@ -35,5 +35,29 @@ class Environment(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "drift_policy", nullable = false)
-    var driftPolicy: DriftPolicy = DriftPolicy.WARN
-)
+    var driftPolicy: DriftPolicy = DriftPolicy.WARN,
+
+    @Column(name = "scope_include_names", columnDefinition = "TEXT")
+    var scopeIncludeNames: String? = null,
+
+    @Column(name = "scope_include_patterns", columnDefinition = "TEXT")
+    var scopeIncludePatterns: String? = null,
+
+    @Column(name = "scope_exclude_names", columnDefinition = "TEXT")
+    var scopeExcludeNames: String? = null,
+
+    @Column(name = "scope_exclude_patterns", columnDefinition = "TEXT")
+    var scopeExcludePatterns: String? = null
+) {
+    val parsedIncludeNames: List<String>
+        get() = scopeIncludeNames?.split("||")?.filter { it.isNotBlank() } ?: emptyList()
+
+    val parsedIncludePatterns: List<String>
+        get() = scopeIncludePatterns?.split("||")?.filter { it.isNotBlank() } ?: emptyList()
+
+    val parsedExcludeNames: List<String>
+        get() = scopeExcludeNames?.split("||")?.filter { it.isNotBlank() } ?: emptyList()
+
+    val parsedExcludePatterns: List<String>
+        get() = scopeExcludePatterns?.split("||")?.filter { it.isNotBlank() } ?: emptyList()
+}

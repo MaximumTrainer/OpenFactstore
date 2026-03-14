@@ -5,6 +5,7 @@ import com.factstore.core.domain.EnvironmentBaseline
 import com.factstore.core.domain.DriftReport
 import com.factstore.core.domain.EnvironmentSnapshot
 import com.factstore.core.domain.SnapshotArtifact
+import com.factstore.core.domain.SnapshotScope
 import com.factstore.core.port.inbound.IEnvironmentService
 import com.factstore.core.port.outbound.IEnvironmentBaselineRepository
 import com.factstore.core.port.outbound.IDriftReportRepository
@@ -18,9 +19,11 @@ import com.factstore.dto.DriftReportResponse
 import com.factstore.dto.EnvironmentResponse
 import com.factstore.dto.EnvironmentSnapshotResponse
 import com.factstore.dto.RecordSnapshotRequest
+import com.factstore.dto.ScopeListDto
 import com.factstore.dto.SnapshotArtifactResponse
 import com.factstore.dto.SnapshotDiffEntry
 import com.factstore.dto.SnapshotDiffResponse
+import com.factstore.dto.SnapshotScopeDto
 import com.factstore.dto.UpdateEnvironmentRequest
 import com.factstore.exception.ConflictException
 import com.factstore.exception.NotFoundException
@@ -53,6 +56,7 @@ class EnvironmentService(
             orgSlug = request.orgSlug,
             driftPolicy = request.driftPolicy
         )
+        request.scope?.let { applyScope(environment, it) }
         val saved = environmentRepository.save(environment)
         log.info("Created environment: ${saved.id} - ${saved.name}")
         return saved.toResponse()
@@ -77,6 +81,7 @@ class EnvironmentService(
         request.type?.let { environment.type = it }
         request.description?.let { environment.description = it }
         request.driftPolicy?.let { environment.driftPolicy = it }
+        request.scope?.let { applyScope(environment, it) }
         environment.updatedAt = Instant.now()
         return environmentRepository.save(environment).toResponse()
     }
@@ -88,9 +93,8 @@ class EnvironmentService(
     }
 
     override fun recordSnapshot(environmentId: UUID, request: RecordSnapshotRequest): EnvironmentSnapshotResponse {
-        if (!environmentRepository.existsById(environmentId)) {
-            throw NotFoundException("Environment not found: $environmentId")
-        }
+        val environment = environmentRepository.findById(environmentId)
+            ?: throw NotFoundException("Environment not found: $environmentId")
         val nextIndex = (snapshotRepository.findMaxSnapshotIndexByEnvironmentId(environmentId) ?: 0L) + 1
         val snapshot = snapshotRepository.save(
             EnvironmentSnapshot(
@@ -99,8 +103,17 @@ class EnvironmentService(
                 recordedBy = request.recordedBy
             )
         )
+        val scope = SnapshotScope(
+            includeNames = environment.parsedIncludeNames,
+            includePatterns = environment.parsedIncludePatterns,
+            excludeNames = environment.parsedExcludeNames,
+            excludePatterns = environment.parsedExcludePatterns
+        )
+        val filteredArtifacts = request.artifacts.filter { a ->
+            ScopeFilter.matches(a.artifactName, scope, environment.type)
+        }
         val artifacts = snapshotArtifactRepository.saveAll(
-            request.artifacts.map { a ->
+            filteredArtifacts.map { a ->
                 SnapshotArtifact(
                     snapshotId = snapshot.id,
                     artifactSha256 = a.artifactSha256,
@@ -286,18 +299,34 @@ class EnvironmentService(
             SnapshotDiffEntry(name, "", shaFrom, shaTo)
         }
     }
+
+    private fun applyScope(environment: Environment, dto: SnapshotScopeDto) {
+        environment.scopeIncludeNames = dto.include.names.filter { it.isNotBlank() }.joinToString("||").ifBlank { null }
+        environment.scopeIncludePatterns = dto.include.patterns.filter { it.isNotBlank() }.joinToString("||").ifBlank { null }
+        environment.scopeExcludeNames = dto.exclude.names.filter { it.isNotBlank() }.joinToString("||").ifBlank { null }
+        environment.scopeExcludePatterns = dto.exclude.patterns.filter { it.isNotBlank() }.joinToString("||").ifBlank { null }
+    }
 }
 
-fun Environment.toResponse() = EnvironmentResponse(
-    id = id,
-    name = name,
-    type = type,
-    description = description,
-    orgSlug = orgSlug,
-    driftPolicy = driftPolicy,
-    createdAt = createdAt,
-    updatedAt = updatedAt
-)
+fun Environment.toResponse(): EnvironmentResponse {
+    val hasScope = parsedIncludeNames.isNotEmpty() || parsedIncludePatterns.isNotEmpty() ||
+        parsedExcludeNames.isNotEmpty() || parsedExcludePatterns.isNotEmpty()
+    val scopeDto = if (hasScope) SnapshotScopeDto(
+        include = ScopeListDto(names = parsedIncludeNames, patterns = parsedIncludePatterns),
+        exclude = ScopeListDto(names = parsedExcludeNames, patterns = parsedExcludePatterns)
+    ) else null
+    return EnvironmentResponse(
+        id = id,
+        name = name,
+        type = type,
+        description = description,
+        orgSlug = orgSlug,
+        driftPolicy = driftPolicy,
+        scope = scopeDto,
+        createdAt = createdAt,
+        updatedAt = updatedAt
+    )
+}
 
 fun EnvironmentBaseline.toResponse() = BaselineResponse(
     id = id,

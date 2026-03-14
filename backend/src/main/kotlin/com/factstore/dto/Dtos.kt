@@ -1,6 +1,7 @@
 package com.factstore.dto
 
 import com.factstore.core.domain.AllowlistEntryStatus
+import com.factstore.core.domain.ScmProvider
 import com.factstore.core.domain.ApprovalDecisionType
 import com.factstore.core.domain.ApprovalStatus
 import com.factstore.core.domain.AttestationStatus
@@ -536,19 +537,31 @@ data class UserResponse(
 )
 
 // Environment DTOs
+data class ScopeListDto(
+    val names: List<String> = emptyList(),
+    val patterns: List<String> = emptyList()
+)
+
+data class SnapshotScopeDto(
+    val include: ScopeListDto = ScopeListDto(),
+    val exclude: ScopeListDto = ScopeListDto()
+)
+
 data class CreateEnvironmentRequest(
     val name: String,
     val type: EnvironmentType,
     val description: String = "",
     val orgSlug: String? = null,
-    val driftPolicy: DriftPolicy = DriftPolicy.WARN
+    val driftPolicy: DriftPolicy = DriftPolicy.WARN,
+    val scope: SnapshotScopeDto? = null
 )
 
 data class UpdateEnvironmentRequest(
     val name: String? = null,
     val type: EnvironmentType? = null,
     val description: String? = null,
-    val driftPolicy: DriftPolicy? = null
+    val driftPolicy: DriftPolicy? = null,
+    val scope: SnapshotScopeDto? = null
 )
 
 data class EnvironmentResponse(
@@ -558,6 +571,7 @@ data class EnvironmentResponse(
     val description: String,
     val orgSlug: String? = null,
     val driftPolicy: DriftPolicy,
+    val scope: SnapshotScopeDto? = null,
     val createdAt: Instant,
     val updatedAt: Instant
 )
@@ -1088,4 +1102,26 @@ data class GateEvaluateResponse(
     val evaluatedAt: Instant,
     val blockReasons: List<String>,
     val policiesEvaluated: Int
+)
+
+// Pull Request Attestation DTOs
+data class CreatePrAttestationRequest(
+    val provider: ScmProvider,
+    val repository: String,
+    val commitSha: String,
+    val assertOnMissing: Boolean = false,
+    val orgSlug: String? = null
+)
+
+// SCM Integration DTOs
+data class CreateScmIntegrationRequest(
+    val provider: ScmProvider,
+    val token: String
+)
+
+data class ScmIntegrationResponse(
+    val id: UUID,
+    val orgSlug: String,
+    val provider: ScmProvider,
+    val createdAt: Instant
 )
