@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Docs — OpenFactstore</title>
+  <meta name="description" content="OpenFactstore REST API documentation. RESTful JSON API for supply chain compliance management.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+
+<aside class="sidebar">
+  <a class="sidebar-brand" href="index.html">
+    <div class="sidebar-brand-icon">🏛</div>
+    <div>
+      <div class="sidebar-brand-name">OpenFactstore</div>
+      <div class="sidebar-brand-sub">v1.0</div>
+    </div>
+  </a>
+  <nav>
+    <span class="nav-section">Documentation</span>
+    <a href="index.html">🏠 Home</a>
+    <a href="get-started.html">🚀 Get Started</a>
+    <a href="api-docs.html">📖 API Docs</a>
+    <a href="known-issues.html">⚠️ Known Issues</a>
+    <span class="nav-section">Links</span>
+    <a href="https://github.com/MaximumTrainer/OpenFactstore" target="_blank" rel="noopener" class="external">GitHub ↗</a>
+  </nav>
+</aside>
+
+<main class="content">
+  <div class="page-inner">
+
+    <h2 style="font-size:32px; margin-bottom:8px;">API Documentation</h2>
+    <p style="color:var(--text-muted); margin-bottom:32px;">RESTful JSON API · Base URL: <code>http://localhost:8080/api/v1</code></p>
+
+    <!-- Overview -->
+    <section id="overview" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Overview</h2>
+      <p>
+        The OpenFactstore API is a RESTful HTTP API that accepts and returns JSON. All endpoints
+        follow standard HTTP semantics — <code>GET</code> for retrieval, <code>POST</code> to
+        create, <code>PUT</code>/<code>PATCH</code> to update, and <code>DELETE</code> to remove.
+      </p>
+      <p>
+        When the server is running, an interactive Swagger UI is available at
+        <code>http://localhost:8080/swagger-ui.html</code> with full schema documentation and a
+        built-in request executor.
+      </p>
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div>
+          The OpenAPI specification (JSON) is available at
+          <code>http://localhost:8080/v3/api-docs</code> and can be imported into Postman,
+          Insomnia, or any OpenAPI-compatible tool.
+        </div>
+      </div>
+    </section>
+
+    <!-- Authentication -->
+    <section id="auth" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Authentication</h2>
+      <p>
+        The current version does not require authentication. All API endpoints are publicly
+        accessible. API key support is planned for a future release.
+      </p>
+      <div class="callout callout-warning">
+        <span class="callout-icon">⚠️</span>
+        <div>
+          Do not expose the API directly to the internet without a reverse proxy providing
+          authentication. See <a href="known-issues.html">Known Issues</a> for production
+          hardening guidance.
+        </div>
+      </div>
+    </section>
+
+    <!-- Resources -->
+    <section id="resources" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>API Resources</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Resource</th>
+              <th>Base Path</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Flows</strong></td>
+              <td><code>/api/v1/flows</code></td>
+              <td>Compliance flow definitions (templates of required checks)</td>
+            </tr>
+            <tr>
+              <td><strong>Trails</strong></td>
+              <td><code>/api/v1/trails</code></td>
+              <td>Per-release deployment evidence trails</td>
+            </tr>
+            <tr>
+              <td><strong>Attestations</strong></td>
+              <td><code>/api/v1/trails/{id}/attestations</code></td>
+              <td>Individual compliance evidence records attached to a trail</td>
+            </tr>
+            <tr>
+              <td><strong>Security Scans</strong></td>
+              <td><code>/api/v1/trails/{id}/security-scans</code></td>
+              <td>Security scan results (OWASP ZAP, Snyk, Trivy)</td>
+            </tr>
+            <tr>
+              <td><strong>Approvals</strong></td>
+              <td><code>/api/v1/approvals</code></td>
+              <td>Release approval workflows and sign-offs</td>
+            </tr>
+            <tr>
+              <td><strong>Deployment Policies</strong></td>
+              <td><code>/api/v1/deployment-policies</code></td>
+              <td>Policy definitions controlling deployment gate behaviour</td>
+            </tr>
+            <tr>
+              <td><strong>Deployment Gate</strong></td>
+              <td><code>/api/v1/gate/evaluate</code></td>
+              <td>Evaluate whether an artifact is cleared for a target environment</td>
+            </tr>
+            <tr>
+              <td><strong>Environments</strong></td>
+              <td><code>/api/v1/environments</code></td>
+              <td>Tracked deployment environments (dev, staging, production)</td>
+            </tr>
+            <tr>
+              <td><strong>Organisations</strong></td>
+              <td><code>/api/v1/organisations</code></td>
+              <td>Multi-tenant organisation management</td>
+            </tr>
+            <tr>
+              <td><strong>OPA Policies</strong></td>
+              <td><code>/api/v1/opa</code></td>
+              <td>OPA bundle management and policy evaluation</td>
+            </tr>
+            <tr>
+              <td><strong>Regulatory Frameworks</strong></td>
+              <td><code>/api/v1/frameworks</code></td>
+              <td>SOX, PCI-DSS, GDPR framework definitions and control mappings</td>
+            </tr>
+            <tr>
+              <td><strong>Compliance</strong></td>
+              <td><code>/api/v1/compliance</code></td>
+              <td>Framework compliance assessment and gap analysis</td>
+            </tr>
+            <tr>
+              <td><strong>Metrics</strong></td>
+              <td><code>/api/v1/metrics</code></td>
+              <td>Compliance metrics and aggregated statistics</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Common patterns -->
+    <section id="patterns" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Common Patterns</h2>
+
+      <h3>Dry-run Header</h3>
+      <p>
+        All write operations (<code>POST</code>, <code>PUT</code>, <code>DELETE</code>) support
+        a dry-run mode. Add the <code>X-Dry-Run: true</code> header to validate and simulate
+        without persisting:
+      </p>
+      <pre><code>X-Dry-Run: true</code></pre>
+
+      <h3>Error Responses</h3>
+      <p>All errors follow a consistent JSON structure:</p>
+      <pre><code>{
+  <span class="code-key">"status"</span>: <span class="code-value">404</span>,
+  <span class="code-key">"error"</span>: <span class="code-string">"Not Found"</span>,
+  <span class="code-key">"message"</span>: <span class="code-string">"Trail with id 'abc-123' not found"</span>,
+  <span class="code-key">"path"</span>: <span class="code-string">"/api/v1/trails/abc-123"</span>
+}</code></pre>
+    </section>
+
+    <!-- Example requests -->
+    <section id="examples" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Example Requests</h2>
+
+      <h3>List all Flows</h3>
+      <pre><code>curl -s http://localhost:8080/api/v1/flows | jq .</code></pre>
+
+      <h3>Create an Attestation</h3>
+      <pre><code>curl -s -X POST http://localhost:8080/api/v1/trails/&lt;trail-id&gt;/attestations \
+  -H "Content-Type: application/json" \
+  -d '{
+    <span class="code-key">"type"</span>: <span class="code-string">"security-scan"</span>,
+    <span class="code-key">"passed"</span>: <span class="code-value">true</span>,
+    <span class="code-key">"details"</span>: <span class="code-string">"Trivy: 0 critical findings"</span>,
+    <span class="code-key">"attestedBy"</span>: <span class="code-string">"ci-pipeline"</span>
+  }' | jq .</code></pre>
+
+      <h3>Evaluate Deployment Gate</h3>
+      <pre><code>curl -s -X POST http://localhost:8080/api/v1/gate/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{
+    <span class="code-key">"trailId"</span>: <span class="code-string">"&lt;trail-id&gt;"</span>,
+    <span class="code-key">"targetEnvironment"</span>: <span class="code-string">"production"</span>
+  }' | jq .</code></pre>
+
+      <h3>Record a Security Scan</h3>
+      <pre><code>curl -s -X POST http://localhost:8080/api/v1/trails/&lt;trail-id&gt;/security-scans \
+  -H "Content-Type: application/json" \
+  -d '{
+    <span class="code-key">"tool"</span>: <span class="code-string">"trivy"</span>,
+    <span class="code-key">"passed"</span>: <span class="code-value">true</span>,
+    <span class="code-key">"criticalCount"</span>: <span class="code-value">0</span>,
+    <span class="code-key">"highCount"</span>: <span class="code-value">1</span>,
+    <span class="code-key">"reportUrl"</span>: <span class="code-string">"https://ci.example.com/scans/build-42"</span>
+  }' | jq .</code></pre>
+    </section>
+
+    <!-- Swagger UI -->
+    <section id="swagger" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Interactive API (Swagger UI)</h2>
+      <p>
+        When the backend is running, the full interactive API documentation — including all
+        request/response schemas, field descriptions, and a built-in request executor — is
+        available at:
+      </p>
+      <pre><code>http://localhost:8080/swagger-ui.html</code></pre>
+      <p>
+        The raw OpenAPI 3 specification is available at <code>/v3/api-docs</code> and can be
+        imported into any OpenAPI-compatible client tool.
+      </p>
+    </section>
+
+  </div>
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

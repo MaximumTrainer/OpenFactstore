@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get Started — OpenFactstore</title>
+  <meta name="description" content="Get started with OpenFactstore using Docker Compose. Up and running in minutes.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+
+<aside class="sidebar">
+  <a class="sidebar-brand" href="index.html">
+    <div class="sidebar-brand-icon">🏛</div>
+    <div>
+      <div class="sidebar-brand-name">OpenFactstore</div>
+      <div class="sidebar-brand-sub">v1.0</div>
+    </div>
+  </a>
+  <nav>
+    <span class="nav-section">Documentation</span>
+    <a href="index.html">🏠 Home</a>
+    <a href="get-started.html">🚀 Get Started</a>
+    <a href="api-docs.html">📖 API Docs</a>
+    <a href="known-issues.html">⚠️ Known Issues</a>
+    <span class="nav-section">Links</span>
+    <a href="https://github.com/MaximumTrainer/OpenFactstore" target="_blank" rel="noopener" class="external">GitHub ↗</a>
+  </nav>
+</aside>
+
+<main class="content">
+  <div class="page-inner">
+
+    <h2 style="font-size:32px; margin-bottom:8px;">Get Started</h2>
+    <p style="color:var(--text-muted); margin-bottom:32px;">Up and running in under five minutes with Docker Compose.</p>
+
+    <!-- Prerequisites -->
+    <section id="prerequisites" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Prerequisites</h2>
+      <p>Make sure you have the following installed before proceeding.</p>
+      <div class="prereq-list">
+        <div class="prereq-item">
+          <strong>☕ Java 21</strong>
+          <span>Eclipse Temurin recommended</span>
+        </div>
+        <div class="prereq-item">
+          <strong>🟢 Node.js 20</strong>
+          <span>With npm included</span>
+        </div>
+        <div class="prereq-item">
+          <strong>🐳 Docker</strong>
+          <span>Docker Desktop or Engine + Compose</span>
+        </div>
+        <div class="prereq-item">
+          <strong>📦 Git</strong>
+          <span>To clone the repository</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section id="quickstart" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Quick Start (Docker Compose)</h2>
+      <p>The fastest way to run OpenFactstore is with Docker Compose, which starts all services with a single command.</p>
+
+      <pre><code><span class="code-comment"># 1. Clone the repository</span>
+git clone https://github.com/MaximumTrainer/OpenFactstore.git
+cd OpenFactstore
+
+<span class="code-comment"># 2. Start all services</span>
+docker-compose up -d
+
+<span class="code-comment"># 3. Check services are running</span>
+docker-compose ps</code></pre>
+
+      <p>Once running, the following services are available:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>URL</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Backend API</strong></td>
+              <td><code>http://localhost:8080</code></td>
+              <td>Spring Boot REST API</td>
+            </tr>
+            <tr>
+              <td><strong>Frontend UI</strong></td>
+              <td><code>http://localhost:5173</code></td>
+              <td>Vue 3 web application</td>
+            </tr>
+            <tr>
+              <td><strong>Swagger UI</strong></td>
+              <td><code>http://localhost:8080/swagger-ui.html</code></td>
+              <td>Interactive API documentation</td>
+            </tr>
+            <tr>
+              <td><strong>Grafana</strong></td>
+              <td><code>http://localhost:3000</code></td>
+              <td>Compliance dashboards (admin/admin)</td>
+            </tr>
+            <tr>
+              <td><strong>Prometheus</strong></td>
+              <td><code>http://localhost:9090</code></td>
+              <td>Metrics collection</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Manual Setup -->
+    <section id="manual" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Manual Setup (Development)</h2>
+      <p>To run the backend and frontend separately for development:</p>
+
+      <h3>Backend</h3>
+      <pre><code>cd backend
+./gradlew bootRun       <span class="code-comment"># Starts on http://localhost:8080</span></code></pre>
+
+      <h3>Frontend</h3>
+      <pre><code>cd frontend
+npm ci
+npm run dev             <span class="code-comment"># Starts on http://localhost:5173</span></code></pre>
+    </section>
+
+    <!-- First Compliance Trail -->
+    <section id="first-trail" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Your First Compliance Trail</h2>
+      <p>Walk through a complete compliance lifecycle using the REST API.</p>
+
+      <div class="steps">
+
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>Create a Flow</h3>
+            <p>A Flow is a template that defines the required compliance checks for a type of release.</p>
+            <pre><code>curl -s -X POST http://localhost:8080/api/v1/flows \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "standard-release",
+    "description": "Standard production release checks",
+    "requiredAttestations": ["security-scan", "code-review", "qa-signoff"]
+  }' | jq .</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Start a Trail</h3>
+            <p>A Trail is a per-release evidence collection linked to a specific artifact (e.g., a container image).</p>
+            <pre><code>curl -s -X POST http://localhost:8080/api/v1/trails \
+  -H "Content-Type: application/json" \
+  -d '{
+    "flowId": "&lt;flow-id-from-step-1&gt;",
+    "artifactName": "my-service",
+    "artifactVersion": "1.4.2",
+    "artifactDigest": "sha256:abc123..."
+  }' | jq .</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Record an Attestation</h3>
+            <p>Attestations are individual evidence records. Record your security scan result:</p>
+            <pre><code>curl -s -X POST http://localhost:8080/api/v1/trails/&lt;trail-id&gt;/attestations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "security-scan",
+    "passed": true,
+    "details": "Trivy scan: 0 critical, 2 medium (accepted)",
+    "attestedBy": "pipeline-bot"
+  }' | jq .</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h3>Check Compliance</h3>
+            <p>Evaluate whether the trail satisfies all flow requirements and is cleared for deployment:</p>
+            <pre><code>curl -s http://localhost:8080/api/v1/trails/&lt;trail-id&gt;/compliance | jq .</code></pre>
+            <p>When all required attestations are recorded and policies pass, the response will show <code>"compliant": true</code> and the artifact is cleared for deployment.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <h3>Evaluate the Deployment Gate</h3>
+            <p>Use the deployment gate to get a binary deploy/block decision:</p>
+            <pre><code>curl -s -X POST http://localhost:8080/api/v1/gate/evaluate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "trailId": "&lt;trail-id&gt;",
+    "targetEnvironment": "production"
+  }' | jq .</code></pre>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="callout callout-info">
+        <span class="callout-icon">ℹ️</span>
+        <div>
+          For the complete API reference including all request/response schemas, see the
+          <a href="api-docs.html">API Docs</a> page or visit
+          <code>http://localhost:8080/swagger-ui.html</code> when the server is running.
+        </div>
+      </div>
+    </section>
+
+    <!-- Dry-run mode -->
+    <section id="dry-run" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Dry-run Mode</h2>
+      <p>
+        Any write operation can be tested without persisting data by adding the
+        <code>X-Dry-Run: true</code> header. The API will validate the request and simulate the
+        result without making any changes:
+      </p>
+      <pre><code>curl -s -X POST http://localhost:8080/api/v1/trails \
+  -H "Content-Type: application/json" \
+  -H "X-Dry-Run: true" \
+  -d '{ ... }' | jq .</code></pre>
+    </section>
+
+    <!-- Further reading -->
+    <section id="further" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Further Reading</h2>
+      <p>
+        For the complete user guide including CI/CD integration examples, environment configuration,
+        OPA policy authoring, and production hardening, see the
+        <a href="https://github.com/MaximumTrainer/OpenFactstore/blob/main/USER_GUIDE.md" target="_blank" rel="noopener">
+          USER_GUIDE.md on GitHub ↗
+        </a>.
+      </p>
+      <div class="callout callout-warning">
+        <span class="callout-icon">⚠️</span>
+        <div>
+          The default configuration uses an in-memory H2 database. All data is lost on restart.
+          Review the <a href="known-issues.html">Known Issues</a> page before deploying to production.
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

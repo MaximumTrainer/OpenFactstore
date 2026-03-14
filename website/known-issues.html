@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Known Issues — OpenFactstore</title>
+  <meta name="description" content="Known limitations and production hardening guidance for OpenFactstore.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+
+<aside class="sidebar">
+  <a class="sidebar-brand" href="index.html">
+    <div class="sidebar-brand-icon">🏛</div>
+    <div>
+      <div class="sidebar-brand-name">OpenFactstore</div>
+      <div class="sidebar-brand-sub">v1.0</div>
+    </div>
+  </a>
+  <nav>
+    <span class="nav-section">Documentation</span>
+    <a href="index.html">🏠 Home</a>
+    <a href="get-started.html">🚀 Get Started</a>
+    <a href="api-docs.html">📖 API Docs</a>
+    <a href="known-issues.html">⚠️ Known Issues</a>
+    <span class="nav-section">Links</span>
+    <a href="https://github.com/MaximumTrainer/OpenFactstore" target="_blank" rel="noopener" class="external">GitHub ↗</a>
+  </nav>
+</aside>
+
+<main class="content">
+  <div class="page-inner">
+
+    <h2 style="font-size:32px; margin-bottom:8px;">Known Issues</h2>
+    <p style="color:var(--text-muted); margin-bottom:8px;">Current limitations and production hardening guidance.</p>
+
+    <div class="callout callout-warning" style="margin-bottom:32px;">
+      <span class="callout-icon">⚠️</span>
+      <div>
+        OpenFactstore is under active development. The items below represent known limitations
+        in the current release. Each entry includes recommended mitigations for production use.
+      </div>
+    </div>
+
+    <!-- Current limitations -->
+    <section id="limitations" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Current Limitations</h2>
+
+      <div class="issue-list">
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-security">Security</span>
+            <span class="issue-title">No built-in authentication</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              All API endpoints are unauthenticated. Any client with network access can read or
+              write compliance data, including attestations, approvals, and policy definitions.
+            </p>
+            <p>
+              <strong>Mitigation:</strong> Place OpenFactstore behind a reverse proxy (nginx, Caddy,
+              or an API gateway) that enforces authentication — such as HTTP Basic Auth, OAuth 2.0
+              bearer tokens, or mTLS — before any request reaches the application. Do not expose
+              the API port directly to untrusted networks.
+            </p>
+          </div>
+        </div>
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-limitation">Limitation</span>
+            <span class="issue-title">In-memory H2 database</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              The default configuration uses an H2 in-memory database. All compliance data —
+              flows, trails, attestations, and audit records — is lost when the application
+              restarts.
+            </p>
+            <p>
+              <strong>Mitigation:</strong> Configure an external PostgreSQL database by setting the
+              Spring datasource properties in <code>application.properties</code>. The JPA schema
+              is compatible with PostgreSQL without code changes. A file-mode H2 database
+              (<code>jdbc:h2:file:./factstore</code>) is a lower-effort interim option for
+              persistence without a separate database server.
+            </p>
+          </div>
+        </div>
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-security">Security</span>
+            <span class="issue-title">SCM token storage</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              Source Control Management (SCM) tokens used for pull-request attestation are stored
+              as Base64-encoded strings. This is obfuscation, not encryption — the values are
+              recoverable from the database without a key.
+            </p>
+            <p>
+              <strong>Mitigation:</strong> Use a secrets manager such as HashiCorp Vault, AWS
+              Secrets Manager, or Azure Key Vault to store tokens externally. Inject them at
+              runtime via environment variables rather than persisting them in the database.
+            </p>
+          </div>
+        </div>
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-limitation">Limitation</span>
+            <span class="issue-title">OPA embedded mode is a simplified stub</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              The default embedded OPA policy evaluator supports a simplified subset of policy
+              logic. Full Rego language features — including imports, virtual documents, and
+              partial rules — are not available in embedded mode.
+            </p>
+            <p>
+              <strong>Mitigation:</strong> Set <code>OPA_MODE=external</code> and configure
+              <code>OPA_URL</code> to point to a full OPA server instance. Full Rego support
+              is available in external mode.
+            </p>
+          </div>
+        </div>
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-limitation">Limitation</span>
+            <span class="issue-title">No RBAC</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              Role-based access control is not yet implemented. All operations — including creating
+              and approving compliance flows, managing organisations, and evaluating deployment
+              gates — are globally accessible to any authenticated caller.
+            </p>
+            <p>
+              <strong>Mitigation:</strong> Use network-level segmentation to restrict which
+              services and users can reach sensitive endpoints. RBAC is on the roadmap for a
+              future release.
+            </p>
+          </div>
+        </div>
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-limitation">Limitation</span>
+            <span class="issue-title">Incomplete frontend coverage</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              Several backend features do not yet have dedicated frontend views in the Vue
+              application. Affected areas include the regulatory compliance framework (SOX,
+              PCI-DSS, GDPR controls), OPA policy management, and environment drift detection.
+            </p>
+            <p>
+              <strong>Mitigation:</strong> Use the REST API directly or the Swagger UI at
+              <code>/swagger-ui.html</code> to interact with these features. Frontend coverage
+              will be expanded in upcoming releases.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Planned enhancements -->
+    <section id="planned" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Planned Enhancements</h2>
+      <p>The following capabilities are on the roadmap for upcoming releases:</p>
+
+      <div class="issue-list">
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-planned">Planned</span>
+            <span class="issue-title">CLI binary (issue #33)</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              A standalone CLI tool for interacting with the OpenFactstore API from shell scripts
+              and CI/CD pipelines, without requiring curl + jq.
+            </p>
+          </div>
+        </div>
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-planned">Planned</span>
+            <span class="issue-title">Full authentication + RBAC</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              JWT-based authentication with role-based access control, supporting at minimum
+              admin, auditor, and pipeline-bot roles.
+            </p>
+          </div>
+        </div>
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-planned">Planned</span>
+            <span class="issue-title">PostgreSQL support</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              First-class PostgreSQL configuration profile with Flyway migration scripts and
+              a Docker Compose profile for a persistent development environment.
+            </p>
+          </div>
+        </div>
+
+        <div class="issue-item">
+          <div class="issue-header">
+            <span class="issue-badge badge-planned">Planned</span>
+            <span class="issue-title">Kubernetes operator</span>
+          </div>
+          <div class="issue-body">
+            <p>
+              A Kubernetes operator for managing OpenFactstore deployments declaratively, with
+              custom resources for Flows and deployment policies.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Reporting issues -->
+    <section id="report" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Reporting Issues</h2>
+      <p>
+        Found a bug or want to request a feature? Open an issue on GitHub:
+      </p>
+      <p>
+        <a href="https://github.com/MaximumTrainer/OpenFactstore/issues" target="_blank" rel="noopener">
+          github.com/MaximumTrainer/OpenFactstore/issues ↗
+        </a>
+      </p>
+    </section>
+
+  </div>
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>
