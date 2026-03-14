@@ -5,12 +5,14 @@ import com.factstore.core.port.inbound.IFlowService
 import com.factstore.core.port.outbound.IFlowRepository
 import com.factstore.dto.CreateFlowRequest
 import com.factstore.dto.FlowResponse
+import com.factstore.dto.FlowTemplateResponse
 import com.factstore.dto.UpdateFlowRequest
 import com.factstore.exception.ConflictException
 import com.factstore.exception.NotFoundException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.yaml.snakeyaml.Yaml
 import java.time.Instant
 import java.util.UUID
 
@@ -32,6 +34,7 @@ class FlowService(private val flowRepository: IFlowRepository) : IFlowService {
         ).also {
             it.requiredAttestationTypes = request.requiredAttestationTypes
             it.tags = request.tags.toMutableMap()
+            it.templateYaml = request.templateYaml
         }
         val saved = flowRepository.save(flow)
         log.info("Created flow: ${saved.id} - ${saved.name}")
@@ -59,6 +62,7 @@ class FlowService(private val flowRepository: IFlowRepository) : IFlowService {
             validateTags(it)
             flow.tags = it.toMutableMap()
         }
+        request.templateYaml?.let { flow.templateYaml = it }
         flow.updatedAt = Instant.now()
         return flowRepository.save(flow).toResponse()
     }
@@ -75,6 +79,20 @@ class FlowService(private val flowRepository: IFlowRepository) : IFlowService {
     @Transactional(readOnly = true)
     override fun listFlowsByOrg(orgSlug: String): List<FlowResponse> =
         flowRepository.findAllByOrgSlug(orgSlug).map { it.toResponse() }
+
+    @Transactional(readOnly = true)
+    override fun getFlowTemplate(id: UUID): FlowTemplateResponse {
+        val flow = flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val effectiveTemplate = flow.templateYaml?.let { yaml ->
+            @Suppress("UNCHECKED_CAST")
+            Yaml().load<Map<String, Any>>(yaml)
+        }
+        return FlowTemplateResponse(
+            flowId = flow.id,
+            templateYaml = flow.templateYaml,
+            effectiveTemplate = effectiveTemplate
+        )
+    }
 
     private fun validateTags(tags: Map<String, String>) {
         require(tags.size <= 50) { "Flow may have at most 50 tags" }
@@ -93,6 +111,8 @@ fun Flow.toResponse() = FlowResponse(
     requiredAttestationTypes = requiredAttestationTypes,
     tags = tags.toMap(),
     orgSlug = orgSlug,
+    templateYaml = templateYaml,
     createdAt = createdAt,
     updatedAt = updatedAt
 )
+

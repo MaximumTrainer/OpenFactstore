@@ -22,6 +22,9 @@ class Flow(
     @Column(name = "org_slug", nullable = true, length = 255)
     var orgSlug: String? = null,
 
+    @Column(name = "template_yaml", columnDefinition = "TEXT")
+    var templateYaml: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 

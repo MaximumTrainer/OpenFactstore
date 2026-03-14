@@ -36,7 +36,8 @@ class TrailService(
             pullRequestId = request.pullRequestId,
             pullRequestReviewer = request.pullRequestReviewer,
             deploymentActor = request.deploymentActor,
-            orgSlug = request.orgSlug
+            orgSlug = request.orgSlug,
+            templateYaml = request.templateYaml
         )
         val saved = trailRepository.save(trail)
         log.info("Created trail: ${saved.id} for flow: ${saved.flowId}")
@@ -81,6 +82,7 @@ fun Trail.toResponse() = TrailResponse(
     deploymentActor = deploymentActor,
     status = status,
     orgSlug = orgSlug,
+    templateYaml = templateYaml,
     createdAt = createdAt,
     updatedAt = updatedAt
 )

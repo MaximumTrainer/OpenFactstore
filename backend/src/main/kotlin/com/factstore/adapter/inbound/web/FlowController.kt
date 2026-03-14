@@ -3,6 +3,7 @@ package com.factstore.adapter.inbound.web
 import com.factstore.core.port.inbound.IFlowService
 import com.factstore.dto.CreateFlowRequest
 import com.factstore.dto.FlowResponse
+import com.factstore.dto.FlowTemplateResponse
 import com.factstore.dto.UpdateFlowRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -42,4 +43,9 @@ class FlowController(private val flowService: IFlowService) {
         flowService.deleteFlow(id)
         return ResponseEntity.noContent().build()
     }
+
+    @GetMapping("/{id}/template")
+    @Operation(summary = "Get flow template")
+    fun getFlowTemplate(@PathVariable id: UUID): ResponseEntity<FlowTemplateResponse> =
+        ResponseEntity.ok(flowService.getFlowTemplate(id))
 }

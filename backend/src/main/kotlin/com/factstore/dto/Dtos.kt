@@ -26,14 +26,16 @@ data class CreateFlowRequest(
     val description: String = "",
     val requiredAttestationTypes: List<String> = emptyList(),
     val tags: Map<String, String> = emptyMap(),
-    val orgSlug: String? = null
+    val orgSlug: String? = null,
+    val templateYaml: String? = null
 )
 
 data class UpdateFlowRequest(
     val name: String? = null,
     val description: String? = null,
     val requiredAttestationTypes: List<String>? = null,
-    val tags: Map<String, String>? = null
+    val tags: Map<String, String>? = null,
+    val templateYaml: String? = null
 )
 
 data class FlowResponse(
@@ -43,6 +45,7 @@ data class FlowResponse(
     val requiredAttestationTypes: List<String>,
     val tags: Map<String, String>,
     val orgSlug: String? = null,
+    val templateYaml: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant
 )
@@ -57,7 +60,8 @@ data class CreateTrailRequest(
     val pullRequestId: String? = null,
     val pullRequestReviewer: String? = null,
     val deploymentActor: String? = null,
-    val orgSlug: String? = null
+    val orgSlug: String? = null,
+    val templateYaml: String? = null
 )
 
 data class TrailResponse(
@@ -72,6 +76,7 @@ data class TrailResponse(
     val deploymentActor: String?,
     val status: TrailStatus,
     val orgSlug: String? = null,
+    val templateYaml: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant
 )
@@ -185,10 +190,18 @@ data class AssertResponse(
     val status: ComplianceStatus,
     val missingAttestationTypes: List<String>,
     val failedAttestationTypes: List<String>,
-    val details: String
+    val details: String,
+    val missingAttestationNames: List<String> = emptyList(),
+    val failedAttestationNames: List<String> = emptyList()
 )
 
 enum class ComplianceStatus { COMPLIANT, NON_COMPLIANT }
+
+data class FlowTemplateResponse(
+    val flowId: UUID,
+    val templateYaml: String?,
+    val effectiveTemplate: Map<String, Any>?
+)
 
 // Chain of Custody DTO
 data class ChainOfCustodyResponse(
