@@ -12,7 +12,7 @@ import java.util.UUID
 @Repository
 interface EvidenceFileRepositoryJpa : JpaRepository<EvidenceFile, UUID> {
     fun findByAttestationId(attestationId: UUID): List<EvidenceFile>
-    fun findFirstBySha256Hash(sha256Hash: String): EvidenceFile?
+    fun findTopBySha256HashOrderByStoredAtAsc(sha256Hash: String): EvidenceFile?
 
     @Query("""
         SELECT ef FROM EvidenceFile ef
@@ -28,6 +28,7 @@ class EvidenceFileRepositoryAdapter(private val jpa: EvidenceFileRepositoryJpa) 
     override fun save(evidenceFile: EvidenceFile): EvidenceFile = jpa.save(evidenceFile)
     override fun findById(id: UUID): EvidenceFile? = jpa.findById(id).orElse(null)
     override fun findByAttestationId(attestationId: UUID): List<EvidenceFile> = jpa.findByAttestationId(attestationId)
-    override fun findFirstBySha256Hash(sha256Hash: String): EvidenceFile? = jpa.findFirstBySha256Hash(sha256Hash)
+    override fun findTopBySha256HashOrderedByStoredAt(sha256Hash: String): EvidenceFile? =
+        jpa.findTopBySha256HashOrderByStoredAtAsc(sha256Hash)
     override fun findByTrailId(trailId: UUID): List<EvidenceFile> = jpa.findByTrailId(trailId)
 }

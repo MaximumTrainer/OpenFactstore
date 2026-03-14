@@ -230,14 +230,15 @@ class AuditPackageServiceTest {
     // ---- external evidence reference test ----
 
     @Test
-    fun `buildForTrail includes ref json for external evidence`() {
+    fun `buildForTrail includes ref json for external evidence with externalUrl field`() {
         val trail = createTrail()
         val att = attestationService.recordAttestation(trail.id, CreateAttestationRequest("snyk", AttestationStatus.PASSED))
+        val externalUrl = "https://ci.example.com/scan-results.html"
         evidenceVaultService.storeExternal(
             attestationId = att.id,
             fileName = "scan-results.html",
             contentType = "text/html",
-            externalUrl = "https://ci.example.com/scan-results.html",
+            externalUrl = externalUrl,
             sha256Hash = "e".repeat(64),
             fileSizeBytes = 4096L
         )
@@ -245,9 +246,34 @@ class AuditPackageServiceTest {
         val bytes = auditPackageService.buildForTrail(trail.id)
         val entries = readTarEntries(bytes)
 
-        assertTrue(
-            entries.keys.any { it.startsWith("evidence/") && it.endsWith(".ref.json") },
-            "External evidence must produce a .ref.json descriptor in the archive"
-        )
+        val refEntry = entries.entries.firstOrNull { it.key.startsWith("evidence/") && it.key.endsWith(".ref.json") }
+        assertNotNull(refEntry, "External evidence must produce a .ref.json descriptor in the archive")
+        val refJson = objectMapper.readTree(refEntry!!.value)
+        assertEquals("external-reference", refJson.get("type").asText())
+        assertEquals(externalUrl, refJson.get("externalUrl").asText(), ".ref.json must include the externalUrl")
+        assertEquals("scan-results.html", refJson.get("fileName").asText())
+        assertEquals("e".repeat(64), refJson.get("sha256Hash").asText())
+    }
+
+    @Test
+    fun `buildForTrail deduplicates evidence files with the same sha256`() {
+        val trail = createTrail()
+        val att1 = attestationService.recordAttestation(trail.id, CreateAttestationRequest("junit", AttestationStatus.PASSED))
+        val att2 = attestationService.recordAttestation(trail.id, CreateAttestationRequest("snyk", AttestationStatus.PASSED))
+        // Same content → same sha256 → should produce only one entry in the archive
+        val content = "shared evidence content".toByteArray()
+        evidenceVaultService.store(att1.id, "report.txt", "text/plain", content)
+        evidenceVaultService.store(att2.id, "report.txt", "text/plain", content)
+
+        val bytes = auditPackageService.buildForTrail(trail.id)
+        val entries = readTarEntries(bytes)
+
+        val evidencePaths = entries.keys.filter { it.startsWith("evidence/") }
+        assertEquals(1, evidencePaths.size, "Duplicate sha256 evidence files must be deduplicated to a single archive entry")
+
+        // Manifest must not list the same path twice
+        val manifest = objectMapper.readTree(entries["manifest.json"])
+        val manifestPaths = manifest.get("files").map { it.get("path").asText() }
+        assertEquals(manifestPaths.size, manifestPaths.toSet().size, "Manifest must have no duplicate paths")
     }
 }

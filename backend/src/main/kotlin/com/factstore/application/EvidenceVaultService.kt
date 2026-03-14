@@ -60,8 +60,8 @@ class EvidenceVaultService(private val evidenceFileRepository: IEvidenceFileRepo
     }
 
     @Transactional(readOnly = true)
-    override fun findByAttestationId(attestationId: UUID): List<EvidenceFile> =
-        evidenceFileRepository.findByAttestationId(attestationId)
+    override fun findByAttestationId(attestationId: UUID): List<EvidenceFileResponse> =
+        evidenceFileRepository.findByAttestationId(attestationId).map { it.toResponse() }
 
     @Transactional(readOnly = true)
     override fun verifyIntegrity(id: UUID): Boolean {
@@ -83,11 +83,11 @@ class EvidenceVaultService(private val evidenceFileRepository: IEvidenceFileRepo
 
     @Transactional(readOnly = true)
     override fun findBySha256Hash(sha256Hash: String): EvidenceFile? =
-        evidenceFileRepository.findFirstBySha256Hash(sha256Hash)
+        evidenceFileRepository.findTopBySha256HashOrderedByStoredAt(sha256Hash)
 
     @Transactional(readOnly = true)
-    override fun findByTrailId(trailId: UUID): List<EvidenceFile> =
-        evidenceFileRepository.findByTrailId(trailId)
+    override fun findByTrailId(trailId: UUID): List<EvidenceFileResponse> =
+        evidenceFileRepository.findByTrailId(trailId).map { it.toResponse() }
 
     fun computeSha256(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256")

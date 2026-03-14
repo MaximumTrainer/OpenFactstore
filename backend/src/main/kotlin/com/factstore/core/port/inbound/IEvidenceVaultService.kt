@@ -1,6 +1,7 @@
 package com.factstore.core.port.inbound
 
 import com.factstore.core.domain.EvidenceFile
+import com.factstore.dto.EvidenceFileResponse
 import java.util.UUID
 
 interface IEvidenceVaultService {
@@ -19,11 +20,15 @@ interface IEvidenceVaultService {
         sha256Hash: String,
         fileSizeBytes: Long
     ): EvidenceFile
-    fun findByAttestationId(attestationId: UUID): List<EvidenceFile>
+    /** Returns DTOs for all evidence files for the given attestation. */
+    fun findByAttestationId(attestationId: UUID): List<EvidenceFileResponse>
     fun verifyIntegrity(id: UUID): Boolean
-    /** Returns the first evidence file matching the given SHA-256 hash, or null if not found. */
+    /**
+     * Returns the earliest-stored evidence file matching the given SHA-256 hash, or null.
+     * Returns the raw domain object so the caller can access binary content for download.
+     */
     fun findBySha256Hash(sha256Hash: String): EvidenceFile?
-    /** Returns all evidence files attached to attestations that belong to the given trail. */
-    fun findByTrailId(trailId: UUID): List<EvidenceFile>
+    /** Returns DTOs for all evidence files attached to attestations on the given trail. */
+    fun findByTrailId(trailId: UUID): List<EvidenceFileResponse>
 }
 

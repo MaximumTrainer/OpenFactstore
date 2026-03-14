@@ -53,7 +53,8 @@ class AuditPackageService(
         val flow = flowRepository.findById(trail.flowId) ?: throw NotFoundException("Flow not found: ${trail.flowId}")
         val artifacts = artifactRepository.findByTrailId(trailId)
         val attestations = attestationRepository.findByTrailId(trailId)
-        val evidenceFiles = attestations.flatMap { evidenceFileRepository.findByAttestationId(it.id) }
+        // Use the trail-scoped repository method to avoid N+1 queries
+        val evidenceFiles = evidenceFileRepository.findByTrailId(trailId)
 
         log.info("Building audit package for trail=$trailId")
         return buildArchive(
@@ -74,7 +75,8 @@ class AuditPackageService(
         val flow = flowRepository.findById(trail.flowId)
             ?: throw NotFoundException("Flow not found: ${trail.flowId}")
         val attestations = attestationRepository.findByTrailId(artifact.trailId)
-        val evidenceFiles = attestations.flatMap { evidenceFileRepository.findByAttestationId(it.id) }
+        // Use the trail-scoped repository method to avoid N+1 queries
+        val evidenceFiles = evidenceFileRepository.findByTrailId(artifact.trailId)
 
         log.info("Building audit package for artifact=$artifactId")
         return buildArchive(
@@ -116,35 +118,41 @@ class AuditPackageService(
         attestationEntries: List<Pair<String, ByteArray>>,
         evidenceFiles: List<EvidenceFile>
     ): ByteArray {
-        // Collect (path -> bytes) for all content files (excluding manifest.json itself)
-        val contentEntries = mutableListOf<Pair<String, ByteArray>>()
-        contentEntries.add("trail.json" to trailJson)
-        contentEntries.add("flow.json" to flowJson)
+        // Collect (path -> bytes) for all content files (excluding manifest.json itself).
+        // Use a LinkedHashMap so that if two entries map to the same archive path (e.g.
+        // two attestations attach content with the same sha256), the first one wins and
+        // the path is included exactly once, keeping the archive and manifest unambiguous.
+        val contentEntriesMap = linkedMapOf<String, ByteArray>()
+        contentEntriesMap["trail.json"] = trailJson
+        contentEntriesMap["flow.json"] = flowJson
         for ((id, bytes) in artifactEntries) {
-            contentEntries.add("artifacts/$id.json" to bytes)
+            contentEntriesMap["artifacts/$id.json"] = bytes
         }
         for ((id, bytes) in attestationEntries) {
-            contentEntries.add("attestations/$id.json" to bytes)
+            contentEntriesMap["attestations/$id.json"] = bytes
         }
         for (ev in evidenceFiles) {
             if (ev.content != null) {
                 val ext = ev.fileName.substringAfterLast('.', "")
                 val name = if (ext.isNotEmpty()) "${ev.sha256Hash}.$ext" else ev.sha256Hash
-                contentEntries.add("evidence/$name" to ev.content)
+                contentEntriesMap.putIfAbsent("evidence/$name", ev.content)
             } else {
-                // External reference: include a small JSON descriptor instead of binary data
+                // External reference: include a JSON descriptor with all available metadata
+                // so auditors can locate and verify the file from outside the vault.
                 val refJson = objectMapper.writeValueAsBytes(
                     mapOf(
                         "type" to "external-reference",
                         "fileName" to ev.fileName,
                         "sha256Hash" to ev.sha256Hash,
                         "fileSizeBytes" to ev.fileSizeBytes,
-                        "contentType" to ev.contentType
+                        "contentType" to ev.contentType,
+                        "externalUrl" to ev.externalUrl
                     )
                 )
-                contentEntries.add("evidence/${ev.sha256Hash}.ref.json" to refJson)
+                contentEntriesMap.putIfAbsent("evidence/${ev.sha256Hash}.ref.json", refJson)
             }
         }
+        val contentEntries = contentEntriesMap.entries.map { it.key to it.value }
 
         // Build manifest entries (sha256 of each content file)
         val manifestEntries = contentEntries.map { (path, bytes) ->
@@ -163,16 +171,16 @@ class AuditPackageService(
         )
         val manifestBytes = objectMapper.writeValueAsBytes(manifest)
 
-        // Assemble tar.gz
+        // Assemble tar.gz — TarArchiveOutputStream must be closed (not just finish()-ed) to
+        // flush internal buffers and avoid a potentially truncated/corrupted archive.
         val baos = ByteArrayOutputStream()
         GZIPOutputStream(baos).use { gzip ->
-            TarArchiveOutputStream(gzip).also { tar ->
+            TarArchiveOutputStream(gzip).use { tar ->
                 tar.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
                 addTarEntry(tar, "manifest.json", manifestBytes)
                 for ((path, bytes) in contentEntries) {
                     addTarEntry(tar, path, bytes)
                 }
-                tar.finish()
             }
         }
         return baos.toByteArray()
