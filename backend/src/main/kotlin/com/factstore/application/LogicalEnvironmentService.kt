@@ -118,11 +118,24 @@ class LogicalEnvironmentService(
         val memberResponses = buildMemberResponses(members)
 
         val memberSummaries = mutableListOf<MemberSnapshotSummary>()
-        val mergedArtifacts = mutableListOf<MergedSnapshotArtifact>()
         var allHaveSnapshots = true
 
+        // Collect latest snapshots for all members in a single pass, then batch-fetch artifacts
+        val latestSnapshots = memberResponses.associateWith { member ->
+            snapshotRepository.findLatestByEnvironmentId(member.physicalEnvId)
+        }
+
+        val snapshotIds = latestSnapshots.values.filterNotNull().map { it.id }
+        val artifactsBySnapshotId = if (snapshotIds.isNotEmpty()) {
+            snapshotArtifactRepository.findAllBySnapshotIdIn(snapshotIds).groupBy { it.snapshotId }
+        } else {
+            emptyMap()
+        }
+
+        val mergedArtifacts = mutableListOf<MergedSnapshotArtifact>()
+
         for (member in memberResponses) {
-            val latestSnapshot = snapshotRepository.findLatestByEnvironmentId(member.physicalEnvId)
+            val latestSnapshot = latestSnapshots[member]
             if (latestSnapshot == null) {
                 allHaveSnapshots = false
                 memberSummaries.add(
@@ -135,7 +148,7 @@ class LogicalEnvironmentService(
                     )
                 )
             } else {
-                val artifacts = snapshotArtifactRepository.findAllBySnapshotId(latestSnapshot.id)
+                val artifacts = artifactsBySnapshotId[latestSnapshot.id] ?: emptyList()
                 memberSummaries.add(
                     MemberSnapshotSummary(
                         physicalEnvId = member.physicalEnvId,
@@ -176,8 +189,9 @@ class LogicalEnvironmentService(
     }
 
     private fun buildMemberResponses(members: List<LogicalEnvironmentMember>): List<LogicalEnvironmentMemberResponse> {
-        return members.mapNotNull { member ->
-            val physicalEnv = environmentRepository.findById(member.physicalEnvId) ?: return@mapNotNull null
+        return members.map { member ->
+            val physicalEnv = environmentRepository.findById(member.physicalEnvId)
+                ?: throw NotFoundException("Physical environment not found: ${member.physicalEnvId}")
             LogicalEnvironmentMemberResponse(
                 physicalEnvId = physicalEnv.id,
                 physicalEnvName = physicalEnv.name,

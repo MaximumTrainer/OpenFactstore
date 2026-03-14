@@ -128,7 +128,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr v-for="(artifact, idx) in mergedSnapshot.mergedArtifacts" :key="idx" class="py-2">
+                <tr v-for="artifact in mergedSnapshot.mergedArtifacts" :key="`${artifact.artifactSha256}-${artifact.physicalEnvId}`" class="py-2">
                   <td class="py-2 pr-4 font-medium text-gray-900">{{ artifact.artifactName }}</td>
                   <td class="py-2 pr-4 text-gray-600">{{ artifact.artifactTag }}</td>
                   <td class="py-2 pr-4 font-mono text-xs text-gray-500 max-w-xs truncate">{{ artifact.artifactSha256 }}</td>
