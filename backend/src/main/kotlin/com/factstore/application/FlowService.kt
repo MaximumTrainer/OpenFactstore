@@ -100,11 +100,11 @@ class FlowService(private val flowRepository: IFlowRepository) : IFlowService {
     }
 
     private fun validateTags(tags: Map<String, String>) {
-        require(tags.size <= 50) { "Flow may have at most 50 tags" }
+        if (tags.size > 50) throw BadRequestException("Flow may have at most 50 tags")
         tags.forEach { (k, v) ->
-            require(k.isNotBlank()) { "Tag key must not be blank" }
-            require(k.length <= 64) { "Tag key '$k' exceeds 64 characters" }
-            require(v.length <= 256) { "Tag value for key '$k' exceeds 256 characters" }
+            if (k.isBlank()) throw BadRequestException("Tag key must not be blank")
+            if (k.length > 64) throw BadRequestException("Tag key '$k' exceeds 64 characters")
+            if (v.length > 256) throw BadRequestException("Tag value for key '$k' exceeds 256 characters")
         }
     }
 }

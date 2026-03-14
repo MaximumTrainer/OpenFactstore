@@ -7,5 +7,6 @@ interface IAttestationRepository {
     fun save(attestation: Attestation): Attestation
     fun findById(id: UUID): Attestation?
     fun findByTrailId(trailId: UUID): List<Attestation>
+    fun findByTrailIdIn(trailIds: Collection<UUID>): List<Attestation>
     fun findAll(): List<Attestation>
 }

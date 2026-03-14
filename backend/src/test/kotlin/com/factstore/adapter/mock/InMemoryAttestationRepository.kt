@@ -17,5 +17,8 @@ class InMemoryAttestationRepository : IAttestationRepository {
     override fun findByTrailId(trailId: UUID): List<Attestation> =
         store.values.filter { it.trailId == trailId }
 
+    override fun findByTrailIdIn(trailIds: Collection<UUID>): List<Attestation> =
+        store.values.filter { it.trailId in trailIds }
+
     override fun findAll(): List<Attestation> = store.values.toList()
 }

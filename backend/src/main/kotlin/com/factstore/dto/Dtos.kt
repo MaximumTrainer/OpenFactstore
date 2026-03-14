@@ -1449,3 +1449,28 @@ data class SecurityMetricsSummary(
     val totalLow: Int,
     val generatedAt: Instant
 )
+
+data class MemberSnapshotSummary(
+    val physicalEnvId: UUID,
+    val physicalEnvName: String,
+    val snapshotIndex: Long?,
+    val recordedAt: Instant?,
+    val artifactCount: Int
+)
+
+data class MergedSnapshotArtifact(
+    val artifactSha256: String,
+    val artifactName: String?,
+    val artifactTag: String?,
+    val instanceCount: Int?,
+    val physicalEnvId: UUID,
+    val physicalEnvName: String
+)
+
+data class MergedSnapshotResponse(
+    val logicalEnvId: UUID,
+    val logicalEnvName: String,
+    val complianceStatus: ComplianceStatus,
+    val memberSnapshots: List<MemberSnapshotSummary>,
+    val mergedArtifacts: List<MergedSnapshotArtifact>
+)
