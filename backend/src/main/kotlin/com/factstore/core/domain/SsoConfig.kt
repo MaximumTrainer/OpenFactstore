@@ -41,11 +41,14 @@ class SsoConfig(
     var clientSecret: String? = null,
 
     /**
-     * JSON object mapping IdP claim names to Factstore attributes.
-     * Keys: "email", "name", "role".  Example:
+     * JSON object mapping Factstore field names to their corresponding IdP claim names.
+     * Keys are Factstore fields: "email", "name", "role".
+     * Values are the claim names in the IdP's ID token.  Example:
      * ```json
      * {"email":"email","name":"name","role":"groups"}
      * ```
+     * With this mapping, the "email" claim is read from the IdP token field "email",
+     * the user's name from "name", and group membership from "groups".
      */
     @Column(name = "attribute_mappings", columnDefinition = "TEXT")
     var attributeMappings: String = """{"email":"email","name":"name"}""",

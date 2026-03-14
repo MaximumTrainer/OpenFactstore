@@ -14,5 +14,19 @@ interface ISsoConfigService {
     fun deleteSsoConfig(orgSlug: String)
     fun testSsoConnection(orgSlug: String): SsoTestConnectionResponse
     fun initiateSsoLogin(orgSlug: String, redirectUri: String): SsoLoginUrlResponse
-    fun handleSsoCallback(orgSlug: String, code: String, state: String, redirectUri: String): SsoCallbackResponse
+
+    /**
+     * Handles the OIDC authorization-code callback from the identity provider.
+     * The redirect URI used in the token exchange is the one that was stored in the
+     * pending state when [initiateSsoLogin] was called, ensuring an exact match.
+     */
+    fun handleSsoCallback(orgSlug: String, code: String, state: String): SsoCallbackResponse
+
+    /**
+     * Returns true when SSO is configured for [orgSlug] **and** is marked as mandatory.
+     *
+     * Callers (e.g., a future password-login endpoint) should check this flag and deny
+     * non-SSO authentication attempts when it is `true`.
+     */
+    fun isSsoMandatory(orgSlug: String): Boolean
 }

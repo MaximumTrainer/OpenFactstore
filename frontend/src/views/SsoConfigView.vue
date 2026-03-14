@@ -349,7 +349,9 @@ onMounted(loadConfig)
         <div>
           <label class="block text-sm font-medium text-gray-700">Attribute Mappings (JSON)</label>
           <p class="text-xs text-gray-500 mt-0.5">
-            Maps IdP claim names to Factstore fields. Keys: <code>email</code>, <code>name</code>, <code>role</code>.
+            Keys are Factstore field names (<code>email</code>, <code>name</code>, <code>role</code>);
+            values are the corresponding claim names in the IdP's ID token.
+            Example: <code>{"email":"email","name":"name","role":"groups"}</code>
           </p>
           <textarea
             v-model="attributeMappings"

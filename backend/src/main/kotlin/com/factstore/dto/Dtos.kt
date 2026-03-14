@@ -706,7 +706,7 @@ data class SsoConfigResponse(
     val provider: SsoProvider,
     val issuerUrl: String,
     val clientId: String,
-    /** Client secret is never returned in API responses. */
+    // clientSecret is intentionally omitted — it is never returned in API responses.
     val attributeMappings: String,
     val groupRoleMappings: String,
     val isMandatory: Boolean,

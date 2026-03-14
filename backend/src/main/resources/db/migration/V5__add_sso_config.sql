@@ -15,7 +15,6 @@ CREATE TABLE sso_configs (
     created_at          TIMESTAMPTZ  NOT NULL,
     updated_at          TIMESTAMPTZ  NOT NULL,
     CONSTRAINT pk_sso_configs PRIMARY KEY (id),
+    -- The UNIQUE constraint already creates an index on org_slug in PostgreSQL.
     CONSTRAINT uq_sso_configs_org_slug UNIQUE (org_slug)
 );
-
-CREATE INDEX idx_sso_configs_org_slug ON sso_configs (org_slug);

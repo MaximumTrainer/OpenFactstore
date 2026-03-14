@@ -9,7 +9,6 @@ import com.factstore.dto.SsoTestConnectionResponse
 import com.factstore.dto.UpdateSsoConfigRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -55,7 +54,8 @@ class SsoController(private val ssoService: ISsoConfigService) {
     @GetMapping("/login")
     @Operation(
         summary = "Initiate SSO login — returns the IdP authorization URL",
-        description = "The client should redirect the browser to the returned `loginUrl`."
+        description = "The client should redirect the browser to the returned `loginUrl`. " +
+            "The `redirectUri` must exactly match a URI registered with the identity provider."
     )
     fun initiateSsoLogin(
         @PathVariable slug: String,
@@ -66,16 +66,13 @@ class SsoController(private val ssoService: ISsoConfigService) {
     @GetMapping("/callback")
     @Operation(
         summary = "Handle the OIDC callback from the identity provider",
-        description = "Exchanges the authorization code, provisions the user (JIT), and returns a Factstore JWT."
+        description = "Exchanges the authorization code, provisions the user (JIT), and returns a Factstore JWT. " +
+            "The redirect URI is recovered from the state token stored during `/login`."
     )
     fun handleSsoCallback(
         @PathVariable slug: String,
         @RequestParam code: String,
-        @RequestParam state: String,
-        request: HttpServletRequest
-    ): ResponseEntity<SsoCallbackResponse> {
-        // Reconstruct the redirect URI from the incoming request so it matches what was sent to the IdP.
-        val redirectUri = request.requestURL.toString()
-        return ResponseEntity.ok(ssoService.handleSsoCallback(slug, code, state, redirectUri))
-    }
+        @RequestParam state: String
+    ): ResponseEntity<SsoCallbackResponse> =
+        ResponseEntity.ok(ssoService.handleSsoCallback(slug, code, state))
 }
