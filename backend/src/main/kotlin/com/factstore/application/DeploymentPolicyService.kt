@@ -6,6 +6,7 @@ import com.factstore.core.domain.DeploymentGateResult
 import com.factstore.core.domain.DeploymentPolicy
 import com.factstore.core.domain.GateDecision
 import com.factstore.core.port.inbound.IDeploymentPolicyService
+import com.factstore.core.port.inbound.IEnvironmentAllowlistService
 import com.factstore.core.port.outbound.IApprovalRepository
 import com.factstore.core.port.outbound.IArtifactRepository
 import com.factstore.core.port.outbound.IAttestationRepository
@@ -19,6 +20,8 @@ import com.factstore.dto.GateEvaluateRequest
 import com.factstore.dto.GateEvaluateResponse
 import com.factstore.dto.UpdateDeploymentPolicyRequest
 import com.factstore.exception.NotFoundException
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -34,10 +37,28 @@ class DeploymentPolicyService(
     private val attestationRepository: IAttestationRepository,
     private val buildProvenanceRepository: IBuildProvenanceRepository,
     private val approvalRepository: IApprovalRepository,
-    private val flowRepository: IFlowRepository
+    private val flowRepository: IFlowRepository,
+    private val allowlistService: IEnvironmentAllowlistService,
+    private val meterRegistry: MeterRegistry
 ) : IDeploymentPolicyService {
 
     private val log = LoggerFactory.getLogger(DeploymentPolicyService::class.java)
+
+    private val gateEvaluationsCounter: Counter by lazy {
+        Counter.builder("factstore_gate_evaluations_total")
+            .description("Total number of deployment gate evaluations")
+            .register(meterRegistry)
+    }
+    private val gateAllowedCounter: Counter by lazy {
+        Counter.builder("factstore_gate_allowed_total")
+            .description("Deployment gate evaluations that resulted in ALLOWED")
+            .register(meterRegistry)
+    }
+    private val gateBlockedCounter: Counter by lazy {
+        Counter.builder("factstore_gate_blocked_total")
+            .description("Deployment gate evaluations that resulted in BLOCKED")
+            .register(meterRegistry)
+    }
 
     override fun createPolicy(request: CreateDeploymentPolicyRequest): DeploymentPolicyResponse {
         flowRepository.findById(request.flowId)
@@ -83,6 +104,23 @@ class DeploymentPolicyService(
     }
 
     override fun evaluateGate(request: GateEvaluateRequest): GateEvaluateResponse {
+        gateEvaluationsCounter.increment()
+
+        // Allow-listed artifacts bypass all policy checks
+        if (request.environmentId != null &&
+            allowlistService.isAllowlisted(request.environmentId, request.artifactSha256, null)) {
+            log.info("Artifact ${request.artifactSha256} is allow-listed for environment ${request.environmentId} — gate ALLOWED")
+            gateAllowedCounter.increment()
+            val result = DeploymentGateResult(
+                policyId = null,
+                artifactSha256 = request.artifactSha256,
+                environmentId = request.environmentId,
+                requestedBy = request.requestedBy,
+                decision = GateDecision.ALLOWED
+            ).also { it.blockReasons = emptyList() }
+            return gateResultRepository.save(result).toResponse(0)
+        }
+
         val policies = if (request.environmentId != null)
             policyRepository.findByEnvironmentId(request.environmentId).filter { it.isActive }
                 .ifEmpty { policyRepository.findActive() }
@@ -137,6 +175,7 @@ class DeploymentPolicyService(
         }
 
         val decision = if (blockReasons.isEmpty()) GateDecision.ALLOWED else GateDecision.BLOCKED
+        if (decision == GateDecision.ALLOWED) gateAllowedCounter.increment() else gateBlockedCounter.increment()
         val result = DeploymentGateResult(
             policyId = lastPolicyId,
             artifactSha256 = request.artifactSha256,

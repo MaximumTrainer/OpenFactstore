@@ -17,6 +17,13 @@
             >
               {{ link.label }}
             </RouterLink>
+            <a
+              href="http://localhost:3000"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-gray-700 hover:text-white text-gray-300"
+              title="Open Grafana monitoring dashboard"
+            >Monitoring ↗</a>
           </div>
         </div>
         <!-- Notification bell -->

@@ -1,8 +1,11 @@
 package com.factstore.application
 
+import com.factstore.core.domain.ApprovalStatus
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.TrailStatus
+import com.factstore.core.port.outbound.IApprovalRepository
 import com.factstore.core.port.outbound.IAttestationRepository
+import com.factstore.core.port.outbound.IDriftReportRepository
 import com.factstore.core.port.outbound.ISecurityScanRepository
 import com.factstore.core.port.outbound.ITrailRepository
 import com.factstore.dto.ComplianceMetricsSummary
@@ -18,7 +21,9 @@ class ComplianceMetricsService(
     private val meterRegistry: MeterRegistry,
     private val trailRepository: ITrailRepository,
     private val attestationRepository: IAttestationRepository,
-    private val securityScanRepository: ISecurityScanRepository
+    private val securityScanRepository: ISecurityScanRepository,
+    private val approvalRepository: IApprovalRepository,
+    private val driftReportRepository: IDriftReportRepository
 ) {
 
     @PostConstruct
@@ -58,6 +63,14 @@ class ComplianceMetricsService(
 
         Gauge.builder("factstore_compliance_rate") { computeComplianceRate() }
             .description("Compliance rate as a percentage (0-100)").register(meterRegistry)
+
+        Gauge.builder("factstore_approvals_pending") {
+            approvalRepository.findByStatus(ApprovalStatus.PENDING_APPROVAL).size.toDouble()
+        }.description("Current number of pending approvals").register(meterRegistry)
+
+        Gauge.builder("factstore_drift_detected") {
+            driftReportRepository.countByHasDrift(true).toDouble()
+        }.description("Number of drift reports that detected drift").register(meterRegistry)
     }
 
     fun getComplianceMetrics(): ComplianceMetricsSummary {

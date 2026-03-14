@@ -1,13 +1,18 @@
 package com.factstore.application
 
 import com.factstore.adapter.mock.InMemoryAttestationRepository
+import com.factstore.adapter.mock.InMemoryDriftReportRepository
 import com.factstore.adapter.mock.InMemorySecurityScanRepository
 import com.factstore.adapter.mock.InMemoryTrailRepository
+import com.factstore.core.domain.Approval
+import com.factstore.core.domain.ApprovalStatus
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.SecurityScanResult
 import com.factstore.core.domain.Trail
 import com.factstore.core.domain.TrailStatus
+import com.factstore.core.port.outbound.IApprovalRepository
+import com.factstore.core.port.outbound.IDriftReportRepository
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -21,6 +26,8 @@ class ComplianceMetricsServiceTest {
     private lateinit var attestationRepository: InMemoryAttestationRepository
     private lateinit var scanRepository: InMemorySecurityScanRepository
     private lateinit var meterRegistry: SimpleMeterRegistry
+    private lateinit var approvalRepository: IApprovalRepository
+    private lateinit var driftReportRepository: IDriftReportRepository
 
     @BeforeEach
     fun setup() {
@@ -28,7 +35,16 @@ class ComplianceMetricsServiceTest {
         attestationRepository = InMemoryAttestationRepository()
         scanRepository = InMemorySecurityScanRepository()
         meterRegistry = SimpleMeterRegistry()
-        service = ComplianceMetricsService(meterRegistry, trailRepository, attestationRepository, scanRepository)
+        approvalRepository = object : IApprovalRepository {
+            override fun save(approval: Approval) = approval
+            override fun findById(id: UUID) = null
+            override fun findByTrailId(trailId: UUID) = emptyList<Approval>()
+            override fun findByStatus(status: ApprovalStatus) = emptyList<Approval>()
+            override fun findAll() = emptyList<Approval>()
+            override fun existsById(id: UUID) = false
+        }
+        driftReportRepository = InMemoryDriftReportRepository()
+        service = ComplianceMetricsService(meterRegistry, trailRepository, attestationRepository, scanRepository, approvalRepository, driftReportRepository)
         service.registerMetrics()
     }
 

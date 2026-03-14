@@ -1,6 +1,6 @@
 # Factstore — Deployment Guide
 
-A user should be able to download a single image and have Factstore running in a production-ready state **within two minutes** using only the command line.
+A user should be able to download a single image and have Factstore running in a production-ready state **within 3–5 minutes** using only the command line.
 
 ---
 
@@ -228,6 +228,37 @@ All standard Spring Boot properties can be passed as command-line flags or envir
 | `spring.datasource.username` | `sa` | DB username |
 | `spring.datasource.password` | _(empty)_ | DB password |
 | `spring.h2.console.enabled` | `true` | Enable H2 web console at `/h2-console` |
+
+#### PostgreSQL configuration
+
+| Environment Variable | Description |
+|----------------------|-------------|
+| `DB_HOST` | PostgreSQL hostname (default: `localhost`) |
+| `DB_PORT` | PostgreSQL port (default: `5432`) |
+| `DB_NAME` | Database name (default: `factstore`) |
+| `DB_USERNAME` | Database user |
+| `DB_PASSWORD` | Database password |
+
+#### HashiCorp Vault integration
+
+| Environment Variable | Description |
+|----------------------|-------------|
+| `VAULT_ENABLED` | Set to `true` to enable Vault-backed secrets |
+| `VAULT_ADDR` | Vault server address (e.g. `https://vault.example.com:8200`) |
+| `VAULT_TOKEN` | Vault access token |
+
+#### Grafana / monitoring
+
+| Environment Variable | Description |
+|----------------------|-------------|
+| `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password (default: `admin`) |
+
+#### OAuth / GitHub SSO
+
+| Environment Variable | Description |
+|----------------------|-------------|
+| `GITHUB_CLIENT_ID` | GitHub OAuth app client ID |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret |
 
 ### Docker environment variable example
 

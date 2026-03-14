@@ -127,6 +127,7 @@ data class AttestationResponse(
     val evidenceUrl: String?,
     val compliant: Boolean,
     val orgSlug: String? = null,
+    val artifactFingerprint: String? = null,
     val createdAt: Instant
 )
 

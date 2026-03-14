@@ -6,6 +6,7 @@ import com.factstore.core.port.inbound.ITrailService
 import com.factstore.dto.FlowResponse
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -122,7 +123,7 @@ class DryRunModeTest {
             jsonPath("$.wouldCreate.type") { value("junit") }
             jsonPath("$.wouldCreate.compliant") { value(true) }
         }
-        verify(attestationService, never()).recordAttestation(any(), any())
+        verify(attestationService, never()).recordAttestation(any(), any(), anyOrNull(), anyOrNull(), anyOrNull())
     }
 
     @Test

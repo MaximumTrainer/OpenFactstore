@@ -8,6 +8,8 @@ import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.inbound.IAttestationService
 import com.factstore.core.port.inbound.IEvidenceVaultService
 import com.factstore.core.port.outbound.IAttestationRepository
+import com.factstore.core.port.outbound.IFlowRepository
+import com.factstore.core.port.outbound.IOrganisationRepository
 import com.factstore.core.port.outbound.ITrailRepository
 import com.factstore.dto.AttestationResponse
 import com.factstore.dto.CreateAttestationRequest
@@ -25,12 +27,29 @@ class AttestationService(
     private val attestationRepository: IAttestationRepository,
     private val trailRepository: ITrailRepository,
     private val evidenceVaultService: IEvidenceVaultService,
-    private val auditService: IAuditService
+    private val auditService: IAuditService,
+    private val organisationRepository: IOrganisationRepository,
+    private val flowRepository: IFlowRepository
 ) : IAttestationService {
 
     private val log = LoggerFactory.getLogger(AttestationService::class.java)
 
-    override fun recordAttestation(trailId: UUID, request: CreateAttestationRequest): AttestationResponse {
+    override fun recordAttestation(
+        trailId: UUID,
+        request: CreateAttestationRequest,
+        artifactFingerprint: String?,
+        orgSlug: String?,
+        flowName: String?
+    ): AttestationResponse {
+        if (orgSlug != null && !organisationRepository.existsBySlug(orgSlug)) {
+            throw NotFoundException("Organisation not found: $orgSlug")
+        }
+        if (orgSlug != null && flowName != null) {
+            val orgFlows = flowRepository.findAllByOrgSlug(orgSlug)
+            if (orgFlows.none { it.name == flowName }) {
+                throw NotFoundException("Flow '$flowName' not found for organisation '$orgSlug'")
+            }
+        }
         if (!trailRepository.existsById(trailId)) throw NotFoundException("Trail not found: $trailId")
         val attestation = Attestation(
             trailId = trailId,
@@ -39,7 +58,8 @@ class AttestationService(
             details = request.details,
             name = request.name,
             evidenceUrl = request.evidenceUrl,
-            orgSlug = request.orgSlug
+            orgSlug = orgSlug ?: request.orgSlug,
+            artifactFingerprint = artifactFingerprint
         )
         val saved = attestationRepository.save(attestation)
         if (request.status == AttestationStatus.FAILED) {
@@ -109,5 +129,6 @@ fun Attestation.toResponse() = AttestationResponse(
     evidenceUrl = evidenceUrl,
     compliant = status == AttestationStatus.PASSED,
     orgSlug = orgSlug,
+    artifactFingerprint = artifactFingerprint,
     createdAt = createdAt
 )

@@ -1,62 +1,76 @@
 # Part 3: Authentication
 
-> 🚧 **This feature is not yet implemented.**
->
-> Factstore currently has **no authentication** — all API endpoints are publicly accessible. This is intentional for early development but is unsuitable for any shared or production deployment.
->
-> **Tracked in:** [Feature: Authentication & Service Accounts — Issue #34](https://github.com/MaximumTrainer/Factstore/issues/34) *(see issue for full requirements and acceptance criteria)*
-
----
-
-## What is planned
-
-Authentication for Factstore will follow the same model as Kosli:
-
-### Service Accounts
-
-A **service account** is a machine identity designed for non-human callers such as CI/CD pipelines and deployment scripts. Each service account has one or more API keys. Service accounts are scoped to an organisation and carry fine-grained permissions.
-
-### Personal API Keys
-
-A **personal API key** is tied to a human user account and carries the same permissions as that user. Use personal keys for local development and testing; use service account keys for automated pipelines.
-
-### API key rotation
-
-Zero-downtime rotation will be supported:
-
-1. Generate a new key
-2. Update all callers to use the new key
-3. Delete the old key
-
----
-
-## How authentication will work (once implemented)
-
-### In API requests
-
-Every request will require a bearer token in the `Authorization` header:
+Factstore uses **API key authentication** for all API requests. Every request must include your API key in the `Authorization` header as a bearer token.
 
 ```bash
 curl -H "Authorization: Bearer <your-api-key>" \
   "$BASE_URL/api/v1/flows"
 ```
 
-### Via environment variable (future CLI)
+---
 
-Once the [Factstore CLI](https://github.com/MaximumTrainer/Factstore/issues/33) is available:
+## Service Accounts
+
+A **service account** is a machine identity designed for non-human callers such as CI/CD pipelines and deployment scripts. Each service account has one or more API keys and is scoped to an organisation.
+
+### Create a service account
 
 ```bash
-export FACTSTORE_API_TOKEN=<your-api-key>
-factstore list flows
+curl -s -X POST "$BASE_URL/api/v1/service-accounts" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ci-pipeline",
+    "description": "GitHub Actions deployment pipeline",
+    "orgSlug": "my-org"
+  }'
 ```
+
+The response includes the service account's `id`. Use the `id` to create API keys.
+
+### Create an API key for a service account
+
+```bash
+curl -s -X POST "$BASE_URL/api/v1/service-accounts/$SA_ID/api-keys" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "primary-key" }'
+```
+
+**Save the `key` value from the response immediately** — it is only shown once.
+
+### List service accounts
+
+```bash
+curl -s "$BASE_URL/api/v1/service-accounts"
+```
+
+### Delete an API key (rotation)
+
+To rotate a key with zero downtime:
+
+1. Create a new key: `POST /api/v1/service-accounts/$SA_ID/api-keys`
+2. Update all callers to use the new key value.
+3. Delete the old key: `DELETE /api/v1/service-accounts/$SA_ID/api-keys/$KEY_ID`
 
 ---
 
-## Current state
+## Personal API Keys
 
-Until this feature is implemented, **no `Authorization` header is required**. All examples in this guide omit auth headers for clarity, and this will remain accurate until the feature ships.
+A **personal API key** is tied to a human user account and carries the same permissions as that user. Use personal keys for local development and testing; use service account keys for automated pipelines.
 
-If you are evaluating Factstore in a shared environment today, consider placing it behind a reverse proxy with network-level access controls.
+Personal keys are managed through the same API key endpoint scoped to your user's service account, or through the Factstore UI under **Settings → API Keys**.
+
+---
+
+## Using an API key
+
+Include the key as a bearer token in every request:
+
+```bash
+export FACTSTORE_API_KEY="fs_live_xxxxxxxxxxxx"
+
+curl -H "Authorization: Bearer $FACTSTORE_API_KEY" \
+  "$BASE_URL/api/v1/flows"
+```
 
 ---
 

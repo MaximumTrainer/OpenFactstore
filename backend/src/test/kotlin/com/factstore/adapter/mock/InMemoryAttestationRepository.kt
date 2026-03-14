@@ -21,4 +21,6 @@ class InMemoryAttestationRepository : IAttestationRepository {
         store.values.filter { it.trailId in trailIds }
 
     override fun findAll(): List<Attestation> = store.values.toList()
+    override fun findByArtifactFingerprint(fingerprint: String): List<Attestation> =
+        store.values.filter { it.artifactFingerprint == fingerprint }
 }

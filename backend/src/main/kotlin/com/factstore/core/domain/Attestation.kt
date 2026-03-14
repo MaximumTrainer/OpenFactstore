@@ -43,6 +43,9 @@ class Attestation(
     @Column(name = "org_slug", nullable = true, length = 255)
     var orgSlug: String? = null,
 
+    @Column(name = "artifact_fingerprint", nullable = true, length = 255)
+    var artifactFingerprint: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now()
 )

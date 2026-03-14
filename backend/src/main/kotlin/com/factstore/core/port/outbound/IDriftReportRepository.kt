@@ -7,4 +7,5 @@ interface IDriftReportRepository {
     fun save(report: DriftReport): DriftReport
     fun findAllByEnvironmentId(environmentId: UUID): List<DriftReport>
     fun findLatestByEnvironmentId(environmentId: UUID): DriftReport?
+    fun countByHasDrift(hasDrift: Boolean): Long
 }

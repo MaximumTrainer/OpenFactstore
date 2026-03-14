@@ -29,7 +29,12 @@ class AttestationController(
 ) {
 
     @PostMapping
-    @Operation(summary = "Record an attestation for a trail")
+    @Operation(
+        summary = "Record an attestation for a trail",
+        deprecated = true,
+        description = "⚠️ Deprecated: use the Kosli v2 endpoint " +
+            "POST /api/v2/attestations/{org}/{flow}/{trail}/{artifactFingerprint} instead."
+    )
     fun recordAttestation(
         @PathVariable trailId: UUID,
         @RequestBody request: CreateAttestationRequest,

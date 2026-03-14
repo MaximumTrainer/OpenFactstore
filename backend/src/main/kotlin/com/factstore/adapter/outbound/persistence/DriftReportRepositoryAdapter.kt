@@ -11,6 +11,7 @@ import java.util.UUID
 interface DriftReportRepositoryJpa : JpaRepository<DriftReport, UUID> {
     fun findAllByEnvironmentId(environmentId: UUID): List<DriftReport>
     fun findFirstByEnvironmentIdOrderByGeneratedAtDesc(environmentId: UUID): DriftReport?
+    fun countByHasDrift(hasDrift: Boolean): Long
 }
 
 @Component
@@ -22,4 +23,5 @@ class DriftReportRepositoryAdapter(
         jpa.findAllByEnvironmentId(environmentId)
     override fun findLatestByEnvironmentId(environmentId: UUID): DriftReport? =
         jpa.findFirstByEnvironmentIdOrderByGeneratedAtDesc(environmentId)
+    override fun countByHasDrift(hasDrift: Boolean): Long = jpa.countByHasDrift(hasDrift)
 }

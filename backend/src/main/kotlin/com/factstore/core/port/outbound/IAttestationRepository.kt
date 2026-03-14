@@ -9,4 +9,5 @@ interface IAttestationRepository {
     fun findByTrailId(trailId: UUID): List<Attestation>
     fun findByTrailIdIn(trailIds: Collection<UUID>): List<Attestation>
     fun findAll(): List<Attestation>
+    fun findByArtifactFingerprint(fingerprint: String): List<Attestation>
 }

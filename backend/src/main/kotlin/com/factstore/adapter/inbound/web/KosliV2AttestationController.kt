@@ -28,7 +28,13 @@ class KosliV2AttestationController(private val attestationService: IAttestationS
         @PathVariable artifactFingerprint: String,
         @RequestBody request: CreateAttestationRequest
     ): ResponseEntity<AttestationResponse> {
-        val response = attestationService.recordAttestation(trail, request)
+        val response = attestationService.recordAttestation(
+            trailId = trail,
+            request = request,
+            artifactFingerprint = artifactFingerprint,
+            orgSlug = org,
+            flowName = flow
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 }

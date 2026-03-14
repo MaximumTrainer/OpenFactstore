@@ -208,7 +208,7 @@ Flow  ──< Trail ──< Artifact
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Kotlin | 2.0.20 | Primary language |
-| Spring Boot | 3.2.5 | Web framework |
+| Spring Boot | 3.4.13 | Web framework |
 | Spring Data JPA / Hibernate | — | ORM and data access |
 | PostgreSQL | 16 | Persistent relational database |
 | Flyway | — | Versioned schema migrations |

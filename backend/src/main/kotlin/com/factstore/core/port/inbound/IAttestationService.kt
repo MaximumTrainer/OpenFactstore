@@ -6,7 +6,13 @@ import com.factstore.dto.EvidenceFileResponse
 import java.util.UUID
 
 interface IAttestationService {
-    fun recordAttestation(trailId: UUID, request: CreateAttestationRequest): AttestationResponse
+    fun recordAttestation(
+        trailId: UUID,
+        request: CreateAttestationRequest,
+        artifactFingerprint: String? = null,
+        orgSlug: String? = null,
+        flowName: String? = null
+    ): AttestationResponse
     fun listAttestations(trailId: UUID): List<AttestationResponse>
     fun uploadEvidence(
         trailId: UUID,

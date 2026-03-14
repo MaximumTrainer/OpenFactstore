@@ -18,4 +18,7 @@ class InMemoryDriftReportRepository : IDriftReportRepository {
     override fun findLatestByEnvironmentId(environmentId: UUID): DriftReport? =
         store.values.filter { it.environmentId == environmentId }
             .maxByOrNull { it.generatedAt }
+
+    override fun countByHasDrift(hasDrift: Boolean): Long =
+        store.values.count { it.hasDrift == hasDrift }.toLong()
 }
