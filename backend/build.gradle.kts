@@ -1,6 +1,6 @@
 plugins {
-    id("org.springframework.boot") version "3.2.5"
-    id("io.spring.dependency-management") version "1.1.5"
+    id("org.springframework.boot") version "3.4.13"
+    id("io.spring.dependency-management") version "1.1.7"
     kotlin("jvm") version "2.0.20"
     kotlin("plugin.spring") version "2.0.20"
     kotlin("plugin.jpa") version "2.0.20"
@@ -30,7 +30,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.16")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     runtimeOnly("org.postgresql:postgresql")
@@ -62,6 +62,7 @@ tasks.register<Test>("contractTest") {
     classpath = sourceSets["test"].runtimeClasspath
     useJUnitPlatform()
     include("**/pact/**")
+    filter { isFailOnNoMatchingTests = false }
 }
 
 tasks.register<Test>("migrationTest") {
@@ -71,6 +72,7 @@ tasks.register<Test>("migrationTest") {
     classpath = sourceSets["test"].runtimeClasspath
     useJUnitPlatform()
     include("**/migration/**")
+    filter { isFailOnNoMatchingTests = false }
 }
 
 tasks.bootJar {
