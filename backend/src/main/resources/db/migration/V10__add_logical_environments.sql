@@ -1,4 +1,4 @@
--- V8: Logical environment members (logical_environments table already created in V6)
+-- V10: Logical environment members (logical_environments table already created in V6)
 
 CREATE TABLE logical_environment_members (
     id               UUID        NOT NULL,
