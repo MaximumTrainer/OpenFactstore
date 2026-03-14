@@ -496,6 +496,60 @@ export interface Notification {
   createdAt: string
 }
 
+export type SsoProvider = 'ENTRA_ID' | 'OKTA'
+
+export interface SsoConfig {
+  id: string
+  orgSlug: string
+  provider: SsoProvider
+  issuerUrl: string
+  clientId: string
+  attributeMappings: string
+  groupRoleMappings: string
+  isMandatory: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateSsoConfigRequest {
+  provider: SsoProvider
+  issuerUrl: string
+  clientId: string
+  clientSecret?: string
+  attributeMappings?: string
+  groupRoleMappings?: string
+  isMandatory?: boolean
+}
+
+export interface UpdateSsoConfigRequest {
+  provider?: SsoProvider
+  issuerUrl?: string
+  clientId?: string
+  clientSecret?: string
+  attributeMappings?: string
+  groupRoleMappings?: string
+  isMandatory?: boolean
+}
+
+export interface SsoTestConnectionResponse {
+  success: boolean
+  message: string
+  authorizationEndpoint?: string
+  tokenEndpoint?: string
+}
+
+export interface SsoLoginUrlResponse {
+  loginUrl: string
+  state: string
+}
+
+export interface SsoCallbackResponse {
+  token: string
+  userId: string
+  email: string
+  name: string
+}
+
 // Vault Evidence types
 export interface VaultEvidenceResponse {
   entityType: string
