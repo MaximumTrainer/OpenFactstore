@@ -1,0 +1,377 @@
+name: Auto-Pilot Agent
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: auto-pilot-agent
+  cancel-in-progress: true
+
+jobs:
+  auto-pilot:
+    name: Autonomous Maintainer
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config --global user.email "auto-pilot[bot]@users.noreply.github.com"
+          git config --global user.name "auto-pilot[bot]"
+
+      # ──────────────────────────────────────────────────────────────────────
+      # STEP 1 – Sync all open branches with main
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Sync open branches with main
+        run: |
+          echo "## Syncing open PR branches with main" >> "$GITHUB_STEP_SUMMARY"
+
+          # Collect the head-ref of every open PR
+          PR_BRANCHES=$(gh pr list \
+            --repo "$REPO" \
+            --state open \
+            --json headRefName \
+            --jq '.[].headRefName')
+
+          if [ -z "$PR_BRANCHES" ]; then
+            echo "No open PRs found – nothing to sync." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          for BRANCH in $PR_BRANCHES; do
+            echo "Syncing branch: $BRANCH"
+            # Fetch the remote branch; skip if it cannot be reached (deleted, fork, etc.)
+            if ! git fetch origin "$BRANCH" 2>/dev/null; then
+              echo "  WARNING: could not fetch $BRANCH, skipping."
+              continue
+            fi
+            # Create/reset local branch to the fetched remote ref
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            if git rebase origin/main; then
+              git push --force-with-lease origin "$BRANCH"
+              echo "  ✅ $BRANCH rebased onto main and pushed." | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "  ⚠️  Rebase of $BRANCH onto main failed – aborting rebase."
+              git rebase --abort || true
+            fi
+            git checkout main
+          done
+
+      # ──────────────────────────────────────────────────────────────────────
+      # STEP 2 – Process issues labelled 'automated-fix'
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Process automated-fix issues
+        run: |
+          echo "## Processing 'automated-fix' issues" >> "$GITHUB_STEP_SUMMARY"
+
+          ISSUES=$(gh issue list \
+            --repo "$REPO" \
+            --state open \
+            --label "automated-fix" \
+            --json number,title,body \
+            --jq '.[]')
+
+          if [ -z "$ISSUES" ]; then
+            echo "No issues labelled 'automated-fix' found." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "$ISSUES" | jq -c '.' | while read -r ISSUE; do
+            NUMBER=$(echo "$ISSUE" | jq -r '.number')
+            TITLE=$(echo "$ISSUE"  | jq -r '.title')
+            BODY=$(echo "$ISSUE"   | jq -r '.body')
+
+            BRANCH="automated-fix/issue-${NUMBER}"
+
+            # Skip if a PR already exists for the branch or references this issue number
+            EXISTING_PR=$(gh pr list \
+              --repo "$REPO" \
+              --head "$BRANCH" \
+              --state open \
+              --json number \
+              --jq '.[0].number // empty')
+
+            if [ -z "$EXISTING_PR" ]; then
+              # Also search for any open PR whose body references the issue number,
+              # regardless of the keyword used (closes/fixes/resolves/etc.)
+              EXISTING_PR=$(gh pr list \
+                --repo "$REPO" \
+                --state open \
+                --search "#${NUMBER} in:body" \
+                --json number \
+                --jq '.[0].number // empty')
+            fi
+
+            if [ -n "$EXISTING_PR" ]; then
+              echo "  Issue #${NUMBER}: PR #${EXISTING_PR} already open – skipping." \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            echo "  Generating fix suggestion for issue #${NUMBER}: $TITLE"
+
+            # Create or reset the local branch to the tip of main.
+            # If the remote branch exists, fetch and reset; otherwise create fresh.
+            if git ls-remote --exit-code --heads origin "$BRANCH" &>/dev/null; then
+              git fetch origin "$BRANCH"
+              git checkout -B "$BRANCH" "origin/$BRANCH"
+              git rebase origin/main || { git rebase --abort || true; git checkout main; continue; }
+            else
+              git checkout -b "$BRANCH" origin/main
+            fi
+
+            # Use GitHub Copilot CLI to suggest a fix based on the issue body.
+            # The suggestion is written to a file for human review – it is NOT
+            # executed directly to avoid running untrusted AI-generated commands.
+            SUGGESTION_FILE="copilot-suggestion-issue-${NUMBER}.md"
+            PROMPT="Provide a minimal code fix suggestion for the following GitHub issue.
+Issue title: $TITLE
+Issue body: $BODY
+Describe the changes needed with file paths and diff snippets."
+
+            SUGGESTION=$(echo "$PROMPT" | gh copilot suggest -t shell 2>/dev/null || true)
+
+            {
+              echo "# Copilot fix suggestion for issue #${NUMBER}"
+              echo ""
+              echo "**Issue:** $TITLE"
+              echo ""
+              if [ -n "$SUGGESTION" ]; then
+                echo "## Suggested changes"
+                echo ""
+                echo "$SUGGESTION"
+              else
+                echo "No automated suggestion was generated. Please implement a fix manually."
+              fi
+            } > "$SUGGESTION_FILE"
+
+            git add "$SUGGESTION_FILE"
+
+            # Only create a PR if there are staged changes or new commits on the branch
+            STAGED=$(git diff --cached --name-only)
+            NEW_COMMITS=$(git rev-list "origin/main..${BRANCH}" --count 2>/dev/null || echo 0)
+
+            if [ -z "$STAGED" ] && [ "$NEW_COMMITS" -eq 0 ]; then
+              echo "  No changes for issue #${NUMBER} – skipping PR." \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+              git checkout main
+              continue
+            fi
+
+            git commit -m "fix: automated fix suggestion for issue #${NUMBER} – $TITLE"
+            git push --force-with-lease origin "$BRANCH"
+
+            PR_URL=$(gh pr create \
+              --repo "$REPO" \
+              --title "fix: automated fix for issue #${NUMBER} – $TITLE" \
+              --body "Closes #${NUMBER}
+
+This PR was automatically generated by the auto-pilot agent in response to the \`automated-fix\` label.
+
+A Copilot fix suggestion has been committed to \`$SUGGESTION_FILE\`. Please review it, apply the changes, and push before merging." \
+              --base main \
+              --head "$BRANCH")
+
+            echo "  ✅ Created PR: $PR_URL" | tee -a "$GITHUB_STEP_SUMMARY"
+            git checkout main
+          done
+
+      # ──────────────────────────────────────────────────────────────────────
+      # STEP 3 – Manage open Pull Requests
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Manage open Pull Requests
+        run: |
+          echo "## Managing open Pull Requests" >> "$GITHUB_STEP_SUMMARY"
+
+          PRS=$(gh pr list \
+            --repo "$REPO" \
+            --state open \
+            --json number,title,headRefName,mergeable,reviewDecision,statusCheckRollup \
+            --jq '.[]')
+
+          if [ -z "$PRS" ]; then
+            echo "No open PRs found." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "$PRS" | jq -c '.' | while read -r PR; do
+            PR_NUMBER=$(echo "$PR" | jq -r '.number')
+            PR_TITLE=$(echo "$PR"  | jq -r '.title')
+            BRANCH=$(echo "$PR"    | jq -r '.headRefName')
+            MERGEABLE=$(echo "$PR" | jq -r '.mergeable')
+
+            echo "--- PR #${PR_NUMBER}: $PR_TITLE (branch: $BRANCH) ---"
+
+            # ── 3a. Conflict resolution ──────────────────────────────────
+            if [ "$MERGEABLE" = "CONFLICTING" ]; then
+              echo "  PR #${PR_NUMBER} has merge conflicts – attempting rebase…"
+              # Fetch and create/reset the local branch from the remote ref.
+              # If the fetch fails (e.g. fork PR or deleted branch), skip rebase.
+              if ! git fetch origin "$BRANCH" 2>/dev/null; then
+                echo "  WARNING: could not fetch $BRANCH – skipping conflict resolution."
+              else
+                git checkout -B "$BRANCH" "origin/$BRANCH"
+                if git rebase origin/main; then
+                  git push --force-with-lease origin "$BRANCH"
+                  echo "  ✅ Rebased $BRANCH onto main – conflicts resolved." \
+                    | tee -a "$GITHUB_STEP_SUMMARY"
+                else
+                  git rebase --abort || true
+                  # Ask Copilot for a resolution hint (description only – not executed)
+                  SUGGESTION=$(gh copilot suggest -t shell \
+                    "How do I resolve merge conflicts when rebasing branch $BRANCH onto main?" \
+                    2>/dev/null || true)
+
+                  COMMENT="⚠️ Auto-pilot: merge conflicts detected on \`$BRANCH\` and automatic rebase failed.
+
+$([ -n "$SUGGESTION" ] && printf '**Copilot suggestion:**\n```\n%s\n```\n' "$SUGGESTION" \
+  || echo "Please resolve conflicts manually and push the branch again.")
+
+Human intervention required before this PR can be merged."
+
+                  gh pr comment "$PR_NUMBER" \
+                    --repo "$REPO" \
+                    --body "$COMMENT"
+                  echo "  ⚠️  PR #${PR_NUMBER}: rebase failed – comment left for human review." \
+                    | tee -a "$GITHUB_STEP_SUMMARY"
+                fi
+                git checkout main
+              fi
+            fi
+
+            # ── 3b. Re-fetch PR state after possible rebase ──────────────
+            PR_UPDATED=$(gh pr view "$PR_NUMBER" \
+              --repo "$REPO" \
+              --json number,mergeable,reviewDecision,statusCheckRollup 2>/dev/null)
+
+            REVIEW=$(echo "$PR_UPDATED"       | jq -r '.reviewDecision // empty')
+            CHECK_ROLLUP=$(echo "$PR_UPDATED" | jq -r '.statusCheckRollup // []')
+
+            # ── 3c. CI/CD safety check ───────────────────────────────────
+            # Block merge if any check has not yet reached SUCCESS.
+            # A null conclusion means the check is still pending – also blocked.
+            FAILING_CHECKS=$(echo "$CHECK_ROLLUP" | \
+              jq -r '.[] | select(.conclusion != "SUCCESS") | .name' \
+              2>/dev/null || true)
+
+            # Specifically require the backend / build-and-test job to be SUCCESS.
+            BUILD_STATUS=$(echo "$CHECK_ROLLUP" | \
+              jq -r '.[] | select(
+                .name == "backend" or
+                .name == "Backend Build & Test" or
+                .name == "build-and-test"
+              ) | .conclusion' \
+              2>/dev/null | head -1)
+
+            if [ -n "$FAILING_CHECKS" ]; then
+              echo "  ⛔ PR #${PR_NUMBER}: CI checks not all passing – skipping merge." \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+              echo "     Not yet SUCCESS: $FAILING_CHECKS"
+              continue
+            fi
+
+            # If the backend job was found but is not SUCCESS, block the merge.
+            # If it was not found at all, also block as a safety measure.
+            if [ "$BUILD_STATUS" != "SUCCESS" ]; then
+              echo "  ⛔ PR #${PR_NUMBER}: build-and-test status is '${BUILD_STATUS:-not found}' – skipping merge." \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            # ── 3d. Auto-review PRs that have no review yet ──────────────
+            # reviewDecision is REVIEW_REQUIRED when approvals are outstanding,
+            # or empty/null when no review policy is configured.
+            if [ "$REVIEW" = "REVIEW_REQUIRED" ] || [ -z "$REVIEW" ] || [ "$REVIEW" = "null" ]; then
+              echo "  PR #${PR_NUMBER} needs review – checking for existing auto-pilot reminder…"
+              # Avoid spamming: only post if we haven't already left this comment
+              EXISTING_REMINDER=$(gh pr view "$PR_NUMBER" \
+                --repo "$REPO" \
+                --json comments \
+                --jq '[.comments[] | select(.body | contains("🤖 Auto-pilot: All CI checks are passing"))] | length' \
+                2>/dev/null || echo 0)
+
+              if [ "$EXISTING_REMINDER" -eq 0 ]; then
+                gh pr comment "$PR_NUMBER" \
+                  --repo "$REPO" \
+                  --body "🤖 Auto-pilot: All CI checks are passing. This PR is awaiting human review and approval before it can be merged." \
+                  2>/dev/null || true
+                echo "  📝 PR #${PR_NUMBER}: review reminder comment added." \
+                  | tee -a "$GITHUB_STEP_SUMMARY"
+              else
+                echo "  PR #${PR_NUMBER}: review reminder already posted – skipping duplicate." \
+                  | tee -a "$GITHUB_STEP_SUMMARY"
+              fi
+              # Re-read the review decision after commenting
+              REVIEW=$(gh pr view "$PR_NUMBER" \
+                --repo "$REPO" \
+                --json reviewDecision \
+                --jq '.reviewDecision // empty' 2>/dev/null || true)
+            fi
+
+            # ── 3e. Squash-merge if approved and all CI checks pass ──────
+            # --auto queues the merge; GitHub completes it once all branch
+            # protection rules are satisfied (consistent with issue requirements).
+            if [ "$REVIEW" = "APPROVED" ]; then
+              echo "  PR #${PR_NUMBER}: approved + CI passing – queuing squash merge…"
+              gh pr merge "$PR_NUMBER" \
+                --repo "$REPO" \
+                --squash \
+                --auto \
+                --delete-branch \
+                2>/dev/null && \
+                echo "  ✅ PR #${PR_NUMBER}: squash merge queued." | tee -a "$GITHUB_STEP_SUMMARY" || \
+                echo "  ⚠️  PR #${PR_NUMBER}: merge failed (may already be merged or requires additional approvals)." \
+                  | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "  PR #${PR_NUMBER}: review='${REVIEW:-none}' – not merging yet." \
+                | tee -a "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      # ──────────────────────────────────────────────────────────────────────
+      # STEP 4 – Verify main branch is still green
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Verify main branch health
+        run: |
+          echo "## Main branch health check" >> "$GITHUB_STEP_SUMMARY"
+
+          # Fetch the latest CI run on main (any workflow)
+          LATEST_RUN=$(gh run list \
+            --repo "$REPO" \
+            --branch main \
+            --limit 1 \
+            --json status,conclusion,url,name \
+            --jq '.[0]' 2>/dev/null || echo '{}')
+
+          STATUS=$(echo "$LATEST_RUN"     | jq -r '.status // "unknown"')
+          CONCLUSION=$(echo "$LATEST_RUN" | jq -r '.conclusion // "unknown"')
+          URL=$(echo "$LATEST_RUN"        | jq -r '.url // ""')
+          NAME=$(echo "$LATEST_RUN"       | jq -r '.name // ""')
+
+          echo "Main branch latest CI run: $NAME – status=$STATUS conclusion=$CONCLUSION"
+
+          if [ "$CONCLUSION" = "success" ]; then
+            echo "✅ Main branch is healthy ($NAME)." | tee -a "$GITHUB_STEP_SUMMARY"
+          elif [ "$STATUS" = "in_progress" ] || [ "$STATUS" = "queued" ]; then
+            echo "⏳ Main branch CI run '$NAME' is still in progress – no action taken." \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⚠️  Main branch CI conclusion: '$CONCLUSION' for '$NAME'. Review: $URL" \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
