@@ -224,6 +224,7 @@ async function toggleProvenance(artifactId: string) {
       provenanceMap.value[artifactId] = res.data
     } catch {
       delete provenanceMap.value[artifactId]
+      expandedProvenance.value = null
     }
   }
 }
