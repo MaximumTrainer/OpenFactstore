@@ -25,8 +25,15 @@ import com.factstore.core.domain.TriggerEvent
 import com.factstore.core.domain.BundleStatus
 import com.factstore.core.domain.WebhookSource
 import com.factstore.core.domain.ScanType
+import com.factstore.core.domain.AssessmentStatus
 import java.time.Instant
 import java.util.UUID
+
+// Dry-run wrapper
+data class DryRunResponse(
+    val dryRun: Boolean = true,
+    val wouldCreate: Any
+)
 
 // Flow DTOs
 data class CreateFlowRequest(
@@ -1232,4 +1239,88 @@ data class SecurityThresholdResponse(
 data class ThresholdEvaluationResult(
     val passed: Boolean,
     val breaches: List<String>
+)
+
+// Regulatory Compliance DTOs
+data class CreateFrameworkRequest(
+    val name: String,
+    val version: String,
+    val description: String? = null,
+    val orgSlug: String? = null
+)
+
+data class FrameworkResponse(
+    val id: UUID,
+    val name: String,
+    val version: String,
+    val description: String?,
+    val isActive: Boolean,
+    val orgSlug: String?,
+    val controls: List<ControlResponse> = emptyList(),
+    val createdAt: Instant
+)
+
+data class CreateControlRequest(
+    val controlId: String,
+    val title: String,
+    val description: String? = null,
+    val requiredEvidenceTypes: List<String> = emptyList()
+)
+
+data class ControlResponse(
+    val id: UUID,
+    val frameworkId: UUID,
+    val controlId: String,
+    val title: String,
+    val description: String?,
+    val requiredEvidenceTypes: List<String>,
+    val createdAt: Instant
+)
+
+data class CreateMappingRequest(
+    val regulatoryControlId: UUID,
+    val flowId: UUID,
+    val attestationType: String,
+    val isMandatory: Boolean = true
+)
+
+data class MappingResponse(
+    val id: UUID,
+    val regulatoryControlId: UUID,
+    val flowId: UUID,
+    val attestationType: String,
+    val isMandatory: Boolean,
+    val createdAt: Instant
+)
+
+data class AssessTrailRequest(
+    val frameworkId: UUID,
+    val trailId: UUID,
+    val orgSlug: String? = null
+)
+
+data class ControlResult(
+    val controlId: String,
+    val title: String,
+    val status: String,
+    val satisfiedBy: List<String> = emptyList(),
+    val missingEvidence: List<String> = emptyList()
+)
+
+data class AssessmentResponse(
+    val id: UUID,
+    val frameworkId: UUID,
+    val trailId: UUID,
+    val overallStatus: AssessmentStatus,
+    val controlResults: List<ControlResult>,
+    val orgSlug: String?,
+    val assessedAt: Instant
+)
+
+data class RegulatoryReportResponse(
+    val frameworkId: UUID,
+    val frameworkName: String,
+    val frameworkVersion: String,
+    val assessments: List<AssessmentResponse>,
+    val generatedAt: Instant
 )

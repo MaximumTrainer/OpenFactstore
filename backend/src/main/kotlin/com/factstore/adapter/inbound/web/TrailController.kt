@@ -1,15 +1,20 @@
 package com.factstore.adapter.inbound.web
 
+import com.factstore.application.DryRunContext
+import com.factstore.core.domain.TrailStatus
 import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.inbound.ITrailService
 import com.factstore.dto.AuditEventResponse
 import com.factstore.dto.CreateTrailRequest
+import com.factstore.dto.DryRunResponse
 import com.factstore.dto.TrailResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.time.Instant
 import java.util.UUID
 
 @RestController
@@ -21,8 +26,32 @@ class TrailController(
 
     @PostMapping("/api/v1/trails")
     @Operation(summary = "Create/begin a trail")
-    fun createTrail(@RequestBody request: CreateTrailRequest): ResponseEntity<TrailResponse> =
-        ResponseEntity.status(HttpStatus.CREATED).body(trailService.createTrail(request))
+    fun createTrail(
+        @RequestBody request: CreateTrailRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<*> {
+        if (DryRunContext.isDryRun(httpRequest)) {
+            val now = Instant.now()
+            val wouldBe = TrailResponse(
+                id = UUID.randomUUID(),
+                flowId = request.flowId,
+                gitCommitSha = request.gitCommitSha,
+                gitBranch = request.gitBranch,
+                gitAuthor = request.gitAuthor,
+                gitAuthorEmail = request.gitAuthorEmail,
+                pullRequestId = request.pullRequestId,
+                pullRequestReviewer = request.pullRequestReviewer,
+                deploymentActor = request.deploymentActor,
+                status = TrailStatus.PENDING,
+                orgSlug = request.orgSlug,
+                templateYaml = request.templateYaml,
+                createdAt = now,
+                updatedAt = now
+            )
+            return ResponseEntity.ok(DryRunResponse(wouldCreate = wouldBe))
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(trailService.createTrail(request))
+    }
 
     @GetMapping("/api/v1/trails")
     @Operation(summary = "List trails, optionally filter by flowId")

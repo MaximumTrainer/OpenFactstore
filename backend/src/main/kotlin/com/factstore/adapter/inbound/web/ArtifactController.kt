@@ -1,17 +1,22 @@
 package com.factstore.adapter.inbound.web
 
+import com.factstore.application.DryRunContext
+import com.factstore.core.domain.ProvenanceStatus
 import com.factstore.core.port.inbound.IArtifactService
 import com.factstore.core.port.inbound.IBuildProvenanceService
 import com.factstore.dto.ArtifactResponse
 import com.factstore.dto.BuildProvenanceResponse
 import com.factstore.dto.CreateArtifactRequest
+import com.factstore.dto.DryRunResponse
 import com.factstore.dto.ProvenanceVerificationResponse
 import com.factstore.dto.RecordProvenanceRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.time.Instant
 import java.util.UUID
 
 @RestController
@@ -25,9 +30,26 @@ class ArtifactController(
     @Operation(summary = "Report an artifact for a trail")
     fun reportArtifact(
         @PathVariable trailId: UUID,
-        @RequestBody request: CreateArtifactRequest
-    ): ResponseEntity<ArtifactResponse> =
-        ResponseEntity.status(HttpStatus.CREATED).body(artifactService.reportArtifact(trailId, request))
+        @RequestBody request: CreateArtifactRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<*> {
+        if (DryRunContext.isDryRun(httpRequest)) {
+            val wouldBe = ArtifactResponse(
+                id = UUID.randomUUID(),
+                trailId = trailId,
+                imageName = request.imageName,
+                imageTag = request.imageTag,
+                sha256Digest = request.sha256Digest,
+                registry = request.registry,
+                reportedAt = Instant.now(),
+                reportedBy = request.reportedBy,
+                orgSlug = request.orgSlug,
+                provenanceStatus = ProvenanceStatus.NO_PROVENANCE
+            )
+            return ResponseEntity.ok(DryRunResponse(wouldCreate = wouldBe))
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(artifactService.reportArtifact(trailId, request))
+    }
 
     @GetMapping("/api/v1/trails/{trailId}/artifacts")
     @Operation(summary = "List artifacts for a trail")

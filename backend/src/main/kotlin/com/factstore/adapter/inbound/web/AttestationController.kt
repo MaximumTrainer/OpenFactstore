@@ -1,18 +1,23 @@
 package com.factstore.adapter.inbound.web
 
+import com.factstore.application.DryRunContext
+import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.port.inbound.IAttestationService
 import com.factstore.core.port.inbound.IPullRequestAttestationService
 import com.factstore.dto.AttestationResponse
 import com.factstore.dto.CreateAttestationRequest
 import com.factstore.dto.CreatePrAttestationRequest
+import com.factstore.dto.DryRunResponse
 import com.factstore.dto.EvidenceFileResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
+import java.time.Instant
 import java.util.UUID
 
 @RestController
@@ -27,9 +32,29 @@ class AttestationController(
     @Operation(summary = "Record an attestation for a trail")
     fun recordAttestation(
         @PathVariable trailId: UUID,
-        @RequestBody request: CreateAttestationRequest
-    ): ResponseEntity<AttestationResponse> =
-        ResponseEntity.status(HttpStatus.CREATED).body(attestationService.recordAttestation(trailId, request))
+        @RequestBody request: CreateAttestationRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<*> {
+        if (DryRunContext.isDryRun(httpRequest)) {
+            val wouldBe = AttestationResponse(
+                id = UUID.randomUUID(),
+                trailId = trailId,
+                type = request.type,
+                status = request.status,
+                evidenceFileHash = null,
+                evidenceFileName = null,
+                evidenceFileSizeBytes = null,
+                details = request.details,
+                name = request.name,
+                evidenceUrl = request.evidenceUrl,
+                compliant = request.status == AttestationStatus.PASSED,
+                orgSlug = request.orgSlug,
+                createdAt = Instant.now()
+            )
+            return ResponseEntity.ok(DryRunResponse(wouldCreate = wouldBe))
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(attestationService.recordAttestation(trailId, request))
+    }
 
     @GetMapping
     @Operation(summary = "List attestations for a trail")

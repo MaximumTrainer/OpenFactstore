@@ -1,20 +1,25 @@
 package com.factstore.adapter.inbound.web
 
+import com.factstore.application.DryRunContext
 import com.factstore.core.port.inbound.IEnvironmentService
 import com.factstore.dto.BaselineResponse
 import com.factstore.dto.CreateBaselineRequest
 import com.factstore.dto.CreateEnvironmentRequest
 import com.factstore.dto.DriftReportResponse
+import com.factstore.dto.DryRunResponse
 import com.factstore.dto.EnvironmentResponse
 import com.factstore.dto.EnvironmentSnapshotResponse
 import com.factstore.dto.RecordSnapshotRequest
+import com.factstore.dto.SnapshotArtifactResponse
 import com.factstore.dto.SnapshotDiffResponse
 import com.factstore.dto.UpdateEnvironmentRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.time.Instant
 import java.util.UUID
 
 @RestController
@@ -24,8 +29,27 @@ class EnvironmentController(private val environmentService: IEnvironmentService)
 
     @PostMapping
     @Operation(summary = "Register a new environment")
-    fun createEnvironment(@RequestBody request: CreateEnvironmentRequest): ResponseEntity<EnvironmentResponse> =
-        ResponseEntity.status(HttpStatus.CREATED).body(environmentService.createEnvironment(request))
+    fun createEnvironment(
+        @RequestBody request: CreateEnvironmentRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<*> {
+        if (DryRunContext.isDryRun(httpRequest)) {
+            val now = Instant.now()
+            val wouldBe = EnvironmentResponse(
+                id = UUID.randomUUID(),
+                name = request.name,
+                type = request.type,
+                description = request.description,
+                orgSlug = request.orgSlug,
+                driftPolicy = request.driftPolicy,
+                scope = request.scope,
+                createdAt = now,
+                updatedAt = now
+            )
+            return ResponseEntity.ok(DryRunResponse(wouldCreate = wouldBe))
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(environmentService.createEnvironment(request))
+    }
 
     @GetMapping
     @Operation(summary = "List all environments")
@@ -56,9 +80,29 @@ class EnvironmentController(private val environmentService: IEnvironmentService)
     @Operation(summary = "Record a new snapshot for an environment")
     fun recordSnapshot(
         @PathVariable id: UUID,
-        @RequestBody request: RecordSnapshotRequest
-    ): ResponseEntity<EnvironmentSnapshotResponse> =
-        ResponseEntity.status(HttpStatus.CREATED).body(environmentService.recordSnapshot(id, request))
+        @RequestBody request: RecordSnapshotRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<*> {
+        if (DryRunContext.isDryRun(httpRequest)) {
+            val wouldBe = EnvironmentSnapshotResponse(
+                id = UUID.randomUUID(),
+                environmentId = id,
+                snapshotIndex = 0L,
+                recordedAt = Instant.now(),
+                recordedBy = request.recordedBy,
+                artifacts = request.artifacts.map { a ->
+                    SnapshotArtifactResponse(
+                        artifactSha256 = a.artifactSha256,
+                        artifactName = a.artifactName,
+                        artifactTag = a.artifactTag,
+                        instanceCount = a.instanceCount
+                    )
+                }
+            )
+            return ResponseEntity.ok(DryRunResponse(wouldCreate = wouldBe))
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(environmentService.recordSnapshot(id, request))
+    }
 
     @GetMapping("/{id}/snapshots")
     @Operation(summary = "List all snapshots for an environment")
