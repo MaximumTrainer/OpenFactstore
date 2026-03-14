@@ -24,10 +24,14 @@ class FlowService(private val flowRepository: IFlowRepository) : IFlowService {
         if (flowRepository.existsByName(request.name)) {
             throw ConflictException("Flow with name '${request.name}' already exists")
         }
+        validateTags(request.tags)
         val flow = Flow(
             name = request.name,
             description = request.description
-        ).also { it.requiredAttestationTypes = request.requiredAttestationTypes }
+        ).also {
+            it.requiredAttestationTypes = request.requiredAttestationTypes
+            it.tags = request.tags.toMutableMap()
+        }
         val saved = flowRepository.save(flow)
         log.info("Created flow: ${saved.id} - ${saved.name}")
         return saved.toResponse()
@@ -50,6 +54,10 @@ class FlowService(private val flowRepository: IFlowRepository) : IFlowService {
         }
         request.description?.let { flow.description = it }
         request.requiredAttestationTypes?.let { flow.requiredAttestationTypes = it }
+        request.tags?.let {
+            validateTags(it)
+            flow.tags = it.toMutableMap()
+        }
         flow.updatedAt = Instant.now()
         return flowRepository.save(flow).toResponse()
     }
@@ -62,6 +70,15 @@ class FlowService(private val flowRepository: IFlowRepository) : IFlowService {
 
     override fun getFlowEntity(id: UUID): Flow =
         flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+
+    private fun validateTags(tags: Map<String, String>) {
+        require(tags.size <= 50) { "Flow may have at most 50 tags" }
+        tags.forEach { (k, v) ->
+            require(k.isNotBlank()) { "Tag key must not be blank" }
+            require(k.length <= 64) { "Tag key '$k' exceeds 64 characters" }
+            require(v.length <= 256) { "Tag value for key '$k' exceeds 256 characters" }
+        }
+    }
 }
 
 fun Flow.toResponse() = FlowResponse(
@@ -69,6 +86,7 @@ fun Flow.toResponse() = FlowResponse(
     name = name,
     description = description,
     requiredAttestationTypes = requiredAttestationTypes,
+    tags = tags.toMap(),
     createdAt = createdAt,
     updatedAt = updatedAt
 )

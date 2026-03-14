@@ -99,4 +99,42 @@ class FlowServiceUnitTest {
         assertEquals(created.id, entity.id)
         assertEquals(listOf("trivy"), entity.requiredAttestationTypes)
     }
+
+    @Test
+    fun `create flow with tags stores and returns them`() {
+        val tags = mapOf("env" to "prod", "team" to "platform")
+        val resp = flowService.createFlow(CreateFlowRequest("tagged-flow", "desc", tags = tags))
+        assertEquals(tags, resp.tags)
+    }
+
+    @Test
+    fun `update flow tags replaces existing tags`() {
+        val created = flowService.createFlow(CreateFlowRequest("tag-upd-flow", "desc", tags = mapOf("old" to "value")))
+        val updated = flowService.updateFlow(created.id, UpdateFlowRequest(tags = mapOf("new" to "value2")))
+        assertEquals(mapOf("new" to "value2"), updated.tags)
+    }
+
+    @Test
+    fun `create flow with too many tags throws IllegalArgumentException`() {
+        val tags = (1..51).associate { "k$it" to "v$it" }
+        assertThrows<IllegalArgumentException> {
+            flowService.createFlow(CreateFlowRequest("many-tags-flow", "desc", tags = tags))
+        }
+    }
+
+    @Test
+    fun `create flow with tag key exceeding 64 chars throws IllegalArgumentException`() {
+        val longKey = "k".repeat(65)
+        assertThrows<IllegalArgumentException> {
+            flowService.createFlow(CreateFlowRequest("long-key-flow", "desc", tags = mapOf(longKey to "value")))
+        }
+    }
+
+    @Test
+    fun `create flow with tag value exceeding 256 chars throws IllegalArgumentException`() {
+        val longValue = "v".repeat(257)
+        assertThrows<IllegalArgumentException> {
+            flowService.createFlow(CreateFlowRequest("long-val-flow", "desc", tags = mapOf("key" to longValue)))
+        }
+    }
 }

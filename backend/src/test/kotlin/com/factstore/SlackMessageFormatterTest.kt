@@ -97,6 +97,7 @@ class SlackMessageFormatterTest {
         val flow = FlowResponse(
             id = flowId, name = "my-flow", description = "",
             requiredAttestationTypes = listOf("BUILD"),
+            tags = emptyMap(),
             createdAt = Instant.now(), updatedAt = Instant.now()
         )
         val attestations = listOf(
@@ -130,6 +131,7 @@ class SlackMessageFormatterTest {
         val flow = FlowResponse(
             id = flowId, name = "flow", description = "",
             requiredAttestationTypes = emptyList(),
+            tags = emptyMap(),
             createdAt = Instant.now(), updatedAt = Instant.now()
         )
         val result = formatter.formatTrailDetails(trail, flow, emptyList())
@@ -150,6 +152,7 @@ class SlackMessageFormatterTest {
         val flow = FlowResponse(
             id = flowId, name = "flow", description = "",
             requiredAttestationTypes = listOf("SECURITY_SCAN"),
+            tags = emptyMap(),
             createdAt = Instant.now(), updatedAt = Instant.now()
         )
         val attestations = listOf(
