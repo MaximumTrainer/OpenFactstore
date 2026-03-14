@@ -569,6 +569,8 @@ export interface EvidenceGapItem {
 export interface EvidenceGapsResponse {
   gaps: EvidenceGapItem[]
   totalTrailsWithGaps: number
+}
+
 export type SsoProvider = 'ENTRA_ID' | 'OKTA'
 
 export interface SsoConfig {
