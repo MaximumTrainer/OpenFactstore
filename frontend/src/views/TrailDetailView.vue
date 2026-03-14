@@ -250,8 +250,7 @@ import { getAttestations } from '../api/attestations'
 import { getArtifacts, getProvenance } from '../api/artifacts'
 import { assertCompliance } from '../api/assert'
 import { getEvidenceSummary } from '../api/evidence'
-import type { Trail, Attestation, Artifact, AssertResult, EvidenceSummary } from '../types'
-import type { Trail, Attestation, Artifact, AssertResult, BuildProvenance, ProvenanceStatus } from '../types'
+import type { Trail, Attestation, Artifact, AssertResult, EvidenceSummary, BuildProvenance, ProvenanceStatus } from '../types'
 
 const route = useRoute()
 const trail = ref<Trail | null>(null)
@@ -279,6 +278,8 @@ function formatDate(dateStr: string): string {
 
 function formatPct(value: number | null): string {
   return value != null ? value + '%' : '—'
+}
+
 function provenanceLabel(status: ProvenanceStatus): string {
   switch (status) {
     case 'PROVENANCE_VERIFIED': return '✓ Verified'

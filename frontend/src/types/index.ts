@@ -569,6 +569,8 @@ export interface EvidenceGapItem {
 export interface EvidenceGapsResponse {
   gaps: EvidenceGapItem[]
   totalTrailsWithGaps: number
+}
+
 // Vault Evidence types
 export interface VaultEvidenceResponse {
   entityType: string

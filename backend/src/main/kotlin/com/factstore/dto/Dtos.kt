@@ -791,6 +791,8 @@ data class EvidenceGapItem(
 data class EvidenceGapsResponse(
     val gaps: List<EvidenceGapItem>,
     val totalTrailsWithGaps: Int
+)
+
 // Vault Evidence DTOs
 data class StoreEvidenceRequest(
     val evidenceType: String,
