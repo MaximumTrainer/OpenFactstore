@@ -22,6 +22,7 @@ import com.factstore.core.domain.ProvenanceStatus
 import com.factstore.core.domain.SlsaLevel
 import com.factstore.core.domain.TrailStatus
 import com.factstore.core.domain.TriggerEvent
+import com.factstore.core.domain.BundleStatus
 import com.factstore.core.domain.WebhookSource
 import java.time.Instant
 import java.util.UUID
@@ -1001,6 +1002,43 @@ data class CreateOrganisationRequest(
 data class UpdateOrganisationRequest(
     val name: String? = null,
     val description: String? = null
+)
+
+// OPA Policy DTOs
+data class UploadBundleRequest(
+    val name: String,
+    val version: String,
+    val regoContent: String,
+    val orgSlug: String? = null
+)
+
+data class BundleResponse(
+    val id: UUID,
+    val name: String,
+    val version: String,
+    val regoContent: String,
+    val status: BundleStatus,
+    val orgSlug: String?,
+    val createdAt: Instant,
+    val updatedAt: Instant
+)
+
+data class EvaluatePolicyRequest(
+    val artifactName: String,
+    val artifactVersion: String? = null,
+    val environment: String? = null,
+    val attestations: List<Map<String, String>> = emptyList(),
+    val approvalStatus: String? = null
+)
+
+data class PolicyDecisionResponse(
+    val id: UUID,
+    val bundleId: UUID?,
+    val inputJson: String,
+    val resultAllow: Boolean,
+    val denyReasons: List<String>,
+    val orgSlug: String?,
+    val evaluatedAt: Instant
 )
 
 data class OrganisationResponse(
