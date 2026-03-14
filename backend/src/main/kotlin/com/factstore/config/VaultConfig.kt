@@ -19,6 +19,7 @@ import java.net.URI
  * is configured according to the `vault.*` properties:
  * - **TOKEN** auth: uses a static root/service token (suitable for dev/local)
  * - **APPROLE** auth: uses role-id + secret-id (recommended for production)
+ * - **KUBERNETES**: not yet supported — startup will fail with a clear error
  */
 @Configuration
 @ConditionalOnProperty(name = ["vault.enabled"], havingValue = "true")
@@ -40,7 +41,12 @@ class VaultConfig(private val vaultProperties: VaultProperties) {
                     .build()
                 AppRoleAuthentication(options, VaultClients.createRestTemplate(vaultEndpoint, requestFactory))
             }
-            else -> TokenAuthentication(vaultProperties.token)
+            VaultProperties.AuthMethod.TOKEN -> TokenAuthentication(vaultProperties.token)
+            VaultProperties.AuthMethod.KUBERNETES ->
+                throw IllegalStateException(
+                    "Vault authentication method KUBERNETES is not yet supported. " +
+                    "Use TOKEN or APPROLE (set vault.authentication accordingly)."
+                )
         }
     }
 

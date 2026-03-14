@@ -259,13 +259,30 @@ const storeResult = ref<VaultEvidenceResponse | null>(null)
 async function handleStore() {
   storeError.value = ''
   storeResult.value = null
-  let data: Record<string, string>
+  let parsed: unknown
   try {
-    data = JSON.parse(storeForm.value.dataJson)
+    parsed = JSON.parse(storeForm.value.dataJson)
   } catch {
     storeError.value = 'Invalid JSON — please provide a valid key-value object.'
     return
   }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    storeError.value = 'Evidence data must be a JSON object (e.g. {"result": "Passed"}).'
+    return
+  }
+  // Coerce all values to strings so the backend Map<String, String> contract is satisfied.
+  // Only string, number, and boolean primitives are accepted; complex objects/arrays are rejected.
+  const entries = Object.entries(parsed as Record<string, unknown>)
+  const invalidKeys = entries
+    .filter(([, v]) => v !== null && v !== undefined && typeof v === 'object')
+    .map(([k]) => k)
+  if (invalidKeys.length > 0) {
+    storeError.value = `Evidence values must be strings, numbers, or booleans. Found nested object/array for key(s): ${invalidKeys.join(', ')}.`
+    return
+  }
+  const data: Record<string, string> = Object.fromEntries(
+    entries.map(([k, v]) => [k, String(v)])
+  )
   storing.value = true
   try {
     const res = await storeEvidence(storeForm.value.entityType, storeForm.value.entityId, {
@@ -318,8 +335,10 @@ async function handleDownload() {
     const a = document.createElement('a')
     a.href = url
     a.download = `evidence-${retrieveForm.value.entityType}-${retrieveForm.value.entityId}-${retrieveForm.value.evidenceType}.json`
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
   } catch {
     retrieveError.value = 'Failed to download evidence.'
   } finally {

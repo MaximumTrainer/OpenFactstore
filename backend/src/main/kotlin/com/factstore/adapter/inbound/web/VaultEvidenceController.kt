@@ -25,8 +25,8 @@ import org.springframework.web.bind.annotation.RestController
  * All endpoints follow the path pattern:
  *   `/api/v1/evidence/{entityType}/{entityId}`
  *
- * Evidence is stored in Vault KV v2 at:
- *   `secret/evidence/{entityType}/{entityId}/{evidenceType}`
+ * Evidence is stored in the configured Vault KV v2 backend at:
+ *   `{vault.kv.backend}/evidence/{entityType}/{entityId}/{evidenceType}`
  *
  * This controller is only active when `vault.enabled=true`.
  */
@@ -39,7 +39,7 @@ class VaultEvidenceController(
 ) {
 
     @PostMapping("/{entityType}/{entityId}")
-    @Operation(summary = "Store evidence in Vault", description = "Stores evidence key-value data in Vault KV v2 at secret/evidence/{entityType}/{entityId}/{evidenceType}")
+    @Operation(summary = "Store evidence in Vault", description = "Stores evidence key-value data in Vault KV v2 at the configured KV backend under evidence/{entityType}/{entityId}/{evidenceType}")
     fun storeEvidence(
         @PathVariable entityType: String,
         @PathVariable entityId: String,

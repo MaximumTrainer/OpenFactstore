@@ -1,6 +1,7 @@
 package com.factstore.adapter.outbound
 
 import com.factstore.config.VaultProperties
+import com.factstore.core.port.outbound.EvidenceMetadata
 import com.factstore.core.port.outbound.ISecureEvidenceStore
 import com.factstore.core.port.outbound.VaultStorageReceipt
 import org.slf4j.LoggerFactory
@@ -18,7 +19,7 @@ import org.springframework.vault.support.VaultResponse
  * This adapter is activated only when `vault.enabled=true` in application configuration.
  * For local development, start the Vault dev server via Docker Compose.
  *
- * Authentication methods supported: TOKEN, APPROLE (KUBERNETES planned).
+ * Authentication methods supported: TOKEN, APPROLE.
  */
 @Component
 @ConditionalOnProperty(name = ["vault.enabled"], havingValue = "true")
@@ -52,22 +53,37 @@ class VaultKvAdapter(
     ): Map<String, String>? {
         val path = kvDataPath(entityType, entityId, evidenceType)
         log.debug("Retrieving evidence from Vault path: {}", path)
-        return try {
-            val response = vaultTemplate.read(path) ?: return null
-            @Suppress("UNCHECKED_CAST")
-            (response.data?.get("data") as? Map<String, String>)
-        } catch (e: Exception) {
-            log.warn("Failed to retrieve evidence from Vault path {}: {}", path, e.message)
-            null
+        // vaultTemplate.read() returns null when the secret does not exist.
+        // Operational failures (Vault down, permission denied) throw — we let those propagate
+        // so callers can distinguish "not found" (null → 404) from infrastructure errors (5xx).
+        val response = vaultTemplate.read(path) ?: return null
+        @Suppress("UNCHECKED_CAST")
+        return response.data?.get("data") as? Map<String, String>
+    }
+
+    override fun getEvidenceMetadata(
+        entityType: String,
+        entityId: String,
+        evidenceType: String
+    ): EvidenceMetadata? {
+        val metaPath = kvMetadataPath(entityType, entityId, evidenceType)
+        log.debug("Reading evidence metadata from Vault path: {}", metaPath)
+        val response = vaultTemplate.read(metaPath) ?: return null
+        val currentVersion = (response.data?.get("current_version") as? Number)?.toInt() ?: run {
+            log.warn("Could not determine current_version from Vault metadata at path: {}", metaPath)
+            0
         }
+        @Suppress("UNCHECKED_CAST")
+        val versions = response.data?.get("versions") as? Map<String, Map<String, Any?>>
+        val createdTime = versions?.get(currentVersion.toString())?.get("created_time") as? String
+        return EvidenceMetadata(version = currentVersion, createdTime = createdTime)
     }
 
     override fun listEvidence(entityType: String, entityId: String): List<String> {
         val listPath = "${kvBackend}/metadata/evidence/$entityType/$entityId"
         log.debug("Listing evidence keys at Vault path: {}", listPath)
         return try {
-            val response = vaultTemplate.list(listPath) ?: emptyList()
-            response
+            vaultTemplate.list(listPath) ?: emptyList()
         } catch (e: Exception) {
             log.warn("Failed to list evidence at Vault path {}: {}", listPath, e.message)
             emptyList()
@@ -97,14 +113,24 @@ class VaultKvAdapter(
         "$kvBackend/data/evidence/$entityType/$entityId/$evidenceType"
 
     /**
+     * KV v2 metadata path for reading version/timestamp information:
+     *   `{backend}/metadata/evidence/{entityType}/{entityId}/{evidenceType}`
+     */
+    private fun kvMetadataPath(entityType: String, entityId: String, evidenceType: String): String =
+        "$kvBackend/metadata/evidence/$entityType/$entityId/$evidenceType"
+
+    /**
      * Human-readable canonical path (without the internal `/data/` prefix).
      */
     private fun buildPath(entityType: String, entityId: String, evidenceType: String): String =
         "$kvBackend/evidence/$entityType/$entityId/$evidenceType"
 
-    private fun extractVersion(response: VaultResponse?): Int {
-        @Suppress("UNCHECKED_CAST")
-        val metadata = response?.data?.get("metadata") as? Map<String, Any>
-        return (metadata?.get("version") as? Number)?.toInt() ?: 0
-    }
+    /**
+     * Extracts the KV v2 version from the write response.
+     * For Vault KV v2, the response data contains the version directly:
+     *   `{ "version": 1, "created_time": "...", ... }`.
+     */
+    private fun extractVersion(response: VaultResponse?): Int =
+        (response?.data?.get("version") as? Number)?.toInt() ?: 0
 }
+

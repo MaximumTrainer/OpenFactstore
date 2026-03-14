@@ -65,22 +65,29 @@ class VaultEvidenceService(
             "Retrieving evidence metadata: entityType={} entityId={} evidenceType={}",
             entityType, entityId, evidenceType
         )
-        // Verify the evidence exists; throw if not found
-        secureEvidenceStore.retrieveEvidence(entityType, entityId, evidenceType)
+        val meta = secureEvidenceStore.getEvidenceMetadata(entityType, entityId, evidenceType)
             ?: throw NotFoundException(
                 "No evidence found for entityType=$entityType entityId=$entityId evidenceType=$evidenceType"
             )
         val path = "${vaultProperties.kv.backend}/evidence/$entityType/$entityId/$evidenceType"
-        // Note: version and storedAt are not available from a KV v2 read without a separate
-        // metadata call. Version is returned as 0 and storedAt reflects retrieval time here.
-        // A future enhancement could call the /metadata path to populate these fields.
+        val storedAt = if (meta.createdTime != null) {
+            runCatching { java.time.Instant.parse(meta.createdTime) }.getOrElse {
+                log.warn(
+                    "Could not parse Vault createdTime '{}' for {}/{}/{} — using current time as fallback",
+                    meta.createdTime, entityType, entityId, evidenceType
+                )
+                Instant.now()
+            }
+        } else {
+            Instant.now()
+        }
         return VaultEvidenceResponse(
             entityType = entityType,
             entityId = entityId,
             evidenceType = evidenceType,
             vaultPath = path,
-            version = 0,
-            storedAt = Instant.now()
+            version = meta.version,
+            storedAt = storedAt
         )
     }
 
