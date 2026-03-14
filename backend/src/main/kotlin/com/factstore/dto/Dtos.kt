@@ -24,6 +24,7 @@ import com.factstore.core.domain.TrailStatus
 import com.factstore.core.domain.TriggerEvent
 import com.factstore.core.domain.BundleStatus
 import com.factstore.core.domain.WebhookSource
+import com.factstore.core.domain.ScanType
 import java.time.Instant
 import java.util.UUID
 
@@ -1162,4 +1163,73 @@ data class ScmIntegrationResponse(
     val orgSlug: String,
     val provider: ScmProvider,
     val createdAt: Instant
+)
+
+// Security Scan DTOs
+data class RecordSecurityScanRequest(
+    val tool: String,
+    val toolVersion: String? = null,
+    val scanType: ScanType? = null,
+    val target: String? = null,
+    val criticalVulnerabilities: Int = 0,
+    val highVulnerabilities: Int = 0,
+    val mediumVulnerabilities: Int = 0,
+    val lowVulnerabilities: Int = 0,
+    val informational: Int = 0,
+    val scanDurationSeconds: Long? = null,
+    val reportUrl: String? = null,
+    val orgSlug: String? = null
+)
+
+data class SecurityScanResponse(
+    val id: UUID,
+    val trailId: UUID,
+    val attestationId: UUID?,
+    val tool: String,
+    val toolVersion: String?,
+    val scanType: ScanType?,
+    val target: String?,
+    val criticalVulnerabilities: Int,
+    val highVulnerabilities: Int,
+    val mediumVulnerabilities: Int,
+    val lowVulnerabilities: Int,
+    val informational: Int,
+    val scanDurationSeconds: Long?,
+    val reportUrl: String?,
+    val orgSlug: String?,
+    val createdAt: Instant,
+    val thresholdBreached: Boolean = false,
+    val breachDetails: List<String> = emptyList()
+)
+
+data class SecurityScanSummaryResponse(
+    val totalScans: Int,
+    val totalCritical: Int,
+    val totalHigh: Int,
+    val totalMedium: Int,
+    val totalLow: Int,
+    val scansWithCritical: Int
+)
+
+data class SetSecurityThresholdRequest(
+    val maxCritical: Int = 0,
+    val maxHigh: Int = 0,
+    val maxMedium: Int = 10,
+    val maxLow: Int = Int.MAX_VALUE
+)
+
+data class SecurityThresholdResponse(
+    val id: UUID,
+    val flowId: UUID,
+    val maxCritical: Int,
+    val maxHigh: Int,
+    val maxMedium: Int,
+    val maxLow: Int,
+    val createdAt: Instant,
+    val updatedAt: Instant
+)
+
+data class ThresholdEvaluationResult(
+    val passed: Boolean,
+    val breaches: List<String>
 )
