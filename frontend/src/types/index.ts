@@ -424,6 +424,60 @@ export interface RecordSnapshotRequest {
   }>
 }
 
+// Logical Environment types
+export interface LogicalEnvironmentMember {
+  physicalEnvId: string
+  physicalEnvName: string
+  physicalEnvType: EnvironmentType
+  addedAt: string
+}
+
+export interface LogicalEnvironment {
+  id: string
+  name: string
+  description: string
+  members: LogicalEnvironmentMember[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateLogicalEnvironmentRequest {
+  name: string
+  description?: string
+}
+
+export interface UpdateLogicalEnvironmentRequest {
+  name?: string
+  description?: string
+}
+
+export interface MergedSnapshotArtifact {
+  artifactSha256: string
+  artifactName: string
+  artifactTag: string
+  instanceCount: number
+  physicalEnvId: string
+  physicalEnvName: string
+}
+
+export interface MemberSnapshotSummary {
+  physicalEnvId: string
+  physicalEnvName: string
+  snapshotIndex: number | null
+  recordedAt: string | null
+  artifactCount: number
+}
+
+export type MergedSnapshotComplianceStatus = 'COMPLIANT' | 'NON_COMPLIANT'
+
+export interface MergedSnapshotResponse {
+  logicalEnvId: string
+  logicalEnvName: string
+  complianceStatus: MergedSnapshotComplianceStatus
+  memberSnapshots: MemberSnapshotSummary[]
+  mergedArtifacts: MergedSnapshotArtifact[]
+}
+
 
 // Notification types
 export type TriggerEvent =

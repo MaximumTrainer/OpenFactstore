@@ -24,9 +24,23 @@ test('Evidence Vault page loads', async ({ page }) => {
 test('Environments page loads', async ({ page }) => {
   await page.goto('/environments')
   await expect(page.getByText('Environments')).toBeVisible()
+})
+
 test('Audit Log page loads with filter controls', async ({ page }) => {
   await page.goto('/audit')
   await expect(page.getByRole('heading', { name: 'Audit Log' })).toBeVisible()
   await expect(page.getByLabel('Event Type')).toBeVisible()
   await expect(page.getByPlaceholder('Filter by actor')).toBeVisible()
+})
+
+test('Logical Environments page loads', async ({ page }) => {
+  await page.goto('/logical-environments')
+  await expect(page.getByText('Logical Environments')).toBeVisible()
+})
+
+test('Logical Environments NavBar link navigates correctly', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Logical Envs' }).click()
+  await expect(page).toHaveURL(/\/logical-environments/)
+  await expect(page.getByText('Logical Environments')).toBeVisible()
 })
