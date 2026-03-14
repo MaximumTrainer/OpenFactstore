@@ -20,6 +20,14 @@ class LogicalEnvironmentController(private val logicalEnvironmentService: ILogic
     @PostMapping
     @Operation(summary = "Create a logical environment")
     fun createLogicalEnvironment(@RequestBody request: CreateLogicalEnvironmentRequest): ResponseEntity<LogicalEnvironmentResponse> =
+@Tag(name = "Logical Environments", description = "Logical environment management")
+class LogicalEnvironmentController(private val logicalEnvironmentService: ILogicalEnvironmentService) {
+
+    @PostMapping
+    @Operation(summary = "Create a new logical environment")
+    fun createLogicalEnvironment(
+        @RequestBody request: CreateLogicalEnvironmentRequest
+    ): ResponseEntity<LogicalEnvironmentResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(logicalEnvironmentService.createLogicalEnvironment(request))
 
     @GetMapping

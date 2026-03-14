@@ -28,6 +28,7 @@ interface ArtifactRepositoryJpa : JpaRepository<Artifact, UUID> {
 @Component
 class ArtifactRepositoryAdapter(private val jpa: ArtifactRepositoryJpa) : IArtifactRepository {
     override fun save(artifact: Artifact): Artifact = jpa.save(artifact)
+    override fun findById(id: UUID): Artifact? = jpa.findById(id).orElse(null)
     override fun findByTrailId(trailId: UUID): List<Artifact> = jpa.findByTrailId(trailId)
     override fun findBySha256Digest(sha256Digest: String): List<Artifact> = jpa.findBySha256Digest(sha256Digest)
     override fun findBySha256DigestStartingWith(prefix: String): List<Artifact> = jpa.findBySha256DigestStartingWith(prefix)

@@ -1,6 +1,7 @@
 package com.factstore.dto
 
 import com.factstore.core.domain.AttestationStatus
+import com.factstore.core.domain.BuilderType
 import com.factstore.core.domain.OwnerType
 import com.factstore.core.domain.AuditEventType
 import com.factstore.core.domain.ChannelType
@@ -9,6 +10,8 @@ import com.factstore.core.domain.EnvironmentType
 import com.factstore.core.domain.MemberRole
 import com.factstore.core.domain.NotificationDeliveryStatus
 import com.factstore.core.domain.NotificationSeverity
+import com.factstore.core.domain.ProvenanceStatus
+import com.factstore.core.domain.SlsaLevel
 import com.factstore.core.domain.TrailStatus
 import com.factstore.core.domain.TriggerEvent
 import com.factstore.core.domain.WebhookSource
@@ -100,7 +103,43 @@ data class ArtifactResponse(
     val sha256Digest: String,
     val registry: String?,
     val reportedAt: Instant,
-    val reportedBy: String
+    val reportedBy: String,
+    val provenanceStatus: ProvenanceStatus = ProvenanceStatus.NO_PROVENANCE
+)
+
+// Build Provenance DTOs
+data class RecordProvenanceRequest(
+    val builderId: String,
+    val builderType: BuilderType,
+    val buildConfigUri: String? = null,
+    val sourceRepositoryUri: String? = null,
+    val sourceCommitSha: String? = null,
+    val buildStartedOn: Instant? = null,
+    val buildFinishedOn: Instant? = null,
+    val provenanceSignature: String? = null,
+    val slsaLevel: SlsaLevel = SlsaLevel.L0
+)
+
+data class BuildProvenanceResponse(
+    val id: UUID,
+    val artifactId: UUID,
+    val builderId: String,
+    val builderType: BuilderType,
+    val buildConfigUri: String?,
+    val sourceRepositoryUri: String?,
+    val sourceCommitSha: String?,
+    val buildStartedOn: Instant?,
+    val buildFinishedOn: Instant?,
+    val provenanceSignature: String?,
+    val slsaLevel: SlsaLevel,
+    val provenanceStatus: ProvenanceStatus,
+    val recordedAt: Instant
+)
+
+data class ProvenanceVerificationResponse(
+    val artifactId: UUID,
+    val provenanceStatus: ProvenanceStatus,
+    val message: String
 )
 
 // Evidence File DTOs
@@ -678,6 +717,36 @@ data class NotificationEvent(
     val extraPayload: Map<String, Any?> = emptyMap()
 )
 
+// Vault Evidence DTOs
+data class StoreEvidenceRequest(
+    val evidenceType: String,
+    val data: Map<String, String>
+)
+
+data class VaultEvidenceResponse(
+    val entityType: String,
+    val entityId: String,
+    val evidenceType: String,
+    val vaultPath: String,
+    val version: Int,
+    val data: Map<String, String>? = null,
+    val storedAt: Instant
+)
+
+data class VaultEvidenceListResponse(
+    val entityType: String,
+    val entityId: String,
+    val evidenceTypes: List<String>
+)
+
+data class VaultHealthResponse(
+    val healthy: Boolean,
+    val vaultUri: String,
+    val authMethod: String,
+    val message: String,
+    val checkedAt: Instant = Instant.now()
+)
+
 // Policy DTOs
 data class CreatePolicyRequest(
     val name: String,
@@ -717,6 +786,7 @@ data class PolicyAttachmentResponse(
 )
 
 // Logical Environment DTOs
+// LogicalEnvironment DTOs
 data class CreateLogicalEnvironmentRequest(
     val name: String,
     val description: String = ""
