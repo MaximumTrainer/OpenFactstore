@@ -44,15 +44,45 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tag</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SHA256 Digest</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reported By</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provenance</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="artifact in artifacts" :key="artifact.id">
-              <td class="px-6 py-4 text-sm text-gray-900">{{ artifact.imageName }}</td>
-              <td class="px-6 py-4 text-sm text-gray-500">{{ artifact.imageTag }}</td>
-              <td class="px-6 py-4 text-sm font-mono text-gray-500 truncate max-w-xs">{{ artifact.sha256Digest }}</td>
-              <td class="px-6 py-4 text-sm text-gray-500">{{ artifact.reportedBy }}</td>
-            </tr>
+            <template v-for="artifact in artifacts" :key="artifact.id">
+              <tr>
+                <td class="px-6 py-4 text-sm text-gray-900">{{ artifact.imageName }}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">{{ artifact.imageTag }}</td>
+                <td class="px-6 py-4 text-sm font-mono text-gray-500 truncate max-w-xs">{{ artifact.sha256Digest }}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">{{ artifact.reportedBy }}</td>
+                <td class="px-6 py-4">
+                  <span :class="provenanceBadgeClass(artifact.provenanceStatus)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                    {{ provenanceLabel(artifact.provenanceStatus) }}
+                  </span>
+                  <button
+                    v-if="artifact.provenanceStatus !== 'NO_PROVENANCE'"
+                    class="ml-2 text-xs text-indigo-600 hover:text-indigo-900"
+                    @click="toggleProvenance(artifact.id)"
+                  >{{ expandedProvenance === artifact.id ? 'Hide' : 'Details' }}</button>
+                </td>
+              </tr>
+              <tr v-if="expandedProvenance === artifact.id && provenanceMap[artifact.id]" class="bg-gray-50">
+                <td colspan="5" class="px-6 py-4">
+                  <div class="text-sm text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div><span class="font-medium">Builder ID:</span> {{ provenanceMap[artifact.id]?.builderId }}</div>
+                    <div><span class="font-medium">Builder Type:</span> {{ provenanceMap[artifact.id]?.builderType }}</div>
+                    <div v-if="provenanceMap[artifact.id]?.buildConfigUri"><span class="font-medium">Build Config:</span> {{ provenanceMap[artifact.id]?.buildConfigUri }}</div>
+                    <div v-if="provenanceMap[artifact.id]?.sourceRepositoryUri"><span class="font-medium">Source Repo:</span> {{ provenanceMap[artifact.id]?.sourceRepositoryUri }}</div>
+                    <div v-if="provenanceMap[artifact.id]?.sourceCommitSha"><span class="font-medium">Source Commit:</span> <span class="font-mono">{{ provenanceMap[artifact.id]?.sourceCommitSha }}</span></div>
+                    <div v-if="provenanceMap[artifact.id]?.buildStartedOn"><span class="font-medium">Build Started:</span> {{ formatDate(provenanceMap[artifact.id]?.buildStartedOn ?? '') }}</div>
+                    <div v-if="provenanceMap[artifact.id]?.buildFinishedOn"><span class="font-medium">Build Finished:</span> {{ formatDate(provenanceMap[artifact.id]?.buildFinishedOn ?? '') }}</div>
+                    <div>
+                      <span class="font-medium">SLSA Level:</span>
+                      <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">{{ provenanceMap[artifact.id]?.slsaLevel }}</span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
@@ -217,10 +247,11 @@ import { useRoute } from 'vue-router'
 import StatusBadge from '../components/StatusBadge.vue'
 import { getTrail } from '../api/trails'
 import { getAttestations } from '../api/attestations'
-import { getArtifacts } from '../api/artifacts'
+import { getArtifacts, getProvenance } from '../api/artifacts'
 import { assertCompliance } from '../api/assert'
 import { getEvidenceSummary } from '../api/evidence'
 import type { Trail, Attestation, Artifact, AssertResult, EvidenceSummary } from '../types'
+import type { Trail, Attestation, Artifact, AssertResult, BuildProvenance, ProvenanceStatus } from '../types'
 
 const route = useRoute()
 const trail = ref<Trail | null>(null)
@@ -231,6 +262,9 @@ const loading = ref(true)
 const attestationsLoading = ref(true)
 const artifactsLoading = ref(true)
 const evidenceSummaryLoading = ref(true)
+
+const expandedProvenance = ref<string | null>(null)
+const provenanceMap = ref<Record<string, BuildProvenance | null>>({})
 
 const showAssertModal = ref(false)
 const assertSha256 = ref('')
@@ -245,6 +279,38 @@ function formatDate(dateStr: string): string {
 
 function formatPct(value: number | null): string {
   return value != null ? value + '%' : '—'
+function provenanceLabel(status: ProvenanceStatus): string {
+  switch (status) {
+    case 'PROVENANCE_VERIFIED': return '✓ Verified'
+    case 'PROVENANCE_UNVERIFIED': return '⚠ Unverified'
+    default: return 'No Provenance'
+  }
+}
+
+function provenanceBadgeClass(status: ProvenanceStatus): string {
+  switch (status) {
+    case 'PROVENANCE_VERIFIED': return 'bg-green-100 text-green-800'
+    case 'PROVENANCE_UNVERIFIED': return 'bg-yellow-100 text-yellow-800'
+    default: return 'bg-gray-100 text-gray-600'
+  }
+}
+
+async function toggleProvenance(artifactId: string) {
+  if (expandedProvenance.value === artifactId) {
+    expandedProvenance.value = null
+    return
+  }
+  expandedProvenance.value = artifactId
+  if (provenanceMap.value[artifactId] === undefined) {
+    try {
+      const trailId = route.params.id as string
+      const res = await getProvenance(trailId, artifactId)
+      provenanceMap.value[artifactId] = res.data
+    } catch {
+      delete provenanceMap.value[artifactId]
+      expandedProvenance.value = null
+    }
+  }
 }
 
 function openAssertModal() {

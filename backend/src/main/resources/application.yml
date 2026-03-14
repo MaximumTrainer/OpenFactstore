@@ -50,6 +50,21 @@ ledger:
   local:
     storage-path: ${LEDGER_STORAGE_PATH:./data/ledger}
 
+vault:
+  enabled: ${VAULT_ENABLED:false}
+  uri: ${VAULT_ADDR:http://localhost:8200}
+  authentication: ${VAULT_AUTH_METHOD:TOKEN}
+  token: ${VAULT_TOKEN:}
+  app-role:
+    role-id: ${VAULT_ROLE_ID:}
+    secret-id: ${VAULT_SECRET_ID:}
+  kv:
+    enabled: true
+    backend: secret
+    default-context: factstore
+  tls:
+    enabled: false
+
 server:
   port: 8080
   # HTTPS / TLS configuration (production)

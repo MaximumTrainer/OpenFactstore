@@ -43,6 +43,33 @@ export interface Artifact {
   registry?: string
   reportedAt: string
   reportedBy: string
+  provenanceStatus: 'NO_PROVENANCE' | 'PROVENANCE_UNVERIFIED' | 'PROVENANCE_VERIFIED'
+}
+
+export type BuilderType = 'GITHUB_ACTIONS' | 'JENKINS' | 'CIRCLE_CI' | 'GENERIC'
+export type SlsaLevel = 'L0' | 'L1' | 'L2' | 'L3'
+export type ProvenanceStatus = 'NO_PROVENANCE' | 'PROVENANCE_UNVERIFIED' | 'PROVENANCE_VERIFIED'
+
+export interface BuildProvenance {
+  id: string
+  artifactId: string
+  builderId: string
+  builderType: BuilderType
+  buildConfigUri?: string | null
+  sourceRepositoryUri?: string | null
+  sourceCommitSha?: string | null
+  buildStartedOn?: string | null
+  buildFinishedOn?: string | null
+  provenanceSignature?: string | null
+  slsaLevel: SlsaLevel
+  provenanceStatus: ProvenanceStatus
+  recordedAt: string
+}
+
+export interface ProvenanceVerification {
+  artifactId: string
+  provenanceStatus: ProvenanceStatus
+  message: string
 }
 
 export interface EvidenceFile {
@@ -542,4 +569,32 @@ export interface EvidenceGapItem {
 export interface EvidenceGapsResponse {
   gaps: EvidenceGapItem[]
   totalTrailsWithGaps: number
+// Vault Evidence types
+export interface VaultEvidenceResponse {
+  entityType: string
+  entityId: string
+  evidenceType: string
+  vaultPath: string
+  version: number
+  data?: Record<string, string> | null
+  storedAt: string
+}
+
+export interface VaultEvidenceListResponse {
+  entityType: string
+  entityId: string
+  evidenceTypes: string[]
+}
+
+export interface VaultHealthResponse {
+  healthy: boolean
+  vaultUri: string
+  authMethod: string
+  message: string
+  checkedAt: string
+}
+
+export interface StoreEvidenceRequest {
+  evidenceType: string
+  data: Record<string, string>
 }
