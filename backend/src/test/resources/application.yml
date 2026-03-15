@@ -20,3 +20,7 @@ ledger:
 
 audit:
   hmac-secret: test-secret-for-unit-tests
+
+security:
+  enforce-auth: false
+

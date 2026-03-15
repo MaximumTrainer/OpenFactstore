@@ -113,6 +113,12 @@ factstore:
   region: ${FACTSTORE_REGION:us-east-1}
   policy:
     evaluator: ${FACTSTORE_POLICY_EVALUATOR:opa}
+  scm:
+    encryption-key: ${SCM_ENCRYPTION_KEY:default-dev-key-32chars!!!!!!}
 
 cosign:
   enabled: ${COSIGN_ENABLED:false}
+
+# Set SECURITY_ENFORCE_AUTH=true in production to enforce authentication
+security:
+  enforce-auth: ${SECURITY_ENFORCE_AUTH:false}

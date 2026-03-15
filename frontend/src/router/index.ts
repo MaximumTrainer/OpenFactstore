@@ -18,6 +18,9 @@ import SearchView from '../views/SearchView.vue'
 import NotificationsView from '../views/NotificationsView.vue'
 import NotificationRulesView from '../views/NotificationRulesView.vue'
 import SsoConfigView from '../views/SsoConfigView.vue'
+import ComplianceView from '../views/ComplianceView.vue'
+import PoliciesView from '../views/PoliciesView.vue'
+import DriftView from '../views/DriftView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -40,7 +43,10 @@ const router = createRouter({
     { path: '/audit', component: AuditLogView },
     { path: '/ledger', component: LedgerView },
     { path: '/notifications', component: NotificationsView },
-    { path: '/notifications/rules', component: NotificationRulesView }
+    { path: '/notifications/rules', component: NotificationRulesView },
+    { path: '/compliance', component: ComplianceView },
+    { path: '/policies', component: PoliciesView },
+    { path: '/drift', component: DriftView }
   ]
 })
 

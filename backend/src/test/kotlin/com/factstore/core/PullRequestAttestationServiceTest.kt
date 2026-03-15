@@ -5,6 +5,7 @@ import com.factstore.adapter.mock.InMemoryAttestationRepository
 import com.factstore.adapter.mock.InMemoryScmIntegrationRepository
 import com.factstore.adapter.mock.InMemoryTrailRepository
 import com.factstore.application.PullRequestAttestationService
+import com.factstore.application.ScmTokenEncryptionService
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.AuditEventType
 import com.factstore.core.domain.ScmIntegration
@@ -53,7 +54,8 @@ class PullRequestAttestationServiceTest {
             trailRepository = trailRepository,
             scmIntegrationRepository = scmIntegrationRepository,
             auditService = NoOpAuditService(),
-            objectMapper = objectMapper
+            objectMapper = objectMapper,
+            encryptionService = ScmTokenEncryptionService("default-dev-key-32chars!!!!!!")
         )
     }
 
@@ -72,7 +74,7 @@ class PullRequestAttestationServiceTest {
     private fun storeIntegration(orgSlug: String, provider: ScmProvider, token: String = "secret-token") {
         val encoded = Base64.getEncoder().encodeToString(token.toByteArray())
         scmIntegrationRepository.save(
-            ScmIntegration(orgSlug = orgSlug, provider = provider, tokenEncrypted = encoded)
+            ScmIntegration(orgSlug = orgSlug, provider = provider, encryptedToken = encoded, isTokenEncrypted = false)
         )
     }
 

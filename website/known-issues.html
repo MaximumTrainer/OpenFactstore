@@ -50,61 +50,66 @@
 
       <div class="issue-list">
 
-        <div class="issue-item">
+        <div class="issue-item" style="border-left-color: #22c55e;">
           <div class="issue-header">
+            <span class="issue-badge" style="background:#dcfce7;color:#15803d;">&#10003; Resolved</span>
             <span class="issue-badge badge-security">Security</span>
-            <span class="issue-title">No built-in authentication</span>
+            <span class="issue-title">Authentication enforcement</span>
           </div>
           <div class="issue-body">
             <p>
-              All API endpoints are unauthenticated. Any client with network access can read or
-              write compliance data, including attestations, approvals, and policy definitions.
+              API authentication enforcement is now configurable. Set the
+              <code>SECURITY_ENFORCE_AUTH=true</code> environment variable to require
+              authentication on all API endpoints. When enabled, requests must supply a valid
+              API key (<code>X-API-Key</code>) or SSO JWT (<code>Authorization: Bearer &lt;jwt&gt;</code>).
             </p>
             <p>
-              <strong>Mitigation:</strong> Place OpenFactstore behind a reverse proxy (nginx, Caddy,
-              or an API gateway) that enforces authentication — such as HTTP Basic Auth, OAuth 2.0
-              bearer tokens, or mTLS — before any request reaches the application. Do not expose
-              the API port directly to untrusted networks.
+              Authentication defaults to <em>permissive</em> for development convenience.
+              <strong>Always set <code>SECURITY_ENFORCE_AUTH=true</code> in production.</strong>
+              Public paths (Swagger UI, health endpoint, SSO login/callback, OAuth2) remain
+              accessible without authentication regardless of this setting.
             </p>
           </div>
         </div>
 
-        <div class="issue-item">
+        <div class="issue-item" style="border-left-color: #22c55e;">
           <div class="issue-header">
+            <span class="issue-badge" style="background:#dcfce7;color:#15803d;">&#10003; Resolved</span>
             <span class="issue-badge badge-limitation">Limitation</span>
             <span class="issue-title">In-memory H2 database</span>
           </div>
           <div class="issue-body">
             <p>
-              The default configuration uses an H2 in-memory database. All compliance data —
-              flows, trails, attestations, and audit records — is lost when the application
-              restarts.
+              PostgreSQL is now the default database. The application ships with Flyway migration
+              scripts (V1&ndash;V31) that apply cleanly against PostgreSQL. H2 is retained only
+              for unit tests.
             </p>
             <p>
-              <strong>Mitigation:</strong> Configure an external PostgreSQL database by setting the
-              Spring datasource properties in <code>application.properties</code>. The JPA schema
-              is compatible with PostgreSQL without code changes. A file-mode H2 database
-              (<code>jdbc:h2:file:./factstore</code>) is a lower-effort interim option for
-              persistence without a separate database server.
+              Configure the datasource via environment variables:
+              <code>SPRING_DATASOURCE_URL</code>, <code>SPRING_DATASOURCE_USERNAME</code>,
+              and <code>SPRING_DATASOURCE_PASSWORD</code>. A Docker Compose file with a
+              PostgreSQL service is included in the repository root.
             </p>
           </div>
         </div>
 
-        <div class="issue-item">
+        <div class="issue-item" style="border-left-color: #22c55e;">
           <div class="issue-header">
+            <span class="issue-badge" style="background:#dcfce7;color:#15803d;">&#10003; Resolved</span>
             <span class="issue-badge badge-security">Security</span>
             <span class="issue-title">SCM token storage</span>
           </div>
           <div class="issue-body">
             <p>
-              Source Control Management (SCM) tokens used for pull-request attestation are stored
-              as Base64-encoded strings. This is obfuscation, not encryption — the values are
-              recoverable from the database without a key.
+              SCM tokens are now encrypted at rest using AES-256-GCM before being persisted to
+              the database. A unique 12-byte IV is generated per token; the ciphertext and IV are
+              stored together as a single Base64-encoded value.
             </p>
             <p>
-              <strong>Mitigation:</strong> Use a secrets manager such as HashiCorp Vault, AWS
-              Secrets Manager, or Azure Key Vault to store tokens externally. Inject them at
-              runtime via environment variables rather than persisting them in the database.
+              Set the encryption key via the <code>SCM_ENCRYPTION_KEY</code> environment variable
+              (32-character string). A default development key is used when the variable is not
+              set. Existing Base64-only tokens remain readable via backward-compatible legacy
+              decoding. Rotate tokens after enabling encryption for maximum security.
             </p>
           </div>
         </div>
@@ -117,52 +122,55 @@
           <div class="issue-body">
             <p>
               The default embedded OPA policy evaluator supports a simplified subset of policy
-              logic. Full Rego language features — including imports, virtual documents, and
-              partial rules — are not available in embedded mode.
+              logic. Full Rego language features &mdash; including imports, virtual documents, and
+              partial rules &mdash; are not available in embedded mode.
             </p>
             <p>
               <strong>Mitigation:</strong> Set <code>OPA_MODE=external</code> and configure
               <code>OPA_URL</code> to point to a full OPA server instance. Full Rego support
-              is available in external mode.
+              is available in external mode. WASM-compiled policy modules are also supported
+              via the Policy Management API.
             </p>
           </div>
         </div>
 
-        <div class="issue-item">
+        <div class="issue-item" style="border-left-color: #22c55e;">
           <div class="issue-header">
+            <span class="issue-badge" style="background:#dcfce7;color:#15803d;">&#10003; Resolved</span>
             <span class="issue-badge badge-limitation">Limitation</span>
-            <span class="issue-title">No RBAC</span>
+            <span class="issue-title">Role-based access control</span>
           </div>
           <div class="issue-body">
             <p>
-              Role-based access control is not yet implemented. All operations — including creating
-              and approving compliance flows, managing organisations, and evaluating deployment
-              gates — are globally accessible to any authenticated caller.
+              RBAC is now implemented. The application supports four roles: <strong>ADMIN</strong>,
+              <strong>MEMBER</strong>, <strong>VIEWER</strong>, and <strong>SERVICE_ACCOUNT</strong>
+              (pipeline-bot). Role enforcement on sensitive endpoints (organisation management,
+              policy management) is activated automatically when
+              <code>SECURITY_ENFORCE_AUTH=true</code>.
             </p>
             <p>
-              <strong>Mitigation:</strong> Use network-level segmentation to restrict which
-              services and users can reach sensitive endpoints. RBAC is on the roadmap for a
-              future release.
+              Assign roles when creating service account API keys. SSO users inherit roles from
+              group&rarr;role mappings configured in the SSO settings for your organisation.
             </p>
           </div>
         </div>
 
-        <div class="issue-item">
+        <div class="issue-item" style="border-left-color: #22c55e;">
           <div class="issue-header">
+            <span class="issue-badge" style="background:#dcfce7;color:#15803d;">&#10003; Resolved</span>
             <span class="issue-badge badge-limitation">Limitation</span>
             <span class="issue-title">Incomplete frontend coverage</span>
           </div>
           <div class="issue-body">
             <p>
-              Several backend features do not yet have dedicated frontend views in the Vue
-              application. Affected areas include the regulatory compliance framework (SOX,
-              PCI-DSS, GDPR controls), OPA policy management, and environment drift detection.
+              The following frontend views have been added to the Vue application:
             </p>
-            <p>
-              <strong>Mitigation:</strong> Use the REST API directly or the Swagger UI at
-              <code>/swagger-ui.html</code> to interact with these features. Frontend coverage
-              will be expanded in upcoming releases.
-            </p>
+            <ul style="margin: 8px 0 8px 20px; line-height: 1.8;">
+              <li><strong>Compliance Frameworks</strong> (<code>/compliance</code>) &mdash; browse and import PCI-DSS v4, SOX ITGC, GDPR Art.32, and SLSA Level 2/3 framework templates.</li>
+              <li><strong>Policy Management</strong> (<code>/policies</code>) &mdash; create, view, and delete deployment policies; upload WASM policy modules.</li>
+              <li><strong>Drift Detection</strong> (<code>/drift</code>) &mdash; compare environment allowlists against active snapshots; identify and highlight out-of-compliance artifacts.</li>
+            </ul>
+            <p>All backend features now have dedicated UI coverage.</p>
           </div>
         </div>
 
@@ -176,41 +184,49 @@
 
       <div class="issue-list">
 
-        <div class="issue-item">
+        <div class="issue-item" style="border-left-color: #22c55e;">
           <div class="issue-header">
-            <span class="issue-badge badge-planned">Planned</span>
-            <span class="issue-title">CLI binary (issue #33)</span>
+            <span class="issue-badge" style="background:#dcfce7;color:#15803d;">&#10003; Delivered</span>
+            <span class="issue-badge badge-planned">Enhancement</span>
+            <span class="issue-title">CLI binary</span>
           </div>
           <div class="issue-body">
             <p>
-              A standalone CLI tool for interacting with the OpenFactstore API from shell scripts
-              and CI/CD pipelines, without requiring curl + jq.
+              A standalone Go CLI (<code>factstore-cli</code>) is available in the <code>cli/</code>
+              directory. It supports <code>attest</code> and <code>gate</code> commands for use in
+              CI/CD pipelines without requiring curl + jq. Reusable GitHub Actions workflows
+              (<code>factstore-attest.yml</code>, <code>factstore-gate.yml</code>) and a GitLab
+              CI template (<code>gitlab/factstore.yml</code>) are also provided.
             </p>
           </div>
         </div>
 
-        <div class="issue-item">
+        <div class="issue-item" style="border-left-color: #22c55e;">
           <div class="issue-header">
-            <span class="issue-badge badge-planned">Planned</span>
+            <span class="issue-badge" style="background:#dcfce7;color:#15803d;">&#10003; Delivered</span>
+            <span class="issue-badge badge-planned">Enhancement</span>
             <span class="issue-title">Full authentication + RBAC</span>
           </div>
           <div class="issue-body">
             <p>
-              JWT-based authentication with role-based access control, supporting at minimum
-              admin, auditor, and pipeline-bot roles.
+              JWT-based authentication (SSO via OIDC, API keys for service accounts) and
+              role-based access control (ADMIN / MEMBER / VIEWER / SERVICE_ACCOUNT) are
+              implemented. Enable enforcement with <code>SECURITY_ENFORCE_AUTH=true</code>.
             </p>
           </div>
         </div>
 
-        <div class="issue-item">
+        <div class="issue-item" style="border-left-color: #22c55e;">
           <div class="issue-header">
-            <span class="issue-badge badge-planned">Planned</span>
+            <span class="issue-badge" style="background:#dcfce7;color:#15803d;">&#10003; Delivered</span>
+            <span class="issue-badge badge-planned">Enhancement</span>
             <span class="issue-title">PostgreSQL support</span>
           </div>
           <div class="issue-body">
             <p>
-              First-class PostgreSQL configuration profile with Flyway migration scripts and
-              a Docker Compose profile for a persistent development environment.
+              PostgreSQL is the default database. Flyway migration scripts (V1&ndash;V31) are
+              included, and a Docker Compose profile for a persistent development environment
+              is in the repository root.
             </p>
           </div>
         </div>
@@ -230,7 +246,6 @@
 
       </div>
     </section>
-
     <!-- Reporting issues -->
     <section id="report" style="padding:0; border:none; margin-bottom:40px;">
       <h2>Reporting Issues</h2>

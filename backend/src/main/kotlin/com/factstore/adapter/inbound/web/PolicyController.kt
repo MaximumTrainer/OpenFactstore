@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
@@ -38,6 +39,7 @@ class PolicyController(private val policyService: IPolicyService) {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a policy")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MEMBER', 'API_USER')")
     fun deletePolicy(@PathVariable id: UUID): ResponseEntity<Void> {
         policyService.deletePolicy(id)
         return ResponseEntity.noContent().build()

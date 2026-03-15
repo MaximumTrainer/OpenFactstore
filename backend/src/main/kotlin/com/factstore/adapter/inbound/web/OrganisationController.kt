@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -50,6 +51,7 @@ class OrganisationController(
 
     @DeleteMapping("/{slug}")
     @Operation(summary = "Delete an organisation")
+    @PreAuthorize("hasAnyRole('ADMIN', 'API_USER')")
     fun deleteOrganisationBySlug(@PathVariable slug: String): ResponseEntity<Void> {
         organisationService.deleteOrganisationBySlug(slug)
         return ResponseEntity.noContent().build()

@@ -22,10 +22,11 @@ class ScmIntegration(
     @Column(nullable = false)
     val provider: ScmProvider,
 
-    // NOTE: In production this should be encrypted via a KMS (e.g. AWS KMS, HashiCorp Vault).
-    // Here we use Base64 encoding as a minimal at-rest encoding for this implementation.
     @Column(name = "token_encrypted", nullable = false, columnDefinition = "TEXT")
-    var tokenEncrypted: String,
+    var encryptedToken: String,
+
+    @Column(name = "is_token_encrypted", nullable = false)
+    var isTokenEncrypted: Boolean = false,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now()

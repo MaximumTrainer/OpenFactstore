@@ -31,7 +31,8 @@ class PullRequestAttestationService(
     private val trailRepository: ITrailRepository,
     private val scmIntegrationRepository: IScmIntegrationRepository,
     private val auditService: IAuditService,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val encryptionService: ScmTokenEncryptionService
 ) : IPullRequestAttestationService {
 
     private val log = LoggerFactory.getLogger(PullRequestAttestationService::class.java)
@@ -45,8 +46,12 @@ class PullRequestAttestationService(
         val integration = scmIntegrationRepository.findByOrgSlugAndProvider(orgSlug, request.provider)
             ?: throw NotFoundException("No SCM integration found for org '$orgSlug' and provider '${request.provider}'")
 
-        // NOTE: In production, replace Base64 decode with KMS decryption
-        val token = String(Base64.getDecoder().decode(integration.tokenEncrypted))
+        // Decrypt token: use AES-256-GCM for new integrations, fall back to Base64 for legacy ones.
+        val token = if (integration.isTokenEncrypted) {
+            encryptionService.decrypt(integration.encryptedToken)
+        } else {
+            String(Base64.getDecoder().decode(integration.encryptedToken))
+        }
 
         val client = scmClients.find { it.provider == request.provider }
             ?: throw NotFoundException("No SCM client registered for provider '${request.provider}'")

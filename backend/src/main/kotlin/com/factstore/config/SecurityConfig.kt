@@ -35,7 +35,9 @@ class SecurityConfig(
     private val apiKeyAuthFilter: ApiKeyAuthFilter,
     private val ssoJwtAuthFilter: SsoJwtAuthFilter,
     @Value("\${spring.security.oauth2.client.registration.github.client-id:}")
-    private val githubClientId: String
+    private val githubClientId: String,
+    @Value("\${security.enforce-auth:false}")
+    private val enforceAuth: Boolean
 ) {
 
     @Bean
@@ -53,11 +55,17 @@ class SecurityConfig(
                     .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                     // OAuth2 login endpoints
                     .requestMatchers("/login/**", "/oauth2/**").permitAll()
+                    // Actuator / health endpoints are always public
+                    .requestMatchers("/actuator/**", "/health").permitAll()
                     // SSO login/callback do not require prior authentication.
                     .requestMatchers("/api/v1/organisations/*/sso/login", "/api/v1/organisations/*/sso/callback").permitAll()
-                    // All other endpoints: permitted (API key auth is additive / optional).
-                    // Tighten to .authenticated() in production to enforce authentication.
-                    .anyRequest().permitAll()
+                    // Remaining endpoints: enforce authentication when the flag is enabled.
+                    // Set SECURITY_ENFORCE_AUTH=true in production to require authentication.
+                if (enforceAuth) {
+                    auth.anyRequest().authenticated()
+                } else {
+                    auth.anyRequest().permitAll()
+                }
             }
             // SSO JWT filter runs first so that JWT-authenticated users are recognised
             // before the API key filter tries to treat the Bearer token as an API key.

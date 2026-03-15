@@ -1277,6 +1277,7 @@ data class ScmIntegrationResponse(
     val id: UUID,
     val orgSlug: String,
     val provider: ScmProvider,
+    val isTokenEncrypted: Boolean,
     val createdAt: Instant
 )
 

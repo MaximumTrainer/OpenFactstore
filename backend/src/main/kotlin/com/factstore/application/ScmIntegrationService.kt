@@ -11,12 +11,12 @@ import com.factstore.exception.NotFoundException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.Base64
 
 @Service
 @Transactional
 class ScmIntegrationService(
-    private val scmIntegrationRepository: IScmIntegrationRepository
+    private val scmIntegrationRepository: IScmIntegrationRepository,
+    private val encryptionService: ScmTokenEncryptionService
 ) : IScmIntegrationService {
 
     private val log = LoggerFactory.getLogger(ScmIntegrationService::class.java)
@@ -25,12 +25,11 @@ class ScmIntegrationService(
         if (scmIntegrationRepository.existsByOrgSlugAndProvider(orgSlug, request.provider)) {
             throw ConflictException("SCM integration for provider '${request.provider}' already exists in org '$orgSlug'")
         }
-        // NOTE: In production, replace Base64 encoding with KMS encryption (e.g. AWS KMS, HashiCorp Vault).
-        val tokenEncrypted = Base64.getEncoder().encodeToString(request.token.toByteArray())
         val integration = ScmIntegration(
             orgSlug = orgSlug,
             provider = request.provider,
-            tokenEncrypted = tokenEncrypted
+            encryptedToken = encryptionService.encrypt(request.token),
+            isTokenEncrypted = true
         )
         val saved = scmIntegrationRepository.save(integration)
         log.info("Created SCM integration for org=$orgSlug provider=${request.provider}")
@@ -54,5 +53,6 @@ fun ScmIntegration.toResponse() = ScmIntegrationResponse(
     id = id,
     orgSlug = orgSlug,
     provider = provider,
+    isTokenEncrypted = isTokenEncrypted,
     createdAt = createdAt
 )
