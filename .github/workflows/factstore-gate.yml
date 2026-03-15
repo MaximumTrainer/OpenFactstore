@@ -1,0 +1,71 @@
+name: Factstore Gate Evaluate
+
+on:
+  workflow_call:
+    inputs:
+      artifact-sha256:
+        description: 'Artifact SHA-256 digest'
+        required: true
+        type: string
+      environment:
+        description: 'Target environment name'
+        required: false
+        default: ''
+        type: string
+      flow-id:
+        description: 'Flow ID (UUID) for policy lookup'
+        required: false
+        default: ''
+        type: string
+      factstore-url:
+        description: 'Factstore API base URL'
+        required: true
+        type: string
+      fail-on-block:
+        description: 'Fail the workflow if gate blocks deployment'
+        required: false
+        default: 'true'
+        type: string
+    secrets:
+      factstore-token:
+        description: 'Factstore API token'
+        required: true
+    outputs:
+      allowed:
+        description: 'Whether the gate allowed the deployment'
+        value: ${{ jobs.gate.outputs.allowed }}
+      reason:
+        description: 'Reason for gate decision'
+        value: ${{ jobs.gate.outputs.reason }}
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.evaluate.outputs.allowed }}
+      reason: ${{ steps.evaluate.outputs.reason }}
+    steps:
+      - name: Evaluate Deployment Gate
+        id: evaluate
+        run: |
+          RESULT=$(curl -s -X POST "${{ inputs.factstore-url }}/api/v1/gate/evaluate" \
+            -H "Authorization: Bearer ${{ secrets.factstore-token }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "artifactSha256": "${{ inputs.artifact-sha256 }}",
+              "environment": "${{ inputs.environment }}",
+              "flowId": "${{ inputs.flow-id }}"
+            }')
+
+          ALLOWED=$(echo "$RESULT" | jq -r '.allowed // false')
+          REASON=$(echo "$RESULT" | jq -r '.reason // "No reason provided"')
+
+          echo "allowed=$ALLOWED" >> $GITHUB_OUTPUT
+          echo "reason=$REASON" >> $GITHUB_OUTPUT
+
+          echo "Gate decision: allowed=$ALLOWED reason=$REASON"
+
+          if [ "$ALLOWED" = "false" ] && [ "${{ inputs.fail-on-block }}" = "true" ]; then
+            echo "Deployment blocked: $REASON"
+            exit 1
+          fi

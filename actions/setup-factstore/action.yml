@@ -17,8 +17,13 @@ runs:
     - name: Install Factstore CLI
       shell: bash
       run: |
-        echo "Installing Factstore CLI version ${{ inputs.version }}..."
-        # Download from GitHub releases when CLI (issue #33) is available
+        VERSION="${{ inputs.version }}"
+        if [ "$VERSION" = "latest" ]; then
+          VERSION=$(curl -s https://api.github.com/repos/MaximumTrainer/OpenFactstore/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+        fi
+        curl -sL "https://github.com/MaximumTrainer/OpenFactstore/releases/download/${VERSION}/factstore-linux-amd64" -o /usr/local/bin/factstore
+        chmod +x /usr/local/bin/factstore
+        factstore --version
         echo "FACTSTORE_BASE_URL=${{ inputs.base-url }}" >> $GITHUB_ENV
         echo "FACTSTORE_API_TOKEN=${{ inputs.api-token }}" >> $GITHUB_ENV
         echo "Factstore configured at: ${{ inputs.base-url }}"

@@ -43,6 +43,7 @@ dependencies {
     implementation("software.amazon.qldb:amazon-qldb-driver-java:2.3.1")
     // Vault: Spring Vault core (used when vault.enabled=true)
     implementation("org.springframework.vault:spring-vault-core:3.1.2")
+    implementation("org.springframework.boot:spring-boot-starter-graphql")
     testRuntimeOnly("com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")

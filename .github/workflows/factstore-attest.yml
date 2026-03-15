@@ -1,0 +1,48 @@
+name: Factstore Attest
+
+on:
+  workflow_call:
+    inputs:
+      trail-id:
+        description: 'Trail ID (UUID)'
+        required: true
+        type: string
+      attestation-type:
+        description: 'Attestation type (e.g. unit-test, security-scan)'
+        required: true
+        type: string
+      status:
+        description: 'Attestation status: PASSED or FAILED'
+        required: false
+        default: 'PASSED'
+        type: string
+      details:
+        description: 'Optional attestation details'
+        required: false
+        default: ''
+        type: string
+      factstore-url:
+        description: 'Factstore API base URL'
+        required: true
+        type: string
+    secrets:
+      factstore-token:
+        description: 'Factstore API token'
+        required: true
+
+jobs:
+  attest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record Attestation
+        run: |
+          curl -s -f -X POST "${{ inputs.factstore-url }}/api/v1/attestations" \
+            -H "Authorization: Bearer ${{ secrets.factstore-token }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "trailId": "${{ inputs.trail-id }}",
+              "type": "${{ inputs.attestation-type }}",
+              "status": "${{ inputs.status }}",
+              "details": "${{ inputs.details }}"
+            }'
+          echo "Attestation recorded: type=${{ inputs.attestation-type }} status=${{ inputs.status }}"

@@ -11,6 +11,12 @@ spring:
       idle-timeout: 600000
   flyway:
     enabled: true
+  graphql:
+    graphiql:
+      enabled: true
+      path: /graphiql
+    schema:
+      locations: classpath:graphql/
   jpa:
     hibernate:
       ddl-auto: none
@@ -100,3 +106,13 @@ server:
 opa:
   mode: ${OPA_MODE:embedded}
   external-url: ${OPA_URL:http://localhost:8181}
+
+factstore:
+  events:
+    publisher: ${FACTSTORE_EVENTS_PUBLISHER:logging}
+  region: ${FACTSTORE_REGION:us-east-1}
+  policy:
+    evaluator: ${FACTSTORE_POLICY_EVALUATOR:opa}
+
+cosign:
+  enabled: ${COSIGN_ENABLED:false}

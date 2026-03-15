@@ -1,0 +1,15 @@
+id: sox-itgc
+name: SOX ITGC Compliance Template
+description: Sarbanes-Oxley IT General Controls attestation requirements
+framework: SOX
+version: "2024"
+trail:
+  attestations:
+    - name: change-approval
+      type: approval
+    - name: access-review
+      type: access-review
+    - name: code-review
+      type: code-review
+    - name: audit-log
+      type: audit-trail

@@ -35,4 +35,10 @@ class Policy(
         get() = if (requiredAttestationTypesRaw.isBlank()) emptyList()
                 else requiredAttestationTypesRaw.split(",").map { it.trim() }.filter { it.isNotBlank() }
         set(value) { requiredAttestationTypesRaw = value.joinToString(",") }
+
+    @Column(name = "wasm_module_content", columnDefinition = "TEXT")
+    var wasmModuleContent: String? = null
+
+    @Column(name = "policy_evaluator", nullable = false, length = 50)
+    var policyEvaluator: String = "opa"
 }

@@ -16,7 +16,8 @@ class DeploymentGateResult(
     @Column(name = "requested_by") val requestedBy: String? = null,
     @Enumerated(EnumType.STRING) @Column(nullable = false) val decision: GateDecision,
     @Column(name = "evaluated_at", nullable = false) val evaluatedAt: Instant = Instant.now(),
-    @Column(name = "block_reasons", columnDefinition = "TEXT") var blockReasonsRaw: String = ""
+    @Column(name = "block_reasons", columnDefinition = "TEXT") var blockReasonsRaw: String = "",
+    @Column(name = "signature_verified") var signatureVerified: Boolean? = null
 ) {
     var blockReasons: List<String>
         get() = if (blockReasonsRaw.isBlank()) emptyList()

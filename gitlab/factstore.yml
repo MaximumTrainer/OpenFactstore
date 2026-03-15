@@ -1,0 +1,44 @@
+# Factstore GitLab CI Template
+# Include this in your .gitlab-ci.yml:
+# include:
+#   - project: your-org/factstore
+#     file: gitlab/factstore.yml
+
+.factstore-attest:
+  stage: attest
+  image: curlimages/curl:latest
+  variables:
+    FACTSTORE_ATTESTATION_STATUS: "PASSED"
+    FACTSTORE_ATTESTATION_DETAILS: ""
+  script:
+    - |
+      curl -s -f -X POST "${FACTSTORE_URL}/api/v1/attestations" \
+        -H "Authorization: Bearer ${FACTSTORE_API_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "{
+          \"trailId\": \"${FACTSTORE_TRAIL_ID}\",
+          \"type\": \"${FACTSTORE_ATTESTATION_TYPE}\",
+          \"status\": \"${FACTSTORE_ATTESTATION_STATUS}\",
+          \"details\": \"${FACTSTORE_ATTESTATION_DETAILS}\"
+        }"
+
+.factstore-gate:
+  stage: gate
+  image: curlimages/curl:latest
+  variables:
+    FACTSTORE_FAIL_ON_BLOCK: "true"
+  script:
+    - |
+      RESULT=$(curl -s -X POST "${FACTSTORE_URL}/api/v1/gate/evaluate" \
+        -H "Authorization: Bearer ${FACTSTORE_API_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "{
+          \"artifactSha256\": \"${FACTSTORE_ARTIFACT_SHA256}\",
+          \"environment\": \"${FACTSTORE_ENVIRONMENT}\"
+        }")
+      ALLOWED=$(echo "$RESULT" | grep -o '"allowed":[^,}]*' | cut -d: -f2 | tr -d ' ')
+      if [ "$ALLOWED" = "false" ] && [ "$FACTSTORE_FAIL_ON_BLOCK" = "true" ]; then
+        echo "Deployment gate blocked: $RESULT"
+        exit 1
+      fi
+      echo "Gate decision: $RESULT"

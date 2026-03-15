@@ -8,9 +8,11 @@ import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.inbound.IAttestationService
 import com.factstore.core.port.inbound.IEvidenceVaultService
 import com.factstore.core.port.outbound.IAttestationRepository
+import com.factstore.core.port.outbound.IEventPublisher
 import com.factstore.core.port.outbound.IFlowRepository
 import com.factstore.core.port.outbound.IOrganisationRepository
 import com.factstore.core.port.outbound.ITrailRepository
+import com.factstore.core.port.outbound.SupplyChainEvent
 import com.factstore.dto.AttestationResponse
 import com.factstore.dto.CreateAttestationRequest
 import com.factstore.dto.EvidenceFileResponse
@@ -29,7 +31,8 @@ class AttestationService(
     private val evidenceVaultService: IEvidenceVaultService,
     private val auditService: IAuditService,
     private val organisationRepository: IOrganisationRepository,
-    private val flowRepository: IFlowRepository
+    private val flowRepository: IFlowRepository,
+    private val eventPublisher: IEventPublisher
 ) : IAttestationService {
 
     private val log = LoggerFactory.getLogger(AttestationService::class.java)
@@ -62,6 +65,14 @@ class AttestationService(
             artifactFingerprint = artifactFingerprint
         )
         val saved = attestationRepository.save(attestation)
+        eventPublisher.publish(
+            SupplyChainEvent.AttestationRecorded(
+                trailId = trailId,
+                attestationType = request.type,
+                orgSlug = orgSlug,
+                artifactFingerprint = artifactFingerprint
+            )
+        )
         if (request.status == AttestationStatus.FAILED) {
             markTrailNonCompliant(trailId)
         }

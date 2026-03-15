@@ -13,7 +13,10 @@ import com.factstore.core.port.outbound.IAttestationRepository
 import com.factstore.core.port.outbound.IBuildProvenanceRepository
 import com.factstore.core.port.outbound.IDeploymentGateResultRepository
 import com.factstore.core.port.outbound.IDeploymentPolicyRepository
+import com.factstore.core.port.outbound.IEventPublisher
 import com.factstore.core.port.outbound.IFlowRepository
+import com.factstore.core.port.outbound.SupplyChainEvent
+import com.factstore.core.port.outbound.ISignatureVerifier
 import com.factstore.dto.CreateDeploymentPolicyRequest
 import com.factstore.dto.DeploymentPolicyResponse
 import com.factstore.dto.GateEvaluateRequest
@@ -39,7 +42,9 @@ class DeploymentPolicyService(
     private val approvalRepository: IApprovalRepository,
     private val flowRepository: IFlowRepository,
     private val allowlistService: IEnvironmentAllowlistService,
-    private val meterRegistry: MeterRegistry
+    private val meterRegistry: MeterRegistry,
+    private val eventPublisher: IEventPublisher,
+    private val signatureVerifier: ISignatureVerifier
 ) : IDeploymentPolicyService {
 
     private val log = LoggerFactory.getLogger(DeploymentPolicyService::class.java)
@@ -70,7 +75,8 @@ class DeploymentPolicyService(
             flowId = request.flowId,
             environmentId = request.environmentId,
             enforceProvenance = request.enforceProvenance,
-            enforceApprovals = request.enforceApprovals
+            enforceApprovals = request.enforceApprovals,
+            requireSignature = request.requireSignature
         ).also { it.requiredAttestationTypes = request.requiredAttestationTypes }
 
         return policyRepository.save(policy).toResponse()
@@ -93,6 +99,7 @@ class DeploymentPolicyService(
         request.enforceApprovals?.let { policy.enforceApprovals = it }
         request.requiredAttestationTypes?.let { policy.requiredAttestationTypes = it }
         request.isActive?.let { policy.isActive = it }
+        request.requireSignature?.let { policy.requireSignature = it }
         policy.updatedAt = Instant.now()
 
         return policyRepository.save(policy).toResponse()
@@ -129,6 +136,7 @@ class DeploymentPolicyService(
 
         val blockReasons = mutableListOf<String>()
         var lastPolicyId: UUID? = null
+        var cachedSignatureResult: com.factstore.core.port.outbound.SignatureVerificationResult? = null
 
         for (policy in policies) {
             lastPolicyId = policy.id
@@ -172,21 +180,44 @@ class DeploymentPolicyService(
                     }
                 }
             }
+
+            if (policy.requireSignature) {
+                val verificationResult = cachedSignatureResult
+                    ?: signatureVerifier.verify(request.artifactSha256).also { cachedSignatureResult = it }
+                if (!verificationResult.verified) {
+                    blockReasons.add("Signature not verified (policy: ${policy.name}): ${verificationResult.message}")
+                }
+            }
         }
 
         val decision = if (blockReasons.isEmpty()) GateDecision.ALLOWED else GateDecision.BLOCKED
         if (decision == GateDecision.ALLOWED) gateAllowedCounter.increment() else gateBlockedCounter.increment()
+
+        val signatureVerified: Boolean? = cachedSignatureResult?.verified
+
         val result = DeploymentGateResult(
             policyId = lastPolicyId,
             artifactSha256 = request.artifactSha256,
             environmentId = request.environmentId,
             requestedBy = request.requestedBy,
             decision = decision
-        ).also { it.blockReasons = blockReasons }
+        ).also {
+            it.blockReasons = blockReasons
+            it.signatureVerified = signatureVerified
+        }
 
         log.info("Gate evaluation for ${request.artifactSha256}: $decision (${policies.size} policies, ${blockReasons.size} block reasons)")
 
-        return gateResultRepository.save(result).toResponse(policies.size)
+        val savedResult = gateResultRepository.save(result)
+        eventPublisher.publish(
+            SupplyChainEvent.GateEvaluated(
+                artifactSha256 = request.artifactSha256,
+                environment = request.environmentId?.toString(),
+                allowed = decision == GateDecision.ALLOWED,
+                orgSlug = null
+            )
+        )
+        return savedResult.toResponse(policies.size)
     }
 
     override fun listGateResults(): List<GateEvaluateResponse> =
@@ -203,7 +234,8 @@ class DeploymentPolicyService(
         requiredAttestationTypes = requiredAttestationTypes,
         isActive = isActive,
         createdAt = createdAt,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        requireSignature = requireSignature
     )
 
     private fun DeploymentGateResult.toResponse(policiesEvaluated: Int) = GateEvaluateResponse(
@@ -213,6 +245,7 @@ class DeploymentPolicyService(
         environmentId = environmentId,
         evaluatedAt = evaluatedAt,
         blockReasons = blockReasons,
-        policiesEvaluated = policiesEvaluated
+        policiesEvaluated = policiesEvaluated,
+        signatureVerified = signatureVerified
     )
 }

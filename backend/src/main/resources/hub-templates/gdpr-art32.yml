@@ -1,0 +1,13 @@
+id: gdpr-art32
+name: GDPR Article 32 Template
+description: GDPR Article 32 technical and organisational security measures
+framework: GDPR
+version: "2018"
+trail:
+  attestations:
+    - name: data-protection-review
+      type: data-protection-review
+    - name: security-scan
+      type: security-scan
+    - name: encryption-verified
+      type: encryption-attestation

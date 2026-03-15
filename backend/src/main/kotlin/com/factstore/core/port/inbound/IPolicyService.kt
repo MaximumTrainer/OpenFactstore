@@ -11,4 +11,5 @@ interface IPolicyService {
     fun getPolicy(id: UUID): PolicyResponse
     fun updatePolicy(id: UUID, request: UpdatePolicyRequest): PolicyResponse
     fun deletePolicy(id: UUID)
+    fun updateWasmModule(id: UUID, wasmContent: String)
 }

@@ -1,0 +1,63 @@
+type Query {
+    flow(id: ID!): Flow
+    flows(orgSlug: String!): [Flow!]!
+    trail(id: ID!): Trail
+    trails(flowId: ID!): [Trail!]!
+    artifact(sha256: String!): Artifact
+    attestations(trailId: ID!): [Attestation!]!
+    environments(orgSlug: String!): [Environment!]!
+}
+
+type Mutation {
+    createAttestation(input: CreateAttestationInput!): Attestation!
+}
+
+type Flow {
+    id: ID!
+    name: String!
+    orgSlug: String
+    description: String
+    requiredAttestationTypes: [String!]!
+    createdAt: String!
+}
+
+type Trail {
+    id: ID!
+    flowId: ID!
+    name: String
+    gitCommitSha: String
+    gitBranch: String
+    status: String!
+    createdAt: String!
+}
+
+type Artifact {
+    sha256: String!
+    name: String
+    type: String
+    createdAt: String
+}
+
+type Attestation {
+    id: ID!
+    trailId: ID!
+    type: String!
+    status: String!
+    details: String
+    createdAt: String!
+}
+
+type Environment {
+    id: ID!
+    name: String!
+    type: String!
+    orgSlug: String
+    createdAt: String!
+}
+
+input CreateAttestationInput {
+    trailId: ID!
+    type: String!
+    status: String!
+    details: String
+}

@@ -1,0 +1,11 @@
+id: slsa-level-2
+name: SLSA Level 2 Template
+description: Supply-chain Levels for Software Artifacts - Level 2
+framework: SLSA
+version: "1.0"
+trail:
+  attestations:
+    - name: build-provenance
+      type: build-provenance
+    - name: source-control
+      type: source-control

@@ -44,5 +44,8 @@ class AuditEvent(
     val payload: String,
 
     @Column(name = "occurred_at", nullable = false)
-    val occurredAt: Instant = Instant.now()
+    val occurredAt: Instant = Instant.now(),
+
+    @Column(nullable = true, length = 100)
+    var region: String? = null
 )

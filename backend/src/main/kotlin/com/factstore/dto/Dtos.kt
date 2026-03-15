@@ -768,7 +768,8 @@ data class AuditEventResponse(
     val artifactSha256: String?,
     val actor: String,
     val payload: String,
-    val occurredAt: Instant
+    val occurredAt: Instant,
+    val region: String? = null
 )
 
 data class AuditEventPage(
@@ -1210,7 +1211,8 @@ data class CreateDeploymentPolicyRequest(
     val environmentId: UUID? = null,
     val enforceProvenance: Boolean = false,
     val enforceApprovals: Boolean = false,
-    val requiredAttestationTypes: List<String> = emptyList()
+    val requiredAttestationTypes: List<String> = emptyList(),
+    val requireSignature: Boolean = false
 )
 
 data class UpdateDeploymentPolicyRequest(
@@ -1219,7 +1221,8 @@ data class UpdateDeploymentPolicyRequest(
     val enforceProvenance: Boolean? = null,
     val enforceApprovals: Boolean? = null,
     val requiredAttestationTypes: List<String>? = null,
-    val isActive: Boolean? = null
+    val isActive: Boolean? = null,
+    val requireSignature: Boolean? = null
 )
 
 data class DeploymentPolicyResponse(
@@ -1233,7 +1236,8 @@ data class DeploymentPolicyResponse(
     val requiredAttestationTypes: List<String>,
     val isActive: Boolean,
     val createdAt: Instant,
-    val updatedAt: Instant
+    val updatedAt: Instant,
+    val requireSignature: Boolean = false
 )
 
 // Gate DTOs
@@ -1250,7 +1254,8 @@ data class GateEvaluateResponse(
     val environmentId: UUID?,
     val evaluatedAt: Instant,
     val blockReasons: List<String>,
-    val policiesEvaluated: Int
+    val policiesEvaluated: Int,
+    val signatureVerified: Boolean? = null
 )
 
 // Pull Request Attestation DTOs

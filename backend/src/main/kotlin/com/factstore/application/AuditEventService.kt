@@ -4,6 +4,7 @@ import com.factstore.core.domain.AuditEvent
 import com.factstore.core.domain.AuditEventType
 import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.outbound.IAuditEventRepository
+import com.factstore.config.RegionContextHolder
 import com.factstore.dto.AuditEventPage
 import com.factstore.dto.AuditEventResponse
 import com.factstore.exception.NotFoundException
@@ -37,7 +38,8 @@ class AuditEventService(
             payload = objectMapper.writeValueAsString(payload),
             trailId = trailId,
             artifactSha256 = artifactSha256,
-            environmentId = environmentId
+            environmentId = environmentId,
+            region = RegionContextHolder.get()
         )
         val saved = auditEventRepository.save(event)
         log.info("Recorded audit event: ${saved.id} type=${saved.eventType} actor=${saved.actor}")
@@ -84,5 +86,6 @@ fun AuditEvent.toResponse() = AuditEventResponse(
     artifactSha256 = artifactSha256,
     actor = actor,
     payload = payload,
-    occurredAt = occurredAt
+    occurredAt = occurredAt,
+    region = region
 )

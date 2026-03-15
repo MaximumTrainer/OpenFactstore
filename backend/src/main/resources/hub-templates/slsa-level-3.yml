@@ -1,0 +1,15 @@
+id: slsa-level-3
+name: SLSA Level 3 Template
+description: Supply-chain Levels for Software Artifacts - Level 3
+framework: SLSA
+version: "1.0"
+trail:
+  attestations:
+    - name: build-provenance
+      type: build-provenance
+    - name: source-control
+      type: source-control
+    - name: hermetic-build
+      type: hermetic-build
+    - name: reproducible-build
+      type: reproducible-build

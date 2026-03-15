@@ -63,6 +63,12 @@ class PolicyService(private val policyRepository: IPolicyRepository) : IPolicySe
         policyRepository.deleteById(id)
         log.info("Deleted policy: $id")
     }
+
+    override fun updateWasmModule(id: UUID, wasmContent: String) {
+        val policy = policyRepository.findById(id) ?: throw NotFoundException("Policy not found: $id")
+        policy.wasmModuleContent = wasmContent
+        policyRepository.save(policy)
+    }
 }
 
 fun Policy.toResponse() = PolicyResponse(

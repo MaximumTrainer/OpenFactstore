@@ -37,6 +37,7 @@ func init() {
 	RootCmd.AddCommand(assertCmd)
 	RootCmd.AddCommand(complianceCmd)
 	RootCmd.AddCommand(webhooksCmd)
+	RootCmd.AddCommand(gateCmd)
 }
 
 // newClient builds an HTTP client from merged config + flag overrides.
