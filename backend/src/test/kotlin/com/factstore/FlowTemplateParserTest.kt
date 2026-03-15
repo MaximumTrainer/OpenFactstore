@@ -107,7 +107,7 @@ artifacts:
     }
 
     @Test
-    fun `parse YAML with empty string returns empty template`() {
+    fun `parse minimal empty YAML object returns empty template`() {
         val template = FlowTemplateParser.parse("{}")
         assertEquals(1, template.version)
         assertTrue(template.trail.attestations.isEmpty())

@@ -107,6 +107,10 @@ configure<info.solidsoft.gradle.pitest.PitestPluginExtension> {
     coverageThreshold.set(60)
 }
 
+tasks.named("check") {
+    dependsOn("pitest")
+}
+
 tasks.bootJar {
     manifest {
         attributes["Implementation-Version"] = project.version
