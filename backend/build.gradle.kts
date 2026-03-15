@@ -37,6 +37,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.flywaydb:flyway-core")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql")
     implementation("org.apache.commons:commons-compress:1.26.1")
     // Ledger: AWS QLDB driver (used when ledger.type=qldb)
     implementation("software.amazon.qldb:amazon-qldb-driver-java:2.3.1")
