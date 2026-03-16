@@ -33,16 +33,26 @@ on:
 jobs:
   attest:
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - name: Record Attestation
+        env:
+          FACTSTORE_URL: ${{ inputs.factstore-url }}
+          FACTSTORE_TOKEN: ${{ secrets.factstore-token }}
+          INPUT_TRAIL_ID: ${{ inputs.trail-id }}
+          INPUT_ATTESTATION_TYPE: ${{ inputs.attestation-type }}
+          INPUT_STATUS: ${{ inputs.status }}
+          INPUT_DETAILS: ${{ inputs.details }}
         run: |
-          curl -s -f -X POST "${{ inputs.factstore-url }}/api/v1/attestations" \
-            -H "Authorization: Bearer ${{ secrets.factstore-token }}" \
+          PAYLOAD=$(jq -n \
+            --arg trailId "$INPUT_TRAIL_ID" \
+            --arg type "$INPUT_ATTESTATION_TYPE" \
+            --arg status "$INPUT_STATUS" \
+            --arg details "$INPUT_DETAILS" \
+            '{trailId: $trailId, type: $type, status: $status, details: $details}')
+
+          curl -s -f -X POST "${FACTSTORE_URL}/api/v1/attestations" \
+            -H "Authorization: Bearer ${FACTSTORE_TOKEN}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "trailId": "${{ inputs.trail-id }}",
-              "type": "${{ inputs.attestation-type }}",
-              "status": "${{ inputs.status }}",
-              "details": "${{ inputs.details }}"
-            }'
-          echo "Attestation recorded: type=${{ inputs.attestation-type }} status=${{ inputs.status }}"
+            -d "$PAYLOAD"
+          echo "Attestation recorded: type=${INPUT_ATTESTATION_TYPE} status=${INPUT_STATUS}"
