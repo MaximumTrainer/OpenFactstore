@@ -98,7 +98,7 @@ class AttestationCommandHandler(
         attestation.evidenceFileSizeBytes = evidenceFile.fileSizeBytes
         attestationRepository.save(attestation)
         log.info("Uploaded evidence for attestation: ${command.attestationId} hash=${evidenceFile.sha256Hash}")
-        return CommandResult(id = evidenceFile.id, status = "created")
+        return CommandResult(id = attestation.id, status = "created")
     }
 
     private fun markTrailNonCompliant(trailId: java.util.UUID) {

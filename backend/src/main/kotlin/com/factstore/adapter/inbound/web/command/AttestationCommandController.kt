@@ -6,6 +6,7 @@ import com.factstore.core.port.inbound.command.IAttestationCommandHandler
 import com.factstore.core.port.inbound.IPullRequestAttestationService
 import com.factstore.dto.command.CommandResult
 import com.factstore.dto.command.RecordAttestationCommand
+import com.factstore.dto.command.RecordAttestationRequest
 import com.factstore.dto.command.UploadEvidenceCommand
 import com.factstore.dto.AttestationResponse
 import com.factstore.dto.CreatePrAttestationRequest
@@ -33,29 +34,40 @@ class AttestationCommandController(
     @Operation(summary = "Record an attestation for a trail")
     fun recordAttestation(
         @PathVariable trailId: UUID,
-        @RequestBody command: RecordAttestationCommand,
+        @RequestBody request: RecordAttestationRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {
         if (DryRunContext.isDryRun(httpRequest)) {
             val wouldBe = AttestationResponse(
                 id = UUID.randomUUID(),
                 trailId = trailId,
-                type = command.type,
-                status = command.status,
+                type = request.type,
+                status = request.status,
                 evidenceFileHash = null,
                 evidenceFileName = null,
                 evidenceFileSizeBytes = null,
-                details = command.details,
-                name = command.name,
-                evidenceUrl = command.evidenceUrl,
-                compliant = command.status == AttestationStatus.PASSED,
-                orgSlug = command.orgSlug,
+                details = request.details,
+                name = request.name,
+                evidenceUrl = request.evidenceUrl,
+                compliant = request.status == AttestationStatus.PASSED,
+                orgSlug = request.orgSlug,
                 createdAt = Instant.now()
             )
             return ResponseEntity.ok(DryRunResponse(wouldCreate = wouldBe))
         }
+        val command = RecordAttestationCommand(
+            trailId = trailId,
+            type = request.type,
+            status = request.status,
+            details = request.details,
+            name = request.name,
+            evidenceUrl = request.evidenceUrl,
+            orgSlug = request.orgSlug,
+            artifactFingerprint = request.artifactFingerprint,
+            flowName = request.flowName
+        )
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(commandHandler.recordAttestation(command.copy(trailId = trailId)))
+            .body(commandHandler.recordAttestation(command))
     }
 
     @PostMapping("/{attestationId}/evidence", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])

@@ -6,6 +6,7 @@ import com.factstore.core.port.inbound.command.IArtifactCommandHandler
 import com.factstore.core.port.inbound.IBuildProvenanceService
 import com.factstore.dto.command.CommandResult
 import com.factstore.dto.command.ReportArtifactCommand
+import com.factstore.dto.command.ReportArtifactRequest
 import com.factstore.dto.ArtifactResponse
 import com.factstore.dto.BuildProvenanceResponse
 import com.factstore.dto.DryRunResponse
@@ -31,26 +32,35 @@ class ArtifactCommandController(
     @Operation(summary = "Report an artifact for a trail")
     fun reportArtifact(
         @PathVariable trailId: UUID,
-        @RequestBody command: ReportArtifactCommand,
+        @RequestBody request: ReportArtifactRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {
         if (DryRunContext.isDryRun(httpRequest)) {
             val wouldBe = ArtifactResponse(
                 id = UUID.randomUUID(),
                 trailId = trailId,
-                imageName = command.imageName,
-                imageTag = command.imageTag,
-                sha256Digest = command.sha256Digest,
-                registry = command.registry,
+                imageName = request.imageName,
+                imageTag = request.imageTag,
+                sha256Digest = request.sha256Digest,
+                registry = request.registry,
                 reportedAt = Instant.now(),
-                reportedBy = command.reportedBy,
-                orgSlug = command.orgSlug,
+                reportedBy = request.reportedBy,
+                orgSlug = request.orgSlug,
                 provenanceStatus = ProvenanceStatus.NO_PROVENANCE
             )
             return ResponseEntity.ok(DryRunResponse(wouldCreate = wouldBe))
         }
+        val command = ReportArtifactCommand(
+            trailId = trailId,
+            imageName = request.imageName,
+            imageTag = request.imageTag,
+            sha256Digest = request.sha256Digest,
+            registry = request.registry,
+            reportedBy = request.reportedBy,
+            orgSlug = request.orgSlug
+        )
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(commandHandler.reportArtifact(command.copy(trailId = trailId)))
+            .body(commandHandler.reportArtifact(command))
     }
 
     @PostMapping("/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance")

@@ -6,6 +6,7 @@ import com.factstore.dto.command.CommandResult
 import com.factstore.dto.command.CreateFlowCommand
 import com.factstore.dto.command.DeleteFlowCommand
 import com.factstore.dto.command.UpdateFlowCommand
+import com.factstore.dto.command.UpdateFlowRequest
 import com.factstore.dto.DryRunResponse
 import com.factstore.dto.FlowResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -50,8 +51,17 @@ class FlowCommandController(private val commandHandler: IFlowCommandHandler) {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a flow")
-    fun updateFlow(@PathVariable id: UUID, @RequestBody command: UpdateFlowCommand): ResponseEntity<CommandResult> =
-        ResponseEntity.ok(commandHandler.updateFlow(command.copy(id = id)))
+    fun updateFlow(@PathVariable id: UUID, @RequestBody request: UpdateFlowRequest): ResponseEntity<CommandResult> =
+        ResponseEntity.ok(commandHandler.updateFlow(UpdateFlowCommand(
+            id = id,
+            name = request.name,
+            description = request.description,
+            requiredAttestationTypes = request.requiredAttestationTypes,
+            tags = request.tags,
+            templateYaml = request.templateYaml,
+            requiresApproval = request.requiresApproval,
+            requiredApproverRoles = request.requiredApproverRoles
+        )))
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a flow")
