@@ -21,7 +21,7 @@ type ArtifactResponse struct {
 	ReportedBy   string `json:"reportedBy"`
 }
 
-// CreateArtifactRequest is the body for POST /api/v1/trails/{trailId}/artifacts.
+// CreateArtifactRequest is the body for POST /api/v2/trails/{trailId}/artifacts.
 type CreateArtifactRequest struct {
 	ImageName    string `json:"imageName"`
 	ImageTag     string `json:"imageTag"`
@@ -30,9 +30,9 @@ type CreateArtifactRequest struct {
 	ReportedBy   string `json:"reportedBy"`
 }
 
-// ListArtifacts returns all artifacts for a trail.
+// ListArtifacts returns all artifacts for a trail (query path).
 func ListArtifacts(c *client.Client, trailID string) ([]ArtifactResponse, error) {
-	body, status, err := c.Get("/api/v1/trails/" + trailID + "/artifacts")
+	body, status, err := c.Get("/api/v2/trails/" + trailID + "/artifacts")
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +46,11 @@ func ListArtifacts(c *client.Client, trailID string) ([]ArtifactResponse, error)
 	return artifacts, nil
 }
 
-// FindArtifact looks up an artifact by SHA-256 digest.
+// FindArtifact looks up an artifact by SHA-256 digest (query path).
 func FindArtifact(c *client.Client, sha256 string) (*ArtifactResponse, error) {
 	q := url.Values{}
 	q.Set("sha256", sha256)
-	body, status, err := c.Get("/api/v1/artifacts?" + q.Encode())
+	body, status, err := c.Get("/api/v2/artifacts?" + q.Encode())
 	if err != nil {
 		return nil, err
 	}
@@ -64,18 +64,18 @@ func FindArtifact(c *client.Client, sha256 string) (*ArtifactResponse, error) {
 	return &artifact, nil
 }
 
-// CreateArtifact creates a new artifact on a trail.
-func CreateArtifact(c *client.Client, trailID string, req CreateArtifactRequest) (*ArtifactResponse, error) {
-	body, status, err := c.Post("/api/v1/trails/"+trailID+"/artifacts", req)
+// CreateArtifact creates a new artifact on a trail (command path).
+func CreateArtifact(c *client.Client, trailID string, req CreateArtifactRequest) (*CommandResult, error) {
+	body, status, err := c.Post("/api/v2/trails/"+trailID+"/artifacts", req)
 	if err != nil {
 		return nil, err
 	}
 	if status != http.StatusCreated && status != http.StatusOK {
 		return nil, client.ParseError(status, body)
 	}
-	var artifact ArtifactResponse
-	if err := json.Unmarshal(body, &artifact); err != nil {
+	var result CommandResult
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
-	return &artifact, nil
+	return &result, nil
 }

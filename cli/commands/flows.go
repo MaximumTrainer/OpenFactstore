@@ -108,7 +108,7 @@ var flowsCreateCmd = &cobra.Command{
 			output.PrintJSON(flow)
 			return nil
 		}
-		output.PrintSuccess(fmt.Sprintf("Flow created: %s (%s)", flow.Name, flow.ID))
+		output.PrintSuccess(fmt.Sprintf("Flow created: %s", flow.ID))
 		return nil
 	},
 }
@@ -147,7 +147,7 @@ var flowsUpdateCmd = &cobra.Command{
 			output.PrintJSON(flow)
 			return nil
 		}
-		output.PrintSuccess(fmt.Sprintf("Flow updated: %s (%s)", flow.Name, flow.ID))
+		output.PrintSuccess(fmt.Sprintf("Flow updated: %s", flow.ID))
 		return nil
 	},
 }
