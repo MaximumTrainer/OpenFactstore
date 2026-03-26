@@ -41,7 +41,7 @@ class AttestationCommandHandler(
             throw NotFoundException("Organisation not found: ${command.orgSlug}")
         }
         if (command.orgSlug != null && command.flowName != null) {
-            val orgFlows = flowRepository.findAllByOrgSlug(command.orgSlug!!)
+            val orgFlows = flowRepository.findAllByOrgSlug(command.orgSlug)
             if (orgFlows.none { it.name == command.flowName }) {
                 throw NotFoundException("Flow '${command.flowName}' not found for organisation '${command.orgSlug}'")
             }

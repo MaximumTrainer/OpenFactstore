@@ -1,4 +1,4 @@
--- CQRS read-optimised views and indexes.
+-- CQRS read-optimized views and indexes.
 -- These views provide a materialised read-path for the query side of the CQRS
 -- architecture while the normalised tables continue to serve the write path.
 
