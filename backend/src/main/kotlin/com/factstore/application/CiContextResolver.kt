@@ -1,6 +1,7 @@
 package com.factstore.application
 
 import com.factstore.dto.CreateTrailRequest
+import com.factstore.dto.command.CreateTrailCommand
 
 enum class CiProvider { GITHUB_ACTIONS, GITLAB_CI, JENKINS, CIRCLECI, AZURE_DEVOPS }
 
@@ -57,5 +58,15 @@ object CiContextResolver {
         gitCommitSha = request.gitCommitSha ?: getCommitSha(provider, env),
         gitBranch = request.gitBranch ?: getBranch(provider, env),
         buildUrl = request.buildUrl ?: getBuildUrl(provider, env)
+    )
+
+    fun enrich(
+        command: CreateTrailCommand,
+        provider: CiProvider,
+        env: Map<String, String> = System.getenv()
+    ): CreateTrailCommand = command.copy(
+        gitCommitSha = command.gitCommitSha ?: getCommitSha(provider, env),
+        gitBranch = command.gitBranch ?: getBranch(provider, env),
+        buildUrl = command.buildUrl ?: getBuildUrl(provider, env)
     )
 }
