@@ -3,6 +3,7 @@ package com.factstore
 import com.factstore.application.CiContextResolver
 import com.factstore.application.CiProvider
 import com.factstore.dto.CreateTrailRequest
+import com.factstore.dto.command.CreateTrailCommand
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.util.UUID
@@ -12,6 +13,12 @@ class CiContextResolverTest {
     private val flowId = UUID.randomUUID()
 
     private fun baseRequest() = CreateTrailRequest(
+        flowId = flowId,
+        gitAuthor = "dev",
+        gitAuthorEmail = "dev@example.com"
+    )
+
+    private fun baseCommand() = CreateTrailCommand(
         flowId = flowId,
         gitAuthor = "dev",
         gitAuthorEmail = "dev@example.com"
@@ -297,5 +304,68 @@ class CiContextResolverTest {
     @Test
     fun `getBuildUrl returns null for AZURE_DEVOPS when all env vars missing`() {
         assertNull(CiContextResolver.getBuildUrl(CiProvider.AZURE_DEVOPS, emptyMap()))
+    }
+
+    // ── enrich(CreateTrailCommand) tests ─────────────────────────────────────
+
+    @Test
+    fun `enrich command fills blank gitCommitSha from env`() {
+        val env = mapOf("GITHUB_SHA" to "filled-sha", "GITHUB_REF_NAME" to "main")
+        val result = CiContextResolver.enrich(baseCommand(), CiProvider.GITHUB_ACTIONS, env)
+        assertEquals("filled-sha", result.gitCommitSha)
+    }
+
+    @Test
+    fun `enrich command fills blank gitBranch from env`() {
+        val env = mapOf("GITHUB_REF_NAME" to "feature/ci")
+        val result = CiContextResolver.enrich(baseCommand(), CiProvider.GITHUB_ACTIONS, env)
+        assertEquals("feature/ci", result.gitBranch)
+    }
+
+    @Test
+    fun `enrich command fills blank buildUrl for GITHUB_ACTIONS`() {
+        val env = mapOf(
+            "GITHUB_SERVER_URL" to "https://github.com",
+            "GITHUB_REPOSITORY" to "acme/app",
+            "GITHUB_RUN_ID" to "1"
+        )
+        val result = CiContextResolver.enrich(baseCommand(), CiProvider.GITHUB_ACTIONS, env)
+        assertEquals("https://github.com/acme/app/actions/runs/1", result.buildUrl)
+    }
+
+    @Test
+    fun `enrich command does NOT override already-set gitCommitSha`() {
+        val command = baseCommand().copy(gitCommitSha = "client-provided-sha")
+        val env = mapOf("GITHUB_SHA" to "env-sha")
+        val result = CiContextResolver.enrich(command, CiProvider.GITHUB_ACTIONS, env)
+        assertEquals("client-provided-sha", result.gitCommitSha)
+    }
+
+    @Test
+    fun `enrich command does NOT override already-set gitBranch`() {
+        val command = baseCommand().copy(gitBranch = "client-branch")
+        val env = mapOf("GITHUB_REF_NAME" to "env-branch")
+        val result = CiContextResolver.enrich(command, CiProvider.GITHUB_ACTIONS, env)
+        assertEquals("client-branch", result.gitBranch)
+    }
+
+    @Test
+    fun `enrich command does NOT override already-set buildUrl`() {
+        val command = baseCommand().copy(buildUrl = "https://my-ci.example.com/build/42")
+        val env = mapOf(
+            "GITHUB_SERVER_URL" to "https://github.com",
+            "GITHUB_REPOSITORY" to "acme/app",
+            "GITHUB_RUN_ID" to "99"
+        )
+        val result = CiContextResolver.enrich(command, CiProvider.GITHUB_ACTIONS, env)
+        assertEquals("https://my-ci.example.com/build/42", result.buildUrl)
+    }
+
+    @Test
+    fun `enrich command leaves fields null when env vars not present`() {
+        val result = CiContextResolver.enrich(baseCommand(), CiProvider.GITLAB_CI, emptyMap())
+        assertNull(result.gitCommitSha)
+        assertNull(result.gitBranch)
+        assertNull(result.buildUrl)
     }
 }
