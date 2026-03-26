@@ -4,6 +4,7 @@ import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.AuditEventType
 import com.factstore.core.domain.TrailStatus
+import com.factstore.core.domain.event.DomainEvent
 import com.factstore.core.port.inbound.command.IAttestationCommandHandler
 import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.inbound.IEvidenceVaultService
@@ -31,7 +32,8 @@ class AttestationCommandHandler(
     private val auditService: IAuditService,
     private val organisationRepository: IOrganisationRepository,
     private val flowRepository: IFlowRepository,
-    private val eventPublisher: IEventPublisher
+    private val eventPublisher: IEventPublisher,
+    private val eventAppender: EventAppender
 ) : IAttestationCommandHandler {
 
     private val log = LoggerFactory.getLogger(AttestationCommandHandler::class.java)
@@ -58,6 +60,18 @@ class AttestationCommandHandler(
             artifactFingerprint = command.artifactFingerprint
         )
         val saved = attestationRepository.save(attestation)
+        eventAppender.append(DomainEvent.AttestationRecorded(
+            aggregateId = saved.id,
+            trailId = saved.trailId,
+            type = saved.type,
+            status = saved.status.name,
+            details = saved.details,
+            name = saved.name,
+            evidenceUrl = saved.evidenceUrl,
+            orgSlug = saved.orgSlug,
+            artifactFingerprint = saved.artifactFingerprint,
+            flowName = command.flowName
+        ))
         eventPublisher.publish(
             SupplyChainEvent.AttestationRecorded(
                 trailId = command.trailId,
@@ -97,6 +111,14 @@ class AttestationCommandHandler(
         attestation.evidenceFileName = evidenceFile.fileName
         attestation.evidenceFileSizeBytes = evidenceFile.fileSizeBytes
         attestationRepository.save(attestation)
+        eventAppender.append(DomainEvent.EvidenceUploaded(
+            aggregateId = attestation.id,
+            trailId = attestation.trailId,
+            fileName = evidenceFile.fileName,
+            contentType = command.contentType,
+            sha256Hash = evidenceFile.sha256Hash,
+            fileSizeBytes = evidenceFile.fileSizeBytes
+        ))
         log.info("Uploaded evidence for attestation: ${command.attestationId} hash=${evidenceFile.sha256Hash}")
         return CommandResult(id = attestation.id, status = "created")
     }

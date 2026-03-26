@@ -2,6 +2,7 @@ package com.factstore.application.command
 
 import com.factstore.core.domain.Artifact
 import com.factstore.core.domain.AuditEventType
+import com.factstore.core.domain.event.DomainEvent
 import com.factstore.core.port.inbound.command.IArtifactCommandHandler
 import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.outbound.IArtifactRepository
@@ -18,7 +19,8 @@ import org.springframework.transaction.annotation.Transactional
 class ArtifactCommandHandler(
     private val artifactRepository: IArtifactRepository,
     private val trailRepository: ITrailRepository,
-    private val auditService: IAuditService
+    private val auditService: IAuditService,
+    private val eventAppender: EventAppender
 ) : IArtifactCommandHandler {
 
     private val log = LoggerFactory.getLogger(ArtifactCommandHandler::class.java)
@@ -35,6 +37,16 @@ class ArtifactCommandHandler(
             orgSlug = command.orgSlug
         )
         val saved = artifactRepository.save(artifact)
+        eventAppender.append(DomainEvent.ArtifactReported(
+            aggregateId = saved.id,
+            trailId = saved.trailId,
+            imageName = saved.imageName,
+            imageTag = saved.imageTag,
+            sha256Digest = saved.sha256Digest,
+            registry = saved.registry,
+            reportedBy = saved.reportedBy,
+            orgSlug = saved.orgSlug
+        ))
         auditService.record(
             eventType = AuditEventType.ARTIFACT_DEPLOYED,
             actor = command.reportedBy,

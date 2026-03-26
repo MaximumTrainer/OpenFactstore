@@ -81,7 +81,8 @@ When a software artifact is built, a **trail** captures provenance metadata (Git
 - **Regulatory Compliance Framework** — Map flows to SOX, PCI-DSS, GDPR, ISO 27001 controls; generate audit reports.
 - **Dry-run Safe Mode** — Preview any mutating operation without persisting data (`X-Dry-Run: true`).
 - **CI/CD Integration** — Native support for GitHub Actions, GitLab CI, Jenkins, CircleCI, Azure DevOps via `X-Factstore-CI-Context` header.
-- **Immutable Audit Trail** — Full chain of custody linking artifacts → trails → flows → attestations → evidence.
+- **Event Sourcing** — Append-only event log captures every state change as an immutable domain event (`FlowCreated`, `TrailCreated`, `ArtifactReported`, …). Supports full and incremental replay for rebuilding read-model projections.
+- **Immutable Audit Trail** — Full chain of custody linking artifacts → trails → flows → attestations → evidence, backed by the event log.
 - **Prometheus Metrics & Grafana Dashboards** — Four pre-built dashboards for compliance, security, gates, and forensics.
 - **Slack & Atlassian Integrations** — Notify Slack on non-compliant trails; sync to Jira and Confluence.
 - **SSO / OIDC** — Per-organisation SSO configuration (Okta, Azure AD, any OIDC provider).
@@ -90,7 +91,9 @@ When a software artifact is built, a **trail** captures provenance metadata (Git
 
 ## Architecture
 
-Factstore is built on **Hexagonal Architecture** (Ports and Adapters), where the core business logic is fully isolated from external systems. Dependencies always point **inward**: adapters depend on ports, ports depend on the domain — never the other way around.
+Factstore is built on **Hexagonal Architecture** (Ports and Adapters) with a **CQRS + Event Sourcing** split. The core business logic is fully isolated from external systems. Dependencies always point **inward**: adapters depend on ports, ports depend on the domain — never the other way around.
+
+The **Write** path accepts commands via v2 REST controllers, validates business rules, persists state, and appends immutable domain events to an append-only **Event Log**. The **Read** path serves queries from optimised read models. An **Event Projector** can replay the event log to rebuild read-model state from scratch or catch up incrementally.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -103,40 +106,46 @@ Factstore is built on **Hexagonal Architecture** (Ports and Adapters), where the
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │            DRIVING ADAPTERS (Inbound)                   │    │
-│  │         adapter/inbound/web/ (REST Controllers)         │    │
-│  └───────────────────────────┬─────────────────────────────┘    │
-│                              │ calls via                        │
-│  ┌───────────────────────────▼─────────────────────────────┐    │
-│  │              INBOUND PORTS (Driving)                    │    │
-│  │         core/port/inbound/ (IFlowService, etc.)         │    │
-│  └───────────────────────────┬─────────────────────────────┘    │
-│                              │ implemented by                   │
-│  ┌───────────────────────────▼─────────────────────────────┐    │
-│  │             APPLICATION LAYER (Use Cases)               │    │
-│  │         application/ (FlowService, AssertService, …)    │    │
-│  └──────────┬──────────────────────────────────────────────┘    │
-│             │ calls via                                         │
+│  │  adapter/inbound/web/command/ (v2 Command Controllers)  │    │
+│  │  adapter/inbound/web/query/   (v2 Query Controllers)    │    │
+│  │  adapter/inbound/web/         (v1 REST Controllers)     │    │
+│  └────────────────┬───────────────────┬────────────────────┘    │
+│       Commands    │                   │  Queries                 │
+│  ┌────────────────▼───────────┐  ┌────▼────────────────────┐    │
+│  │  COMMAND HANDLERS (Write)  │  │  QUERY HANDLERS (Read)  │    │
+│  │  application/command/      │  │  application/query/      │    │
+│  │  (FlowCommandHandler, …)  │  │  (FlowQueryHandler, …)  │    │
+│  └──────┬──────────┬──────────┘  └──────────┬──────────────┘    │
+│         │ save     │ append event            │ read              │
+│  ┌──────▼──────┐ ┌─▼────────────────┐ ┌─────▼──────────────┐   │
+│  │ JPA Entity  │ │  Event Store     │ │  Read Repositories  │   │
+│  │ Repositories│ │  (IEventStore)   │ │  (Read ports)       │   │
+│  └──────┬──────┘ └─┬────────────────┘ └─────┬──────────────┘   │
+│         │          │                         │                   │
+│  ┌──────▼──────────▼─────────────────────────▼──────────────┐   │
+│  │           DRIVEN ADAPTERS (Outbound)                     │   │
+│  │  adapter/outbound/persistence/ (JPA + EventStoreAdapter) │   │
+│  └──────────┬──────────────────────────────────────────────┘   │
+│             │                                                    │
 │  ┌──────────▼──────────────────────────────────────────────┐    │
-│  │             OUTBOUND PORTS (Driven)                     │    │
-│  │      core/port/outbound/ (IFlowRepository, etc.)        │    │
-│  └──────────┬──────────────────────────────────────────────┘    │
-│             │ implemented by                                    │
-│  ┌──────────▼──────────────────────────────────────────────┐    │
-│  │           DRIVEN ADAPTERS (Outbound)                    │    │
-│  │  adapter/outbound/persistence/ (JPA Repository Adapters)│    │
-│  └──────────┬──────────────────────────────────────────────┘    │
-└─────────────┼────────────────────────────────────────────────────┘
+│  │  EVENT PROJECTOR (application/EventProjector)           │    │
+│  │  Replays event log → rebuilds read-model state          │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────┬────────────────────────────────────────────────────┘
               │ JDBC
 ┌─────────────▼────────────────────────────────────────────────────┐
 │                    PostgreSQL Database                            │
+│   Entity tables (flows, trails, …)  +  domain_events (event log) │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Why Hexagonal Architecture?
+### Why Hexagonal Architecture + Event Sourcing?
 
 - **Swap storage backends without touching logic.** Replace the H2 JPA adapter with a PostgreSQL or Vector DB adapter by writing a new `IFlowRepository` implementation — zero changes to `FlowService`.
 - **Add new delivery mechanisms freely.** Add a REST API, CLI, or message-queue consumer by writing a new driving adapter against the inbound port interfaces.
-- **Test business logic without infrastructure.** The `InMemoryFlowRepository` mock adapter lets `FlowService` be unit-tested in a plain JUnit test with no Spring context or database.
+- **Test business logic without infrastructure.** The `InMemoryFlowRepository` and `InMemoryEventStore` mock adapters let services be unit-tested in a plain JUnit test with no Spring context or database.
+- **Full auditability.** Every state change is recorded as an immutable domain event in the event log — nothing is lost.
+- **Rebuild read models on demand.** Replay the event log to reconstruct read-model projections from scratch whenever the schema changes.
 
 ### Backend Package Layout
 
@@ -144,16 +153,27 @@ Factstore is built on **Hexagonal Architecture** (Ports and Adapters), where the
 com.factstore/
 ├── core/
 │   ├── domain/           ← Business entities (Flow, Trail, Artifact, Attestation, EvidenceFile)
+│   │   └── event/        ← Domain events (sealed DomainEvent hierarchy)
 │   └── port/
-│       ├── inbound/      ← Driving port interfaces (IFlowService, IAssertService, …)
-│       └── outbound/     ← Driven port interfaces (IFlowRepository, ITrailRepository, …)
-├── application/          ← Use case implementations (FlowService, AssertService, …)
+│       ├── inbound/
+│       │   ├── command/   ← Command handler interfaces (IFlowCommandHandler, …)
+│       │   └── query/     ← Query handler interfaces (IFlowQueryHandler, …)
+│       └── outbound/
+│           ├── read/      ← Read-model repository interfaces
+│           └── …          ← Write-model repository + IEventStore port
+├── application/
+│   ├── command/          ← Command handlers + EventAppender
+│   └── query/            ← Query handlers
+│   └── EventProjector   ← Replays event log to rebuild read models
 ├── adapter/
 │   ├── inbound/
-│   │   └── web/          ← Driving adapters: REST Controllers
+│   │   └── web/
+│   │       ├── command/  ← v2 Command REST controllers
+│   │       └── query/    ← v2 Query REST controllers
 │   └── outbound/
-│       └── persistence/  ← Driven adapters: JPA Repository + Adapter classes
-├── dto/                  ← Request / response DTOs
+│       └── persistence/  ← JPA adapters: entity repos + EventStoreAdapter
+├── dto/
+│   └── command/          ← Command DTOs and request objects
 ├── exception/            ← Domain exceptions and global error handler
 └── config/               ← CORS and OpenAPI configuration
 ```
@@ -163,12 +183,16 @@ com.factstore/
 | Layer | Package | Responsibility |
 |-------|---------|---------------|
 | Domain | `core/domain/` | Business entities (`Flow`, `Trail`, `Artifact`, `Attestation`, `EvidenceFile`) |
-| Inbound Ports | `core/port/inbound/` | Service interfaces (`IFlowService`, `IAssertService`, …) |
-| Outbound Ports | `core/port/outbound/` | Repository interfaces (`IFlowRepository`, `ITrailRepository`, …) |
-| Application | `application/` | Use case implementations (depend only on port interfaces) |
-| Web Adapters | `adapter/inbound/web/` | REST controllers (depend on inbound port interfaces) |
-| Persistence Adapters | `adapter/outbound/persistence/` | JPA implementations of outbound ports |
-| DTO | `dto/` | Request/response objects decoupled from entities |
+| Domain Events | `core/domain/event/` | Sealed `DomainEvent` hierarchy (`FlowCreated`, `TrailCreated`, …) |
+| Command Ports | `core/port/inbound/command/` | Command handler interfaces (`IFlowCommandHandler`, …) |
+| Query Ports | `core/port/inbound/query/` | Query handler interfaces (`IFlowQueryHandler`, …) |
+| Outbound Ports | `core/port/outbound/` | Repository interfaces + `IEventStore` (append-only event log) |
+| Command Handlers | `application/command/` | Write-side use cases + `EventAppender` (dual-write: JPA entity + event log) |
+| Query Handlers | `application/query/` | Read-side use cases (query read-model repositories) |
+| Event Projector | `application/` | `EventProjector` — replays event log to rebuild read-model state |
+| Web Adapters | `adapter/inbound/web/` | REST controllers (v1 compat + v2 command/query split) |
+| Persistence Adapters | `adapter/outbound/persistence/` | JPA implementations of outbound ports + `EventStoreAdapter` |
+| DTO | `dto/` | Request/response objects and command DTOs |
 | Exception | `exception/` | Custom exceptions and global error handler |
 | Config | `config/` | CORS policy and OpenAPI/Swagger setup |
 
@@ -181,6 +205,8 @@ com.factstore/
 ```
 Flow  ──< Trail ──< Artifact
                └──< Attestation ──> EvidenceFile
+
+Every state change  ──►  domain_events (append-only Event Log)
 ```
 
 - A **Flow** defines which attestation types are required.
@@ -188,6 +214,7 @@ Flow  ──< Trail ──< Artifact
 - **Artifacts** (container images) are associated with a Trail.
 - **Attestations** provide evidence (linked to a Trail) that a requirement was met.
 - An **EvidenceFile** stores the actual evidence payload with its hash.
+- The **Event Log** (`domain_events` table) records every command-side state change as an immutable `DomainEvent`. Events are serialized as JSON and ordered by a database-generated sequence number. The `EventProjector` can replay the log to rebuild read-model projections from scratch or catch up incrementally.
 
 ### Frontend Layers
 
@@ -373,7 +400,7 @@ When the backend is running, interactive API documentation is available via Swag
 - **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
 - **OpenAPI JSON**: [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
 
-All REST endpoints are grouped under the `/api/v1` base path.
+All REST endpoints are grouped under `/api/v1` (legacy) and `/api/v2` (CQRS command/query split) base paths.
 
 ---
 

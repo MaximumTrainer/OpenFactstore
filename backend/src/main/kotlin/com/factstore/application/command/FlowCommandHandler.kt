@@ -1,6 +1,7 @@
 package com.factstore.application.command
 
 import com.factstore.core.domain.Flow
+import com.factstore.core.domain.event.DomainEvent
 import com.factstore.core.port.inbound.command.IFlowCommandHandler
 import com.factstore.core.port.outbound.IFlowRepository
 import com.factstore.dto.command.CommandResult
@@ -15,9 +16,22 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 
+/**
+ * Handles flow-related commands on the write side of the CQRS split.
+ *
+ * **Dual-write strategy:** State is persisted to the JPA entity store *and*
+ * an event is appended to the event log within the same transaction.  The
+ * JPA entities remain the authoritative read model for now; the event log
+ * provides an immutable audit trail and enables future replay-based
+ * projections.  A later iteration may drop the direct JPA write and
+ * reconstruct state entirely from the event log.
+ */
 @Service
 @Transactional
-class FlowCommandHandler(private val flowRepository: IFlowRepository) : IFlowCommandHandler {
+class FlowCommandHandler(
+    private val flowRepository: IFlowRepository,
+    private val eventAppender: EventAppender
+) : IFlowCommandHandler {
 
     private val log = LoggerFactory.getLogger(FlowCommandHandler::class.java)
 
@@ -38,6 +52,17 @@ class FlowCommandHandler(private val flowRepository: IFlowRepository) : IFlowCom
             it.requiredApproverRoles = command.requiredApproverRoles
         }
         val saved = flowRepository.save(flow)
+        eventAppender.append(DomainEvent.FlowCreated(
+            aggregateId = saved.id,
+            name = saved.name,
+            description = saved.description,
+            orgSlug = saved.orgSlug,
+            requiredAttestationTypes = saved.requiredAttestationTypes,
+            tags = saved.tags.toMap(),
+            templateYaml = saved.templateYaml,
+            requiresApproval = saved.requiresApproval,
+            requiredApproverRoles = saved.requiredApproverRoles
+        ))
         log.info("Created flow: ${saved.id} - ${saved.name}")
         return CommandResult(id = saved.id, status = "created")
     }
@@ -61,12 +86,23 @@ class FlowCommandHandler(private val flowRepository: IFlowRepository) : IFlowCom
         command.requiredApproverRoles?.let { flow.requiredApproverRoles = it }
         flow.updatedAt = Instant.now()
         val saved = flowRepository.save(flow)
+        eventAppender.append(DomainEvent.FlowUpdated(
+            aggregateId = saved.id,
+            name = command.name,
+            description = command.description,
+            requiredAttestationTypes = command.requiredAttestationTypes,
+            tags = command.tags,
+            templateYaml = command.templateYaml,
+            requiresApproval = command.requiresApproval,
+            requiredApproverRoles = command.requiredApproverRoles
+        ))
         return CommandResult(id = saved.id, status = "updated")
     }
 
     override fun deleteFlow(command: DeleteFlowCommand) {
         if (!flowRepository.existsById(command.id)) throw NotFoundException("Flow not found: ${command.id}")
         flowRepository.deleteById(command.id)
+        eventAppender.append(DomainEvent.FlowDeleted(aggregateId = command.id))
         log.info("Deleted flow: ${command.id}")
     }
 
