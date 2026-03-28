@@ -1,7 +1,9 @@
 package com.factstore.application.command
 
 import com.factstore.adapter.mock.InMemoryEventStore
+import com.factstore.core.domain.EventLogEntry
 import com.factstore.core.domain.event.DomainEvent
+import com.factstore.core.port.outbound.IDomainEventBus
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -15,12 +17,15 @@ class EventAppenderTest {
     private lateinit var eventStore: InMemoryEventStore
     private lateinit var objectMapper: ObjectMapper
     private lateinit var eventAppender: EventAppender
+    private val noopBus = object : IDomainEventBus {
+        override fun publish(entry: EventLogEntry) { /* no-op for test */ }
+    }
 
     @BeforeEach
     fun setUp() {
         eventStore = InMemoryEventStore()
         objectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
-        eventAppender = EventAppender(eventStore, objectMapper)
+        eventAppender = EventAppender(eventStore, objectMapper, noopBus)
     }
 
     @Test

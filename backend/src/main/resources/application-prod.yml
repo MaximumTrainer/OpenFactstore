@@ -1,0 +1,44 @@
+# Profile: prod — Decoupled CQRS deployment with dual PostgreSQL databases and RabbitMQ.
+#
+# The command service and query service each run as separate containers,
+# each connecting to its own PostgreSQL instance.  RabbitMQ carries the
+# domain event feed from the command (write) side to the query (read) side.
+#
+# Activate with: --spring.profiles.active=prod
+#
+# Required environment variables:
+#   DB_HOST / DB_PORT / DB_NAME / DB_USERNAME / DB_PASSWORD
+#     → The PostgreSQL instance this service connects to.
+#       For the command service this is the write database.
+#       For the query service this is the read database.
+#   RABBITMQ_HOST / RABBITMQ_PORT / RABBITMQ_USERNAME / RABBITMQ_PASSWORD
+#     → RabbitMQ broker used for the CQRS event feed.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:factstore}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:factstore}
+    password: ${DB_PASSWORD:factstore}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+factstore:
+  events:
+    publisher: rabbitmq
