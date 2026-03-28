@@ -13,12 +13,14 @@ const (
 	defaultConfigFile = ".factstore.yaml"
 	KeyHost           = "host"
 	KeyToken          = "token"
+	KeyQueryHost      = "query_host"
 )
 
 // Config holds CLI configuration values.
 type Config struct {
-	Host  string
-	Token string
+	Host      string
+	Token     string
+	QueryHost string
 }
 
 // Load initializes Viper and returns the current configuration.
@@ -46,8 +48,9 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Host:  viper.GetString(KeyHost),
-		Token: viper.GetString(KeyToken),
+		Host:      viper.GetString(KeyHost),
+		Token:     viper.GetString(KeyToken),
+		QueryHost: viper.GetString(KeyQueryHost),
 	}, nil
 }
 

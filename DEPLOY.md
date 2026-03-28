@@ -239,6 +239,21 @@ All standard Spring Boot properties can be passed as command-line flags or envir
 | `DB_USERNAME` | Database user |
 | `DB_PASSWORD` | Database password |
 
+#### RabbitMQ configuration (CQRS event bus)
+
+| Environment Variable | Description |
+|----------------------|-------------|
+| `RABBITMQ_HOST` | RabbitMQ hostname (default: `localhost`) |
+| `RABBITMQ_PORT` | RabbitMQ AMQP port (default: `5672`) |
+| `RABBITMQ_USERNAME` | RabbitMQ user (default: `guest`) |
+| `RABBITMQ_PASSWORD` | RabbitMQ password (default: `guest`) |
+
+#### Event publisher
+
+| Environment Variable | Description |
+|----------------------|-------------|
+| `FACTSTORE_EVENTS_PUBLISHER` | `logging` (default), `rabbitmq` (production CQRS), `inmemory` (tests), `none` |
+
 #### HashiCorp Vault integration
 
 | Environment Variable | Description |
@@ -259,6 +274,94 @@ All standard Spring Boot properties can be passed as command-line flags or envir
 |----------------------|-------------|
 | `GITHUB_CLIENT_ID` | GitHub OAuth app client ID |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret |
+
+---
+
+## CQRS Deployment (Dual-Service Architecture)
+
+For production, Factstore runs as two separate services sharing a RabbitMQ event bus:
+
+### Network Topology
+
+```
+                    ┌──────────────┐
+                    │   Clients    │
+                    └──────┬───────┘
+              POST/PUT/DELETE │  GET
+          ┌──────────────────┴────────────────┐
+          ▼                                    ▼
+  ┌───────────────┐                   ┌───────────────┐
+  │ Command :8080 │──── RabbitMQ ────►│  Query :8081  │
+  └───────┬───────┘                   └───────┬───────┘
+          │                                    │
+  ┌───────▼───────┐                   ┌───────▼───────┐
+  │  PostgreSQL   │                   │  PostgreSQL   │
+  │  (Write DB)   │                   │  (Read DB)    │
+  │    :5432      │                   │    :5433      │
+  └───────────────┘                   └───────────────┘
+```
+
+### Docker Compose (recommended)
+
+```bash
+docker compose up --build
+```
+
+This starts:
+- **postgres-command** — Write database (port 5432)
+- **postgres-query** — Read database (port 5433)
+- **rabbitmq** — Event bus (AMQP 5672, Management UI 15672)
+- **backend-command** — Command service (port 8080)
+- **backend-query** — Query service (port 8081)
+
+### Event-Driven Synchronization
+
+1. A command (POST/PUT/DELETE) arrives at the **Command service** (:8080)
+2. The command handler persists the entity + appends a domain event to the event store
+3. The `EventAppender` publishes the event to the `IDomainEventBus` (RabbitMQ)
+4. The **Query service** (:8081) `RabbitMqEventConsumer` receives the event
+5. The `ReadModelProjector` applies the event to the read database
+
+### CLI Configuration
+
+The CLI supports separate hosts for read and write operations:
+
+```bash
+# Configure with separate command and query hosts
+factstore configure
+# Or use flags:
+factstore --host https://command.example.com --query-host https://query.example.com flows list
+# Or environment variables:
+export FACTSTORE_HOST=https://command.example.com
+export FACTSTORE_QUERY_HOST=https://query.example.com
+```
+
+When `--query-host` is set, GET requests are routed to the query service and all other requests to the command service.
+
+### Post-Deployment Verification
+
+```bash
+# 1. Verify command service health
+curl -fs http://localhost:8080/actuator/health
+
+# 2. Verify query service health
+curl -fs http://localhost:8081/actuator/health
+
+# 3. Create a flow via command service and verify it appears on query service
+curl -X POST http://localhost:8080/api/v2/flows \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"verify-cqrs","description":"Post-deployment verification"}'
+
+# Wait for event propagation (typically < 1 second)
+sleep 2
+
+# 4. Read the flow from query service
+curl -s http://localhost:8081/api/v2/flows | grep verify-cqrs
+
+# 5. Verify RabbitMQ is healthy
+curl -fs http://localhost:15672/api/healthchecks/node \
+  -u guest:guest
+```
 
 ### Docker environment variable example
 

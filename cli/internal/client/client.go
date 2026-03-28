@@ -21,20 +21,22 @@ const (
 )
 
 // Client is an HTTP client for the Factstore API.
+// When QueryBaseURL is set, GET requests are routed to the query (read)
+// service while mutating requests (POST/PUT/DELETE) go to BaseURL (the
+// command/write service).  When QueryBaseURL is empty both read and write
+// requests go to BaseURL, preserving backward compatibility.
 type Client struct {
-	BaseURL    string
-	Token      string
-	httpClient *http.Client
+	BaseURL      string
+	QueryBaseURL string
+	Token        string
+	httpClient   *http.Client
 }
 
 // New creates a new Client. Returns an error if baseURL uses http:// with a
 // non-localhost host, to prevent sending tokens over plaintext connections.
 func New(baseURL, token string) (*Client, error) {
-	if strings.HasPrefix(baseURL, "http://") {
-		u, err := url.Parse(baseURL)
-		if err != nil || (u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1") {
-			return nil, fmt.Errorf("insecure connection refused: use https:// (http:// is only allowed for localhost)")
-		}
+	if err := validateURL(baseURL); err != nil {
+		return nil, err
 	}
 	return &Client{
 		BaseURL: strings.TrimRight(baseURL, "/"),
@@ -43,6 +45,39 @@ func New(baseURL, token string) (*Client, error) {
 			Timeout: 30 * time.Second,
 		},
 	}, nil
+}
+
+// NewWithQueryHost creates a Client that routes GET requests to queryBaseURL.
+// If queryBaseURL is empty it falls back to baseURL for all operations.
+func NewWithQueryHost(baseURL, queryBaseURL, token string) (*Client, error) {
+	if err := validateURL(baseURL); err != nil {
+		return nil, err
+	}
+	if queryBaseURL != "" {
+		if err := validateURL(queryBaseURL); err != nil {
+			return nil, err
+		}
+	}
+	c := &Client{
+		BaseURL:      strings.TrimRight(baseURL, "/"),
+		QueryBaseURL: strings.TrimRight(queryBaseURL, "/"),
+		Token:        token,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+	return c, nil
+}
+
+// validateURL rejects insecure (http://) connections to non-localhost hosts.
+func validateURL(rawURL string) error {
+	if strings.HasPrefix(rawURL, "http://") {
+		u, err := url.Parse(rawURL)
+		if err != nil || (u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1") {
+			return fmt.Errorf("insecure connection refused: use https:// (http:// is only allowed for localhost)")
+		}
+	}
+	return nil
 }
 
 // reqFactory is a function that produces a fresh *http.Request for each attempt.
@@ -82,6 +117,10 @@ func (c *Client) do(build reqFactory) ([]byte, int, error) {
 }
 
 func (c *Client) doRequest(method, path string, body interface{}) ([]byte, int, error) {
+	return c.doRequestWithBase(method, c.BaseURL, path, body)
+}
+
+func (c *Client) doRequestWithBase(method, base, path string, body interface{}) ([]byte, int, error) {
 	// Pre-marshal the body once so each retry reuses the same bytes.
 	var bodyBytes []byte
 	if body != nil {
@@ -97,7 +136,7 @@ func (c *Client) doRequest(method, path string, body interface{}) ([]byte, int, 
 		if bodyBytes != nil {
 			bodyReader = bytes.NewReader(bodyBytes)
 		}
-		reqURL := c.BaseURL + path
+		reqURL := base + path
 		req, err := http.NewRequest(method, reqURL, bodyReader)
 		if err != nil {
 			return nil, err
@@ -113,9 +152,14 @@ func (c *Client) doRequest(method, path string, body interface{}) ([]byte, int, 
 	})
 }
 
-// Get performs a GET request.
+// Get performs a GET request.  When a QueryBaseURL is configured the request
+// is routed to the query (read) service; otherwise it goes to BaseURL.
 func (c *Client) Get(path string) ([]byte, int, error) {
-	return c.doRequest(http.MethodGet, path, nil)
+	base := c.BaseURL
+	if c.QueryBaseURL != "" {
+		base = c.QueryBaseURL
+	}
+	return c.doRequestWithBase(http.MethodGet, base, path, nil)
 }
 
 // Post performs a POST request with a JSON body.
