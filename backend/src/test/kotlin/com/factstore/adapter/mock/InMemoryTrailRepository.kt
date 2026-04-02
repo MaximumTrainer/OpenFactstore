@@ -3,6 +3,9 @@ package com.factstore.adapter.mock
 import com.factstore.core.domain.Trail
 import com.factstore.core.domain.TrailStatus
 import com.factstore.core.port.outbound.ITrailRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.Pageable
 import java.time.Instant
 import java.util.UUID
 
@@ -25,6 +28,13 @@ class InMemoryTrailRepository : ITrailRepository {
 
     override fun findByFlowId(flowId: UUID): List<Trail> =
         store.values.filter { it.flowId == flowId }
+
+    override fun findByFlowId(flowId: UUID, pageable: Pageable): Page<Trail> {
+        val all = store.values.filter { it.flowId == flowId }
+        val start = (pageable.pageNumber * pageable.pageSize).coerceAtMost(all.size)
+        val end = (start + pageable.pageSize).coerceAtMost(all.size)
+        return PageImpl(all.subList(start, end), pageable, all.size.toLong())
+    }
 
     override fun searchByQuery(query: String): List<Trail> =
         store.values.filter { t ->
@@ -55,4 +65,7 @@ class InMemoryTrailRepository : ITrailRepository {
 
     override fun countByStatus(status: TrailStatus): Long =
         store.values.count { it.status == status }.toLong()
+
+    override fun findByFlowIdAndName(flowId: UUID, name: String): Trail? =
+        store.values.firstOrNull { it.flowId == flowId && it.name == name }
 }

@@ -26,8 +26,22 @@ import com.factstore.core.domain.BundleStatus
 import com.factstore.core.domain.WebhookSource
 import com.factstore.core.domain.ScanType
 import com.factstore.core.domain.AssessmentStatus
+import jakarta.validation.constraints.Email
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Pattern
+import jakarta.validation.constraints.Size
 import java.time.Instant
 import java.util.UUID
+
+// Pagination DTO
+data class PageResponse<T>(
+    val items: List<T>,
+    val page: Int,
+    val size: Int,
+    val totalItems: Long,
+    val totalPages: Int
+)
 
 // Dry-run wrapper
 data class DryRunResponse(
@@ -37,7 +51,10 @@ data class DryRunResponse(
 
 // Flow DTOs
 data class CreateFlowRequest(
+    @field:NotBlank(message = "name is required")
+    @field:Size(max = 255)
     val name: String,
+    @field:Size(max = 2048)
     val description: String = "",
     val requiredAttestationTypes: List<String> = emptyList(),
     val tags: Map<String, String> = emptyMap(),
@@ -73,17 +90,22 @@ data class FlowResponse(
 
 // Trail DTOs
 data class CreateTrailRequest(
+    @field:NotNull(message = "flowId is required")
     val flowId: UUID,
     val gitCommitSha: String? = null,
     val gitBranch: String? = null,
+    @field:NotBlank(message = "gitAuthor is required")
     val gitAuthor: String,
+    @field:Email
+    @field:Size(max = 255)
     val gitAuthorEmail: String,
     val pullRequestId: String? = null,
     val pullRequestReviewer: String? = null,
     val deploymentActor: String? = null,
     val orgSlug: String? = null,
     val templateYaml: String? = null,
-    val buildUrl: String? = null
+    val buildUrl: String? = null,
+    val name: String? = null
 )
 
 data class TrailResponse(
@@ -100,6 +122,7 @@ data class TrailResponse(
     val orgSlug: String? = null,
     val templateYaml: String? = null,
     val buildUrl: String? = null,
+    val name: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant
 )
@@ -133,8 +156,12 @@ data class AttestationResponse(
 
 // Artifact DTOs
 data class CreateArtifactRequest(
+    @field:NotBlank(message = "imageName is required")
     val imageName: String,
+    @field:NotBlank(message = "imageTag is required")
     val imageTag: String,
+    @field:NotBlank(message = "sha256Digest is required")
+    @field:Pattern(regexp = "sha256:[a-fA-F0-9]{64}", message = "sha256Digest must be in format sha256:<64 hex chars>")
     val sha256Digest: String,
     val registry: String? = null,
     val reportedBy: String,
@@ -289,6 +316,15 @@ data class ErrorResponse(
     val error: String,
     val message: String,
     val timestamp: Instant = Instant.now()
+)
+
+// Deployment event DTO
+data class DeploymentResponse(
+    val id: java.util.UUID,
+    val artifactSha256: String,
+    val environmentId: java.util.UUID,
+    val snapshotIndex: Long,
+    val deployedAt: Instant
 )
 
 // Search DTOs
@@ -560,7 +596,10 @@ data class SnapshotScopeDto(
 )
 
 data class CreateEnvironmentRequest(
+    @field:NotBlank(message = "name is required")
+    @field:Size(max = 255)
     val name: String,
+    @field:NotNull(message = "type is required")
     val type: EnvironmentType,
     val description: String = "",
     val orgSlug: String? = null,
@@ -996,6 +1035,8 @@ data class VaultHealthResponse(
 
 // Policy DTOs
 data class CreatePolicyRequest(
+    @field:NotBlank(message = "name is required")
+    @field:Size(max = 255)
     val name: String,
     val enforceProvenance: Boolean = false,
     val enforceTrailCompliance: Boolean = false,

@@ -49,6 +49,9 @@ class Trail(
     @Column(name = "build_url", length = 2048)
     var buildUrl: String? = null,
 
+    @Column(name = "name", nullable = true, length = 255)
+    var name: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 
