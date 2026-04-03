@@ -25,6 +25,9 @@ A comprehensive guide for developers and DevSecOps engineers using OpenFactstore
    - [Dry-run Safe Mode](#413-dry-run-safe-mode)
    - [CI/CD Integration](#414-cicd-integration)
    - [Prometheus Metrics & Grafana Dashboards](#415-prometheus-metrics--grafana-dashboards)
+   - [OIDC Provenance Attestation](#416-oidc-provenance-attestation)
+   - [Attestation Type Processors](#417-attestation-type-processors)
+   - [Terraform Infrastructure as Code](#418-terraform-infrastructure-as-code)
 5. [Security & Data Privacy](#5-security--data-privacy)
 6. [CI/CD Integration Reference](#6-cicd-integration-reference)
 7. [Monitoring](#7-monitoring)
@@ -97,6 +100,8 @@ OpenFactstore follows **Hexagonal Architecture** (Ports and Adapters). Business 
 - [ ] **Java 21** (Eclipse Temurin recommended): `java -version`
 - [ ] **Node.js 20** + npm: `node -v && npm -v`
 - [ ] **Docker & Docker Compose**: `docker compose version`
+- [ ] **Terraform ≥ 1.6** *(optional — only needed for `infra/` bootstrap)*: `terraform -version`
+- [ ] **Go ≥ 1.25** *(optional — needed to build the Terraform provider from source)*: `go version`
 
 ### Quick Start with Docker Compose
 
@@ -160,6 +165,7 @@ The backend reads these environment variables at startup. All have defaults suit
 | `VAULT_ENABLED` | `false` | Enable HashiCorp Vault for evidence storage |
 | `VAULT_ADDR` | `http://localhost:8200` | Vault address |
 | `VAULT_TOKEN` | *(required if enabled)* | Vault root/app token |
+| `FACTSTORE_SCM_ENCRYPTION_KEY` | `default-dev-key-32chars!!!!!!` | AES-256-GCM key for SCM token encryption. **Set to a strong random 32-char value in production.** |
 | `GF_SECURITY_ADMIN_PASSWORD` | `changeme` | Grafana admin password |
 
 > 💡 **Pro-tip:** For production, set `DB_PASSWORD` and `VAULT_TOKEN` via a secrets manager (AWS Secrets Manager, GCP Secret Manager, Vault itself). Never hardcode credentials.
@@ -367,6 +373,44 @@ tags:
 
 Store templates in your repository and use them to provision flows programmatically during bootstrap.
 
+#### Conditional Attestation Rules
+
+Attestations in a flow template can include an `if:` expression to make them conditional. The rule is only enforced when the expression evaluates to `true` at assertion time.
+
+```yaml
+version: 1
+trail:
+  attestations:
+    - name: jira-ticket
+      type: jira
+artifacts:
+  - name: backend
+    attestations:
+      - name: unit-tests
+        type: junit
+      - name: security-scan
+        type: snyk
+        if: 'flow.tags["pci-scope"] == "true"'
+      - name: sonar-gate
+        type: sonar
+        if: 'matches(artifact.name, "^backend.*")'
+```
+
+**Supported expression syntax** (evaluated by `PolicyExpressionEvaluator`):
+
+| Expression | Example |
+|------------|---------|
+| Equality | `flow.name == "payments-service"` |
+| Inequality | `flow.name != "test-flow"` |
+| Regex match | `matches(artifact.name, "^backend.*")` |
+| Existence check | `exists(flow)` |
+| List membership | `flow.name in ["svc-a", "svc-b"]` |
+| Logical AND | `exists(flow) and flow.name == "x"` |
+| Logical OR | `flow.name == "a" or flow.name == "b"` |
+| Negation | `not exists(flow)` |
+
+Malformed expressions default to `false` (never throw an exception).
+
 ---
 
 ### 4.3 Organisation Multi-tenancy
@@ -467,6 +511,41 @@ curl -s -X POST http://localhost:8080/api/v1/gate/evaluate \
 }
 ```
 
+#### Custom Policy YAML
+
+Attach a YAML policy to a flow for fine-grained control over what evidence is required. Policies support the same conditional `if:` expression syntax as flow templates:
+
+```yaml
+_schema: "https://factstore.io/policy/v1"
+artifacts:
+  provenance:
+    required: true
+  trail-compliance:
+    required: true
+  attestations:
+    - name: junit
+      type: junit
+    - name: security-scan
+      type: snyk
+      if: 'flow.name == "payments-service"'
+    - name: sonar-gate
+      type: sonar
+      if: 'matches(artifact.name, "^backend.*")'
+```
+
+```bash
+# Create and attach a custom policy to a flow
+curl -s -X POST http://localhost:8080/api/v1/policies \
+  -H "Content-Type: application/json" \
+  -d '{"name": "pci-baseline", "yaml": "<policy-yaml>"}' | jq .
+
+export POLICY_ID="policy-uuid"
+
+curl -s -X POST http://localhost:8080/api/v1/policy-attachments \
+  -H "Content-Type: application/json" \
+  -d '{"flowId": "'$FLOW_ID'", "policyId": "'$POLICY_ID'"}' | jq .
+```
+
 ---
 
 ### 4.6 Environment Drift Detection
@@ -564,7 +643,7 @@ curl -s -X POST http://localhost:8080/api/v1/organisations/acme-corp/scm-integra
   }' | jq .
 ```
 
-> 💡 **Pro-tip:** The token is stored Base64-encoded. For production, enable Vault (`VAULT_ENABLED=true`) to store SCM tokens encrypted at rest.
+> 💡 **Pro-tip:** The token is encrypted at rest using AES-256-GCM. Set `FACTSTORE_SCM_ENCRYPTION_KEY` to a strong, random 32-character key in production. If Vault is enabled (`VAULT_ENABLED=true`), tokens are additionally stored in HashiCorp Vault.
 
 **Step 2 — Record a PR attestation:**
 
@@ -745,11 +824,269 @@ See the full guide at **[docs/ci-integration.md](./docs/ci-integration.md)**.
 
 The `X-Factstore-CI-Context` header instructs the server to auto-populate `gitCommitSha`, `gitBranch`, and `buildUrl` from the CI environment's standard variables. See [docs/ci-integration.md](./docs/ci-integration.md) for all supported CI systems (GitHub Actions, GitLab CI, Jenkins, CircleCI, Azure DevOps).
 
+> 💡 **Terraform bootstrap in CI:** Use the `infra/` Terraform configuration to provision your Factstore instance's resources (environments, policies, flows) as code. The `.github/workflows/terraform-verify.yml` workflow demonstrates a full end-to-end verification: it starts the backend, applies the Terraform config, and asserts all resources exist before teardown. See [§4.18 Terraform Infrastructure as Code](#418-terraform-infrastructure-as-code).
+
 ---
 
 ### 4.15 Prometheus Metrics & Grafana Dashboards
 
 OpenFactstore exposes Prometheus metrics at `/actuator/prometheus`. See [Section 7: Monitoring](#7-monitoring) for the full guide.
+
+---
+
+### 4.16 OIDC Provenance Attestation
+
+Record a CI/CD identity token (OIDC JWT) issued by GitHub Actions or GitLab as a tamper-evident provenance attestation. This proves _which pipeline_ ran — not just that a build happened — by capturing the signed identity claims from the CI provider.
+
+**Allowed issuers:**
+- `https://token.actions.githubusercontent.com` (GitHub Actions)
+- `https://gitlab.com` (GitLab CI/CD)
+
+The server decodes the JWT payload, validates the issuer, and enforces **jti replay-protection** (each token can only be submitted once).
+
+**GitHub Actions — obtain and submit OIDC token:**
+
+```yaml
+# .github/workflows/build.yml
+- name: Record OIDC provenance attestation
+  permissions:
+    id-token: write   # required to request the OIDC JWT
+  run: |
+    TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+      "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=factstore" | jq -r '.value')
+
+    curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v2/attestations/oidc" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"trailId\": \"${{ env.TRAIL_ID }}\",
+        \"token\": \"$TOKEN\",
+        \"orgSlug\": \"${{ vars.FACTSTORE_ORG_SLUG }}\"
+      }" | jq .
+```
+
+**Response:**
+```json
+{
+  "id": "attest-uuid",
+  "trailId": "trail-uuid",
+  "type": "oidc-provenance",
+  "status": "PASSED",
+  "details": {
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:my-org/my-service:ref:refs/heads/main",
+    "repository": "my-org/my-service",
+    "workflow": ".github/workflows/build.yml",
+    "ref": "refs/heads/main",
+    "sha": "abc123def456",
+    "actor": "alice"
+  }
+}
+```
+
+> 💡 **Pro-tip:** OIDC provenance is particularly valuable under PCI-DSS and SOX requirements for proving that production deployments originated from a known, audited pipeline — not a developer's laptop.
+
+---
+
+### 4.17 Attestation Type Processors
+
+When you upload an evidence file for certain attestation types, OpenFactstore **automatically parses the content** and sets `PASSED` or `FAILED` without you having to specify the status manually. Upload evidence via the evidence vault endpoint and attach it to an attestation of the matching type.
+
+#### JUnit XML → `junit` attestations
+
+Upload JUnit XML test results — OpenFactstore counts `failures` and `errors` across all `<testsuite>` elements.
+
+```bash
+# Record a junit attestation and upload XML evidence
+curl -s -X POST "http://localhost:8080/api/v1/trails/$TRAIL_ID/attestations" \
+  -H "Content-Type: application/json" \
+  -d '{"type": "junit", "description": "Unit test results"}' | jq .
+
+export ATTEST_ID="attest-uuid"
+
+curl -s -X POST "http://localhost:8080/api/v1/evidence/$ATTEST_ID" \
+  -F "file=@target/surefire-reports/TEST-results.xml" | jq .
+# → status auto-set to PASSED (0 failures) or FAILED (failures/errors > 0)
+# → details: {"tests":247,"failures":0,"errors":0,"skipped":3}
+```
+
+#### Snyk / SARIF JSON → `snyk` attestations
+
+Upload a Snyk JSON output or any SARIF-format file.
+
+```bash
+curl -s -X POST "http://localhost:8080/api/v1/evidence/$ATTEST_ID" \
+  -F "file=@snyk-results.json" | jq .
+# → PASSED if vulnerabilities == 0, FAILED otherwise
+# → details: {"vulnerabilities":0}
+```
+
+#### SonarQube Quality Gate → `sonar` attestations
+
+Upload the SonarQube quality gate API response (`/api/qualitygates/project_status`).
+
+```bash
+# Fetch quality gate status from SonarQube and submit as evidence
+SONAR_STATUS=$(curl -s "$SONAR_HOST/api/qualitygates/project_status?projectKey=my-service")
+
+curl -s -X POST "http://localhost:8080/api/v1/evidence/$ATTEST_ID" \
+  -H "Content-Type: application/json" \
+  --data-binary "$SONAR_STATUS" | jq .
+# → PASSED if projectStatus.status == "OK", FAILED otherwise
+# → details: {"qualityGateStatus":"OK"}
+```
+
+#### Jira Issue Reference → `jira` attestations
+
+Submit a Jira issue key (e.g. `PROJ-123`) or a JSON body with `issueRef`.
+
+```bash
+# Plain issue key
+echo -n "PROJ-123" | curl -s -X POST "http://localhost:8080/api/v1/evidence/$ATTEST_ID" \
+  -H "Content-Type: text/plain" --data-binary @- | jq .
+# → PASSED (matches [A-Z]+-\d+ pattern), FAILED otherwise
+# → details: {"issueRef":"PROJ-123"}
+
+# JSON body
+curl -s -X POST "http://localhost:8080/api/v1/evidence/$ATTEST_ID" \
+  -H "Content-Type: application/json" \
+  -d '{"issueRef": "PROJ-123", "status": "Done"}' | jq .
+```
+
+---
+
+### 4.18 Terraform Infrastructure as Code
+
+OpenFactstore ships a custom **Terraform provider** (`terraform/`) and a ready-to-use **infrastructure configuration** (`infra/`) that together let you manage your entire Factstore deployment — organisations, environments, policies, and flows — as version-controlled code.
+
+#### What the Terraform provider manages
+
+| Resource | Terraform type | Description |
+|---|---|---|
+| Organisation | `factstore_organisation` | Root multi-tenant organisation |
+| Logical Environment | `factstore_logical_environment` | Grouping of related environments |
+| Environment | `factstore_environment` | Deployment target (K8S, S3, Lambda, Generic) |
+| Policy | `factstore_policy` | Deployment policy with attestation requirements |
+| Policy Attachment | `factstore_policy_attachment` | Binds a policy to an environment |
+| Flow | `factstore_flow` | CI/CD pipeline definition |
+
+Data sources are also available for `factstore_environment` and `factstore_flow` to read existing resources into other Terraform configurations.
+
+#### The `infra/` bootstrap configuration
+
+The `infra/` directory contains a turnkey configuration that provisions a standard Factstore instance:
+
+```
+infra/
+├── versions.tf    # Provider version lock (MaximumTrainer/factstore ~> 1.0)
+├── variables.tf   # factstore_url, factstore_token, org_slug, org_name
+├── main.tf        # All resources: org, envs, policies, attachments, flows
+└── outputs.tf     # Exports all resource IDs
+```
+
+Resources provisioned by `infra/main.tf`:
+
+- **Organisation** `openfactstore`
+- **Logical environment** `production-group`
+- **Environments** `staging` (K8S) and `production` (K8S)
+- **Policy** `baseline-requirements` — provenance + junit/snyk, attached to staging
+- **Policy** `production-requirements` — full compliance + pull-request, attached to production
+- **Flows** `backend-ci` (junit + snyk) and `frontend-ci` (build + snyk)
+
+#### Quick start
+
+**1. Build the Terraform provider from source:**
+
+```bash
+cd terraform
+go build -o terraform-provider-factstore .
+PROVIDER_DIR=~/.terraform.d/plugins/registry.terraform.io/MaximumTrainer/factstore/1.0.0/linux_amd64
+mkdir -p "$PROVIDER_DIR"
+cp terraform-provider-factstore "$PROVIDER_DIR/"
+```
+
+**2. Configure the dev override** (`~/.terraformrc`):
+
+```hcl
+provider_installation {
+  dev_overrides {
+    "MaximumTrainer/factstore" = "~/.terraform.d/plugins/registry.terraform.io/MaximumTrainer/factstore/1.0.0/linux_amd64"
+  }
+  direct {}
+}
+```
+
+**3. Start Factstore** (see [§2 Setup & Installation](#2-setup--installation)), then apply:
+
+```bash
+cd infra
+terraform init
+terraform apply \
+  -var="factstore_url=http://localhost:8080" \
+  -var="factstore_token="        # omit token when SECURITY_ENFORCE_AUTH is not set
+```
+
+After apply, inspect outputs:
+
+```bash
+terraform output
+# organisation_id          = "3f8a1b2c-..."
+# staging_environment_id   = "7e2c9d4a-..."
+# production_environment_id = "1a4b8f3c-..."
+# backend_flow_id          = "5d6e7f8a-..."
+# ...
+```
+
+#### Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `factstore_url` | `http://localhost:8080` | Factstore API base URL |
+| `factstore_token` | `""` | API token (required when `SECURITY_ENFORCE_AUTH=true`) |
+| `org_slug` | `openfactstore` | URL-safe organisation identifier |
+| `org_name` | `OpenFactstore` | Organisation display name |
+
+Environment variable equivalents (set instead of `-var` flags):
+
+```bash
+export FACTSTORE_BASE_URL=http://localhost:8080
+export FACTSTORE_API_TOKEN=your-token
+terraform apply
+```
+
+#### CI verification workflow
+
+The `.github/workflows/terraform-verify.yml` workflow runs on every push and pull request. It performs an end-to-end verification:
+
+1. Starts a PostgreSQL 16 service container
+2. Builds the Spring Boot JAR and starts the backend
+3. Waits for `/actuator/health` to return `200 OK`
+4. Builds the Terraform provider binary from source
+5. Installs it as a dev override
+6. Runs `terraform apply` against the live backend
+7. Verifies each resource type exists via the Factstore REST API
+8. Runs `terraform destroy` to clean up (runs even on failure)
+
+This ensures every code change is verified against a real Factstore deployment before merging.
+
+#### Using Terraform-managed IDs in CI/CD
+
+After bootstrapping, use `terraform output` to feed resource IDs into your CI pipelines:
+
+```yaml
+# .github/workflows/build.yml
+- name: Get Factstore flow ID
+  id: tf
+  working-directory: infra
+  run: echo "flow_id=$(terraform output -raw backend_flow_id)" >> $GITHUB_OUTPUT
+
+- name: Create trail
+  run: |
+    curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v1/trails" \
+      -H "Content-Type: application/json" \
+      -d '{"flowId": "${{ steps.tf.outputs.flow_id }}"}'
+```
+
+> 📖 **See also:** [DEPLOY.md — Terraform Infrastructure Bootstrap](./DEPLOY.md#terraform-infrastructure-bootstrap) for the full deployment reference including `terraform destroy` instructions and state management guidance.
 
 ---
 
@@ -784,16 +1121,16 @@ curl -s -X POST "http://localhost:8080/api/v1/service-accounts/$SA_ID/api-keys" 
 |---------|-------------|---------------------------|
 | Relational data | H2 in-memory (unit tests) / PostgreSQL (dev/prod) | PostgreSQL 16 with encrypted volumes (e.g. AWS RDS with encryption-at-rest enabled) |
 | Evidence files | Local DB (Base64) | HashiCorp Vault (`VAULT_ENABLED=true`) |
-| SCM tokens | Base64-encoded in PostgreSQL | HashiCorp Vault for token storage + KMS-backed encryption |
+| SCM tokens | AES-256-GCM encrypted in PostgreSQL | Same — set `FACTSTORE_SCM_ENCRYPTION_KEY` to a strong random 32-char key + HashiCorp Vault for additional secret management |
 
 > 💡 **Pro-tip:** Enable `VAULT_ENABLED=true` in production to store all evidence files and SCM tokens in HashiCorp Vault. The `vault` service is included in the Docker Compose file for local testing.
 
 ### SCM Token Storage
 
-When you register an SCM integration (GitHub, GitLab), the token is stored Base64-encoded. This provides encoding, not encryption. **For production:**
+When you register an SCM integration (GitHub, GitLab, Bitbucket), the token is **encrypted at rest using AES-256-GCM** before being stored in PostgreSQL. The encryption key is derived from the `FACTSTORE_SCM_ENCRYPTION_KEY` environment variable (padded or truncated to 32 bytes). **For production:**
 
-1. Set `VAULT_ENABLED=true` and configure the Vault address and token.
-2. The application will automatically use Vault as the evidence and secret storage backend.
+1. Set `FACTSTORE_SCM_ENCRYPTION_KEY` to a strong, randomly generated 32-character key.
+2. Optionally set `VAULT_ENABLED=true` to back token storage with HashiCorp Vault.
 3. Consider a KMS-backed Vault auto-unseal for fully automated operations.
 
 ### Best Practices
