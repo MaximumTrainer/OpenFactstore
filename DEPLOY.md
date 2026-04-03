@@ -8,6 +8,7 @@ A user should be able to download a single image and have Factstore running in a
 
 - [Quick Start (Docker — recommended)](#quick-start-docker--recommended)
 - [Quick Start (JAR — requires Java 21)](#quick-start-jar--requires-java-21)
+- [Terraform Infrastructure Bootstrap](#terraform-infrastructure-bootstrap)
 - [CLI Flags](#cli-flags)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Build From Source](#build-from-source)
@@ -89,6 +90,102 @@ java -jar factstore-<version>.jar --server.port=9090
 
 ---
 
+## Terraform Infrastructure Bootstrap
+
+The `infra/` directory contains a Terraform configuration that uses the
+[OpenFactstore Terraform provider](terraform/) to bootstrap a complete Factstore
+instance with a standard set of resources.
+
+### What it provisions
+
+| Resource | Name | Purpose |
+|---|---|---|
+| Organisation | `openfactstore` | Root organisation |
+| Logical Environment | `production-group` | Logical grouping for production environments |
+| Environment | `staging` (K8S) | Staging Kubernetes cluster |
+| Environment | `production` (K8S) | Production Kubernetes cluster |
+| Policy | `baseline-requirements` | Provenance + junit/snyk attestations |
+| Policy | `production-requirements` | Full compliance — provenance + trail + pull-request |
+| Policy Attachment | staging → baseline | Enforces baseline policy on staging |
+| Policy Attachment | production → production | Enforces production policy on production |
+| Flow | `backend-ci` | Backend CI pipeline flow |
+| Flow | `frontend-ci` | Frontend CI pipeline flow |
+
+### Prerequisites
+
+1. A running Factstore instance (see [Quick Start](#quick-start-docker--recommended))
+2. Terraform ≥ 1.6 ([install](https://developer.hashicorp.com/terraform/install))
+3. The Factstore Terraform provider built locally (see below)
+
+### Build the Terraform provider
+
+```bash
+cd terraform
+go build -o terraform-provider-factstore .
+PROVIDER_DIR=~/.terraform.d/plugins/registry.terraform.io/MaximumTrainer/factstore/1.0.0/linux_amd64
+mkdir -p "$PROVIDER_DIR"
+cp terraform-provider-factstore "$PROVIDER_DIR/"
+```
+
+Configure Terraform to use the local build by creating `~/.terraformrc`:
+
+```hcl
+provider_installation {
+  dev_overrides {
+    "MaximumTrainer/factstore" = "~/.terraform.d/plugins/registry.terraform.io/MaximumTrainer/factstore/1.0.0/linux_amd64"
+  }
+  direct {}
+}
+```
+
+### Apply
+
+```bash
+cd infra
+terraform init
+terraform apply \
+  -var="factstore_url=http://localhost:8080" \
+  -var="factstore_token="      # omit if SECURITY_ENFORCE_AUTH is not set
+```
+
+Or use environment variables instead of `-var` flags:
+
+```bash
+export FACTSTORE_BASE_URL=http://localhost:8080
+export FACTSTORE_API_TOKEN=your-token   # omit if auth not enforced
+terraform apply
+```
+
+### Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `factstore_url` | `http://localhost:8080` | Factstore API base URL |
+| `factstore_token` | `""` | API token (required when `SECURITY_ENFORCE_AUTH=true`) |
+| `org_slug` | `openfactstore` | URL-safe organisation identifier |
+| `org_name` | `OpenFactstore` | Organisation display name |
+
+### Destroy
+
+```bash
+terraform destroy \
+  -var="factstore_url=http://localhost:8080" \
+  -var="factstore_token="
+```
+
+### CI verification
+
+The `.github/workflows/terraform-verify.yml` workflow runs on every push and PR. It:
+
+1. Starts a PostgreSQL service container
+2. Builds and starts the Factstore backend
+3. Builds the Terraform provider from source
+4. Runs `terraform apply` against the live backend
+5. Verifies the created resources exist via the API
+6. Runs `terraform destroy` to clean up
+
+---
+
 ## CLI Flags
 
 | Flag | Description |
@@ -126,11 +223,15 @@ This triggers the full pipeline and:
 
 ### Pipeline jobs
 
-| Job | Description |
-|-----|-------------|
-| `build-and-test` | Installs dependencies, builds frontend, embeds it into the backend, runs `./gradlew build` (includes tests), uploads the JAR as a workflow artifact |
-| `docker` | Builds the multi-stage Docker image; pushes to GHCR only on tag pushes |
-| `release` | Creates a GitHub Release with the JAR; runs only on `v*` tags |
+| Job | Description | Environment |
+|-----|-------------|-------------|
+| `build-and-test` | Installs dependencies, builds frontend, embeds it into the backend, runs `./gradlew build` (includes tests), uploads the JAR as a workflow artifact | — |
+| `docker` | Builds the multi-stage Docker image; pushes to GHCR only on tag pushes | **staging** |
+| `release` | Creates a GitHub Release with the JAR; runs only on `v*` tags | **production** |
+
+The `docker` job targets the **staging** GitHub Environment and the `release` job targets
+**production**. Configure environment protection rules (required reviewers, deployment branch
+restrictions) in the repository **Settings → Environments** to gate production releases.
 
 ---
 

@@ -1,0 +1,37 @@
+steps:
+  - name: Set up JDK 21
+    uses: actions/setup-java@v4
+    with:
+      java-version: '21'
+      distribution: 'temurin'
+      cache: 'gradle'
+
+  - name: Set up Node.js 20
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+      cache: 'npm'
+      cache-dependency-path: frontend/package-lock.json
+
+  - name: Set up Go
+    uses: actions/setup-go@v5
+    with:
+      go-version-file: terraform/go.mod
+      cache-dependency-path: terraform/go.sum
+
+  - name: Set up Terraform
+    uses: hashicorp/setup-terraform@v3
+    with:
+      terraform_version: '1.9.x'
+
+  - name: Warm up Gradle dependency cache
+    working-directory: backend
+    run: ./gradlew dependencies --configuration runtimeClasspath --quiet
+
+  - name: Warm up Node.js dependency cache
+    working-directory: frontend
+    run: npm ci
+
+  - name: Warm up Go module cache
+    working-directory: terraform
+    run: go mod download
