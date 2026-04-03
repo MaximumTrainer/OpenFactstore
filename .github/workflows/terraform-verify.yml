@@ -43,8 +43,6 @@ jobs:
       - name: Build backend JAR
         working-directory: backend
         run: ./gradlew bootJar -x test --quiet
-        env:
-          SPRING_PROFILES_ACTIVE: prod
 
       # ── Start Factstore backend ───────────────────────────────────────────
 
@@ -53,7 +51,6 @@ jobs:
         run: |
           JAR=$(ls build/libs/factstore-*.jar | grep -v plain | head -1)
           nohup java -jar "$JAR" \
-            --spring.profiles.active=prod \
             --server.port=8080 \
             > /tmp/factstore.log 2>&1 &
           echo "FACTSTORE_PID=$!" >> "$GITHUB_ENV"
@@ -63,7 +60,6 @@ jobs:
           DB_NAME: factstore
           DB_USERNAME: factstore
           DB_PASSWORD: factstore
-          SPRING_PROFILES_ACTIVE: prod
 
       - name: Wait for Factstore to be healthy
         run: |
