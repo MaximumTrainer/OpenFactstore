@@ -7,6 +7,16 @@ on:
     branches: [ main ]
 
 jobs:
+  lint-workflows:
+    name: Lint GitHub Actions Workflows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actionlint
+        uses: raven-actions/actionlint@v2
+
   backend:
     name: Backend Build & Test
     runs-on: ubuntu-latest
