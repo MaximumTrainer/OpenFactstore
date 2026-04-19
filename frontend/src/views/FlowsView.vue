@@ -18,6 +18,7 @@
           <tr>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visibility</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Required Attestations</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tags</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -27,6 +28,7 @@
           <tr v-for="flow in flows" :key="flow.id" class="hover:bg-gray-50">
             <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ flow.name }}</td>
             <td class="px-6 py-4 text-sm text-gray-500">{{ flow.description }}</td>
+            <td class="px-6 py-4"><StatusBadge :status="flow.visibility ?? 'PRIVATE'" /></td>
             <td class="px-6 py-4">
               <div class="flex flex-wrap gap-1">
                 <span
@@ -126,6 +128,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getFlows, createFlow } from '../api/flows'
+import StatusBadge from '../components/StatusBadge.vue'
 import type { Flow } from '../types'
 
 const flows = ref<Flow[]>([])

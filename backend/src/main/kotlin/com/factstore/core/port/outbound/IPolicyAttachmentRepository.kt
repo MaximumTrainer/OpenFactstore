@@ -10,4 +10,5 @@ interface IPolicyAttachmentRepository {
     fun existsById(id: UUID): Boolean
     fun existsByPolicyIdAndEnvironmentId(policyId: UUID, environmentId: UUID): Boolean
     fun deleteById(id: UUID)
+    fun findByEnvironmentId(environmentId: UUID): List<PolicyAttachment>
 }

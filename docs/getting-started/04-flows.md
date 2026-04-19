@@ -37,7 +37,7 @@ curl -s -X POST "$BASE_URL/api/v1/flows" \
 | `description` | string | Human-readable description |
 | `requiredAttestationTypes` | string[] | Attestation types that every Trail must satisfy for compliance (e.g. `junit`, `snyk`, `pull-request`) |
 
-> **Compliance template:** Kosli uses a YAML template file to define required attestations. Factstore currently uses the `requiredAttestationTypes` array. A full YAML template spec is on the roadmap.
+> **Compliance template:** Use a YAML template file to define required attestations. Factstore currently uses the `requiredAttestationTypes` array. A full YAML template spec is on the roadmap.
 
 ## List all Flows
 

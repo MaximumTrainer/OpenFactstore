@@ -6,11 +6,13 @@ import com.factstore.core.port.outbound.IFlowRepository
 import com.factstore.dto.CreateFlowRequest
 import com.factstore.dto.FlowResponse
 import com.factstore.dto.FlowTemplateResponse
+import com.factstore.dto.PageResponse
 import com.factstore.dto.UpdateFlowRequest
 import com.factstore.exception.BadRequestException
 import com.factstore.exception.ConflictException
 import com.factstore.exception.NotFoundException
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.yaml.snakeyaml.Yaml
@@ -46,6 +48,18 @@ class FlowService(private val flowRepository: IFlowRepository) : IFlowService {
 
     @Transactional(readOnly = true)
     override fun listFlows(): List<FlowResponse> = flowRepository.findAll().map { it.toResponse() }
+
+    @Transactional(readOnly = true)
+    override fun listFlows(page: Int, size: Int): PageResponse<FlowResponse> {
+        val pageResult = flowRepository.findAll(PageRequest.of(page, size))
+        return PageResponse(
+            items = pageResult.content.map { it.toResponse() },
+            page = pageResult.number,
+            size = pageResult.size,
+            totalItems = pageResult.totalElements,
+            totalPages = pageResult.totalPages
+        )
+    }
 
     @Transactional(readOnly = true)
     override fun getFlow(id: UUID): FlowResponse =

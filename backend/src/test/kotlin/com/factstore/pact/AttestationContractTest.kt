@@ -61,7 +61,7 @@ class AttestationContractTest {
         flowRepository.deleteAll()
         organisationRepository.deleteAll()
         val org = organisationRepository.save(Organisation(slug = "my-org", name = "My Org"))
-        val flow = Flow(name = "my-flow", description = "Kosli contract test flow", orgSlug = org.slug)
+        val flow = Flow(name = "my-flow", description = "contract test flow", orgSlug = org.slug)
         val savedFlow = flowRepository.save(flow)
         val trail = Trail(
             id = UUID.fromString("aabbccdd-0000-0000-0000-000000000001"),

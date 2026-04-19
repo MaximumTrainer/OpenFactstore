@@ -2,7 +2,7 @@
 
 Factstore is a Kotlin Spring Boot application backed by an H2 in-memory database (PostgreSQL support is on the roadmap — see [Issue #12](https://github.com/MaximumTrainer/Factstore/issues/12)).
 
-> **No CLI yet.** Unlike Kosli, Factstore does not currently ship a command-line tool. All operations are plain HTTP calls. A Go-based CLI is planned — see [Issue #33](https://github.com/MaximumTrainer/Factstore/issues/33). All examples in this guide use `curl`.
+> **Note:** Factstore ships a Go-based CLI (`cli/`). All examples in this guide also work as plain HTTP calls using `curl`.
 
 ## Prerequisites
 

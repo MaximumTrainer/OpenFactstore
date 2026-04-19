@@ -4,6 +4,7 @@ export interface Flow {
   description: string
   requiredAttestationTypes: string[]
   tags: Record<string, string>
+  visibility: 'PUBLIC' | 'PRIVATE'
   createdAt: string
   updatedAt: string
 }
@@ -45,6 +46,11 @@ export interface Artifact {
   reportedAt: string
   reportedBy: string
   provenanceStatus: 'NO_PROVENANCE' | 'PROVENANCE_UNVERIFIED' | 'PROVENANCE_VERIFIED'
+  artifactType?: 'FILE' | 'DIR' | 'DOCKER' | 'OCI'
+  buildUrl?: string
+  commitUrl?: string
+  complianceState: 'COMPLIANT' | 'NON_COMPLIANT' | 'UNKNOWN'
+  runningInEnvironments: string[]
 }
 
 export type BuilderType = 'GITHUB_ACTIONS' | 'JENKINS' | 'CIRCLE_CI' | 'GENERIC'
@@ -383,6 +389,7 @@ export interface Environment {
   name: string
   type: EnvironmentType
   description: string
+  complianceState: 'COMPLIANT' | 'NON_COMPLIANT' | 'UNKNOWN'
   createdAt: string
   updatedAt: string
 }
@@ -392,6 +399,7 @@ export interface SnapshotArtifact {
   artifactName: string
   artifactTag: string
   instanceCount: number
+  complianceState?: string
 }
 
 export interface EnvironmentSnapshot {

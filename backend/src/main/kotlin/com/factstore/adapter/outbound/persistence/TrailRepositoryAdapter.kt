@@ -3,6 +3,8 @@ package com.factstore.adapter.outbound.persistence
 import com.factstore.core.domain.Trail
 import com.factstore.core.domain.TrailStatus
 import com.factstore.core.port.outbound.ITrailRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -14,6 +16,7 @@ import java.util.UUID
 @Repository
 interface TrailRepositoryJpa : JpaRepository<Trail, UUID> {
     fun findByFlowId(flowId: UUID): List<Trail>
+    fun findByFlowId(flowId: UUID, pageable: Pageable): Page<Trail>
     fun findByFlowIdAndCreatedAtBetween(flowId: UUID, from: Instant, to: Instant): List<Trail>
     fun findByFlowIdAndCreatedAtGreaterThanEqual(flowId: UUID, from: Instant): List<Trail>
     fun findByFlowIdAndCreatedAtLessThanEqual(flowId: UUID, to: Instant): List<Trail>
@@ -21,6 +24,7 @@ interface TrailRepositoryJpa : JpaRepository<Trail, UUID> {
     fun findByCreatedAtGreaterThanEqual(from: Instant): List<Trail>
     fun findByCreatedAtLessThanEqual(to: Instant): List<Trail>
     fun countByStatus(status: TrailStatus): Long
+    fun findByFlowIdAndName(flowId: UUID, name: String): Trail?
 
     @Query("""
         SELECT t FROM Trail t WHERE
@@ -39,6 +43,7 @@ class TrailRepositoryAdapter(private val jpa: TrailRepositoryJpa) : ITrailReposi
     override fun findAll(): List<Trail> = jpa.findAll()
     override fun existsById(id: UUID): Boolean = jpa.existsById(id)
     override fun findByFlowId(flowId: UUID): List<Trail> = jpa.findByFlowId(flowId)
+    override fun findByFlowId(flowId: UUID, pageable: Pageable): Page<Trail> = jpa.findByFlowId(flowId, pageable)
     override fun searchByQuery(query: String): List<Trail> = jpa.searchByQuery(query)
     override fun findByFlowIdAndCreatedAtBetween(flowId: UUID, from: Instant, to: Instant): List<Trail> =
         jpa.findByFlowIdAndCreatedAtBetween(flowId, from, to)
@@ -54,4 +59,6 @@ class TrailRepositoryAdapter(private val jpa: TrailRepositoryJpa) : ITrailReposi
         jpa.findByCreatedAtLessThanEqual(to)
     override fun countAll(): Long = jpa.count()
     override fun countByStatus(status: TrailStatus): Long = jpa.countByStatus(status)
+    override fun findByFlowIdAndName(flowId: UUID, name: String): Trail? =
+        jpa.findByFlowIdAndName(flowId, name)
 }

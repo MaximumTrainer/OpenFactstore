@@ -13,7 +13,7 @@ import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
@@ -27,13 +27,13 @@ class DryRunModeTest {
     @Autowired
     lateinit var mockMvc: MockMvc
 
-    @MockBean
+    @MockitoBean
     lateinit var flowService: IFlowService
 
-    @MockBean
+    @MockitoBean
     lateinit var trailService: ITrailService
 
-    @MockBean
+    @MockitoBean
     lateinit var attestationService: IAttestationService
 
     private val trailId: UUID = UUID.randomUUID()

@@ -43,10 +43,6 @@ An **Attestation** is a piece of evidence that a quality gate was completed. Exa
 
 At any point you can ask Factstore: *"Is this artifact compliant with this Flow's requirements?"* The `POST /api/v1/assert` endpoint evaluates the attestations on a Trail against the Flow's required attestation types and returns a compliance verdict.
 
-## How Factstore relates to Kosli
-
-Factstore is intentionally modelled after [Kosli](https://docs.kosli.com), sharing the same core concepts of Flows, Trails, Artifacts, Attestations, Environments, Policies, and Approvals. The key difference today is that Factstore exposes a **REST API** rather than a CLI — every operation is a plain HTTP call.
-
 ---
 
 Next: [Part 2: Setup & Access →](./02-setup.md)

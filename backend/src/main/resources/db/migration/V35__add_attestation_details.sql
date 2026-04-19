@@ -1,0 +1,1 @@
+ALTER TABLE attestations ADD COLUMN IF NOT EXISTS details TEXT;

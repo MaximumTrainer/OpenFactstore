@@ -16,11 +16,11 @@ import java.util.UUID
 
 @RestController
 @RequestMapping("/api/v2/attestations")
-@Tag(name = "Kosli v2 Attestations", description = "Kosli-compatible attestation API")
-class KosliV2AttestationController(private val attestationService: IAttestationService) {
+@Tag(name = "V2 Attestations", description = "V2 attestation API")
+class V2AttestationController(private val attestationService: IAttestationService) {
 
     @PostMapping("/{org}/{flow}/{trail}/{artifactFingerprint}")
-    @Operation(summary = "Record an attestation (Kosli v2 format)")
+    @Operation(summary = "Record an attestation (v2 format)")
     fun recordAttestation(
         @PathVariable org: String,
         @PathVariable flow: String,

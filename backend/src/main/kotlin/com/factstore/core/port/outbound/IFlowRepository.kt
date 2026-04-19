@@ -1,12 +1,15 @@
 package com.factstore.core.port.outbound
 
 import com.factstore.core.domain.Flow
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import java.util.UUID
 
 interface IFlowRepository {
     fun save(flow: Flow): Flow
     fun findById(id: UUID): Flow?
     fun findAll(): List<Flow>
+    fun findAll(pageable: Pageable): Page<Flow>
     fun findAllByIds(ids: Collection<UUID>): List<Flow>
     fun existsById(id: UUID): Boolean
     fun existsByName(name: String): Boolean

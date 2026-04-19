@@ -6,6 +6,7 @@ import com.factstore.dto.PolicyResponse
 import com.factstore.dto.UpdatePolicyRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -19,7 +20,7 @@ class PolicyController(private val policyService: IPolicyService) {
 
     @PostMapping
     @Operation(summary = "Create a new policy")
-    fun createPolicy(@RequestBody request: CreatePolicyRequest): ResponseEntity<PolicyResponse> =
+    fun createPolicy(@Valid @RequestBody request: CreatePolicyRequest): ResponseEntity<PolicyResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(policyService.createPolicy(request))
 
     @GetMapping

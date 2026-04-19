@@ -156,10 +156,17 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
             result.forEach { doc ->
                 val struct = doc as? IonStruct ?: return@forEach
                 // Prefer explicit entryId field; fall back to QLDB metadata.id for older documents.
-                // TODO: remove metaId fallback once all existing documents have been migrated.
-                val resolvedEntryId = (struct.get("entryId") as? IonText)?.stringValue()
-                    ?: (struct.get("metaId") as? IonText)?.stringValue()
-                    ?: ""
+                // TODO(backfill): Remove the `metaId` fallback once the QLDB backfill migration has been
+                // verified in production:
+                //   Step 1 — verify backfill is complete (should return 0):
+                //     SELECT COUNT(*) FROM FactLedger WHERE entryId IS MISSING
+                //   Step 2 — run the backfill if the count is non-zero:
+                //     UPDATE FactLedger AS f SET f.entryId = f.metadata.id WHERE f.entryId IS MISSING
+                //   Step 3 — once Step 1 returns 0 in production, remove the companion.resolveEntryId
+                //     fallback branch (the `?: struct.get("metaId")` path inside it) and the metaId
+                //     projection from the SELECT above. The resolveEntryId behaviour is covered by
+                //     AwsQldbLedgerEntryResolutionTest.
+                val resolvedEntryId = resolveEntryId(struct)
                 // Prefer QLDB txTime (accurate commit time) over createdAt (client time).
                 val timestamp = resolveTimestamp(
                     txTimeStr = (struct.get("txTime") as? IonText)?.stringValue(),
@@ -253,14 +260,40 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
         metadata = emptyMap()
     )
 
-    /**
-     * Resolves an [Instant] from QLDB history metadata timestamps or a stored `createdAt` field.
-     * Priority: txTime (QLDB commit time) → createdAt (client-recorded ISO string) → now().
-     */
+    private fun resolveEntryId(struct: IonStruct): String = Companion.resolveEntryId(struct)
+
     private fun resolveTimestamp(txTimeStr: String? = null, createdAtStr: String? = null): Instant =
-        txTimeStr?.let { runCatching { Instant.parse(it) }.getOrNull() }
-            ?: createdAtStr?.let { runCatching { Instant.parse(it) }.getOrNull() }
-            ?: Instant.now()
+        Companion.resolveTimestamp(txTimeStr, createdAtStr)
+
+    companion object {
+        /**
+         * Resolves the entryId from a QLDB history IonStruct.
+         *
+         * Prefers the explicit `entryId` field written since the schema migration.
+         * Falls back to `metaId` (projected from QLDB document metadata.id) for pre-migration
+         * documents that were written before `entryId` was added as an explicit field.
+         *
+         * This fallback can be removed once:
+         *   `SELECT COUNT(*) FROM FactLedger WHERE entryId IS MISSING` returns 0 in production.
+         *
+         * Covered by [AwsQldbLedgerEntryResolutionTest].
+         */
+        internal fun resolveEntryId(struct: IonStruct): String =
+            (struct.get("entryId") as? IonText)?.stringValue()
+                ?: (struct.get("metaId") as? IonText)?.stringValue()
+                ?: ""
+
+        /**
+         * Resolves an [Instant] from QLDB history metadata timestamps or a stored `createdAt` field.
+         * Priority: txTime (QLDB commit time) → createdAt (client-recorded ISO string) → now().
+         *
+         * Covered by [AwsQldbLedgerEntryResolutionTest].
+         */
+        internal fun resolveTimestamp(txTimeStr: String? = null, createdAtStr: String? = null): Instant =
+            txTimeStr?.let { runCatching { Instant.parse(it) }.getOrNull() }
+                ?: createdAtStr?.let { runCatching { Instant.parse(it) }.getOrNull() }
+                ?: Instant.now()
+    }
 
     private fun sha256(input: String): String {
         val digest = MessageDigest.getInstance("SHA-256")

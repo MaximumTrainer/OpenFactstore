@@ -54,6 +54,26 @@ sealed class SupplyChainEvent {
         val snapshotId: UUID,
         val artifactCount: Int
     ) : SupplyChainEvent()
+
+    data class ArtifactDeployedEvent(
+        override val id: UUID = UUID.randomUUID(),
+        override val occurredAt: Instant = Instant.now(),
+        override val orgSlug: String? = null,
+        val artifactSha256: String,
+        val environmentId: String,
+        val snapshotIndex: Long,
+        val deployedAt: String
+    ) : SupplyChainEvent()
+
+    data class AttestationProcessedEvent(
+        override val id: UUID = UUID.randomUUID(),
+        override val occurredAt: Instant = Instant.now(),
+        override val orgSlug: String? = null,
+        val attestationId: String,
+        val type: String,
+        val status: String,
+        val details: String?
+    ) : SupplyChainEvent()
 }
 
 interface IEventPublisher {

@@ -1,16 +1,22 @@
 package com.factstore.application
 
+import com.factstore.application.policy.PolicyParser
+import com.factstore.application.policy.PolicyExpressionEvaluator
+import com.factstore.application.template.TemplateParser
+import com.factstore.application.template.ParsedTemplate
 import com.factstore.core.domain.Artifact
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.ApprovalStatus
 import com.factstore.core.domain.AuditEventType
 import com.factstore.core.domain.Flow
+import com.factstore.core.domain.Policy
 import com.factstore.core.port.inbound.IAssertService
 import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.outbound.IArtifactRepository
 import com.factstore.core.port.outbound.IApprovalRepository
 import com.factstore.core.port.outbound.IAttestationRepository
 import com.factstore.core.port.outbound.IFlowRepository
+import com.factstore.core.port.outbound.IPolicyRepository
 import com.factstore.core.port.outbound.ITrailRepository
 import com.factstore.dto.AssertRequest
 import com.factstore.dto.AssertResponse
@@ -29,7 +35,11 @@ class AssertService(
     private val flowRepository: IFlowRepository,
     private val trailRepository: ITrailRepository,
     private val auditService: IAuditService,
-    private val approvalRepository: IApprovalRepository
+    private val approvalRepository: IApprovalRepository,
+    private val templateParser: TemplateParser,
+    private val policyParser: PolicyParser,
+    private val policyRepository: IPolicyRepository,
+    private val policyExpressionEvaluator: PolicyExpressionEvaluator
 ) : IAssertService {
 
     private val log = LoggerFactory.getLogger(AssertService::class.java)
@@ -152,16 +162,14 @@ class AssertService(
         artifacts: List<Artifact>,
         templateYaml: String
     ): AssertResponse {
-        val template = FlowTemplateParser.parse(templateYaml)
+        val parsedTemplate = templateParser.parse(templateYaml)
 
         for (artifact in artifacts) {
             val trailObj = trailRepository.findById(artifact.trailId)
             val effectiveYaml = trailObj?.templateYaml ?: flow.templateYaml ?: templateYaml
-            val effectiveTemplate = if (effectiveYaml == templateYaml) template else FlowTemplateParser.parse(effectiveYaml)
+            val effectiveParsed = if (effectiveYaml == templateYaml) parsedTemplate else templateParser.parse(effectiveYaml)
 
-            val artifactEntry = effectiveTemplate.artifacts.firstOrNull { it.name == artifact.imageName }
-            val artifactRequired = artifactEntry?.attestations?.map { it.name } ?: emptyList()
-            val allRequired = (effectiveTemplate.trail.attestations.map { it.name } + artifactRequired).distinct()
+            val allRequired = computeRequired(flow, artifact.imageName, effectiveParsed)
 
             val attestations = attestationRepository.findByTrailId(artifact.trailId)
             val passedNames = attestations.filter { it.status == AttestationStatus.PASSED }.mapNotNull { it.name }.toSet()
@@ -206,9 +214,8 @@ class AssertService(
         val bestArtifact = artifacts.minByOrNull { artifact ->
             val trailObj = trailRepository.findById(artifact.trailId)
             val effectiveYaml = trailObj?.templateYaml ?: flow.templateYaml ?: templateYaml
-            val effectiveTemplate = FlowTemplateParser.parse(effectiveYaml)
-            val artifactEntry = effectiveTemplate.artifacts.firstOrNull { it.name == artifact.imageName }
-            val allRequired = (effectiveTemplate.trail.attestations.map { it.name } + (artifactEntry?.attestations?.map { it.name } ?: emptyList())).distinct()
+            val effectiveParsed = templateParser.parse(effectiveYaml)
+            val allRequired = computeRequired(flow, artifact.imageName, effectiveParsed)
             val passedNames = attestationRepository.findByTrailId(artifact.trailId)
                 .filter { it.status == AttestationStatus.PASSED }.mapNotNull { it.name }.toSet()
             allRequired.count { it !in passedNames }
@@ -216,9 +223,8 @@ class AssertService(
 
         val trailObj = trailRepository.findById(bestArtifact.trailId)
         val effectiveYaml = trailObj?.templateYaml ?: flow.templateYaml ?: templateYaml
-        val effectiveTemplate = FlowTemplateParser.parse(effectiveYaml)
-        val artifactEntry = effectiveTemplate.artifacts.firstOrNull { it.name == bestArtifact.imageName }
-        val allRequired = (effectiveTemplate.trail.attestations.map { it.name } + (artifactEntry?.attestations?.map { it.name } ?: emptyList())).distinct()
+        val effectiveParsed = templateParser.parse(effectiveYaml)
+        val allRequired = computeRequired(flow, bestArtifact.imageName, effectiveParsed)
         val attestations = attestationRepository.findByTrailId(bestArtifact.trailId)
         val passedNames = attestations.filter { it.status == AttestationStatus.PASSED }.mapNotNull { it.name }.toSet()
         val failedNames = attestations.filter { it.status == AttestationStatus.FAILED }.mapNotNull { it.name }.toList()
@@ -237,6 +243,34 @@ class AssertService(
         )
         emitPolicyEvent(response, trailId = bestArtifact.trailId)
         return response
+    }
+
+    private fun computeRequired(
+        flow: Flow,
+        artifactName: String?,
+        effectiveParsed: ParsedTemplate?
+    ): List<String> {
+        val evalCtx = PolicyExpressionEvaluator.EvaluationContext(
+            flowName = flow.name,
+            artifactName = artifactName
+        )
+        val trailRequired = (effectiveParsed?.trailAttestations ?: emptyList())
+            .filter { it.ifCondition == null || policyExpressionEvaluator.evaluate(it.ifCondition, evalCtx) }
+            .map { it.name }
+        val artifactEntry = effectiveParsed?.artifacts?.firstOrNull { it.name == artifactName }
+        val artifactRequired = (artifactEntry?.attestations ?: emptyList())
+            .filter { it.ifCondition == null || policyExpressionEvaluator.evaluate(it.ifCondition, evalCtx) }
+            .map { it.name }
+        val policyRequired = mutableListOf<String>()
+        for (policy in policyRepository.findAll()) {
+            if (policy.orgSlug != null && policy.orgSlug != flow.orgSlug) continue
+            val policyYamlContent = policy.policyYaml ?: continue
+            val parsed = policyParser.parse(policyYamlContent) ?: continue
+            parsed.artifactRules.requiredAttestations
+                .filter { rule -> rule.ifCondition == null || policyExpressionEvaluator.evaluate(rule.ifCondition, evalCtx) }
+                .mapTo(policyRequired) { rule -> rule.name }
+        }
+        return (trailRequired + artifactRequired + policyRequired).distinct()
     }
 
     private fun emitPolicyEvent(response: AssertResponse, trailId: UUID? = null) {

@@ -9,9 +9,11 @@ import com.factstore.dto.CreateAttestationRequest
 import com.factstore.dto.CreatePrAttestationRequest
 import com.factstore.dto.DryRunResponse
 import com.factstore.dto.EvidenceFileResponse
+import com.factstore.dto.PageResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -32,12 +34,12 @@ class AttestationController(
     @Operation(
         summary = "Record an attestation for a trail",
         deprecated = true,
-        description = "⚠️ Deprecated: use the Kosli v2 endpoint " +
+        description = "⚠️ Deprecated: use the v2 endpoint " +
             "POST /api/v2/attestations/{org}/{flow}/{trail}/{artifactFingerprint} instead."
     )
     fun recordAttestation(
         @PathVariable trailId: UUID,
-        @RequestBody request: CreateAttestationRequest,
+        @Valid @RequestBody request: CreateAttestationRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {
         if (DryRunContext.isDryRun(httpRequest)) {
@@ -63,8 +65,12 @@ class AttestationController(
 
     @GetMapping
     @Operation(summary = "List attestations for a trail")
-    fun listAttestations(@PathVariable trailId: UUID): ResponseEntity<List<AttestationResponse>> =
-        ResponseEntity.ok(attestationService.listAttestations(trailId))
+    fun listAttestations(
+        @PathVariable trailId: UUID,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int
+    ): ResponseEntity<PageResponse<AttestationResponse>> =
+        ResponseEntity.ok(attestationService.listAttestations(trailId, page, size))
 
     @PostMapping("/{attestationId}/evidence", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @Operation(summary = "Upload evidence file for an attestation")

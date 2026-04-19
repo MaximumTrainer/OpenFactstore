@@ -22,5 +22,8 @@ class SnapshotArtifact(
     val artifactTag: String,
 
     @Column(name = "instance_count", nullable = false)
-    val instanceCount: Int = 1
+    val instanceCount: Int = 1,
+
+    @Column(name = "compliance_state")
+    var complianceState: String? = null
 )

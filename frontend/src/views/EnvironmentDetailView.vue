@@ -16,9 +16,12 @@
             <h1 class="text-2xl font-bold text-gray-900">{{ environment.name }}</h1>
             <p v-if="environment.description" class="mt-1 text-gray-500">{{ environment.description }}</p>
           </div>
-          <span :class="typeBadgeClass(environment.type)" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
-            {{ environment.type }}
-          </span>
+          <div class="flex items-center gap-2">
+            <StatusBadge :status="environment.complianceState ?? 'UNKNOWN'" />
+            <span :class="typeBadgeClass(environment.type)" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
+              {{ environment.type }}
+            </span>
+          </div>
         </div>
         <div class="mt-4 grid grid-cols-2 gap-4 text-sm text-gray-500">
           <div>Created: {{ new Date(environment.createdAt).toLocaleString() }}</div>
@@ -183,6 +186,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getEnvironment, listSnapshots, getLatestSnapshot, recordSnapshot } from '../api/environments'
 import { useEnvironmentTypeBadge } from '../composables/useEnvironmentTypeBadge'
+import StatusBadge from '../components/StatusBadge.vue'
 import type { Environment, EnvironmentSnapshot } from '../types'
 
 const route = useRoute()

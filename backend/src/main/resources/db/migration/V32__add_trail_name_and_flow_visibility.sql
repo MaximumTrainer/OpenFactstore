@@ -1,0 +1,4 @@
+ALTER TABLE trails ADD COLUMN name VARCHAR(255);
+CREATE UNIQUE INDEX uq_trail_name_flow ON trails(flow_id, name) WHERE name IS NOT NULL;
+
+ALTER TABLE flows ADD COLUMN visibility VARCHAR(20) NOT NULL DEFAULT 'PRIVATE';

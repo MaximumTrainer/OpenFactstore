@@ -18,6 +18,7 @@
           <tr>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compliance</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -31,6 +32,7 @@
                 {{ env.type }}
               </span>
             </td>
+            <td class="px-6 py-4"><StatusBadge :status="env.complianceState ?? 'UNKNOWN'" /></td>
             <td class="px-6 py-4 text-sm text-gray-500">{{ env.description }}</td>
             <td class="px-6 py-4 text-sm text-gray-500">{{ new Date(env.createdAt).toLocaleDateString() }}</td>
             <td class="px-6 py-4 text-sm">
@@ -101,6 +103,7 @@
 import { ref, onMounted } from 'vue'
 import { getEnvironments, createEnvironment } from '../api/environments'
 import { useEnvironmentTypeBadge } from '../composables/useEnvironmentTypeBadge'
+import StatusBadge from '../components/StatusBadge.vue'
 import type { Environment, EnvironmentType } from '../types'
 
 const environments = ref<Environment[]>([])

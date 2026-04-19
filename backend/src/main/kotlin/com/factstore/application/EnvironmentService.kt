@@ -1,23 +1,35 @@
 package com.factstore.application
 
+import com.factstore.core.domain.Deployment
 import com.factstore.core.domain.Environment
 import com.factstore.core.domain.EnvironmentBaseline
 import com.factstore.core.domain.DriftReport
 import com.factstore.core.domain.EnvironmentSnapshot
 import com.factstore.core.domain.SnapshotArtifact
 import com.factstore.core.domain.SnapshotScope
+import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.port.inbound.IEnvironmentService
+import com.factstore.core.port.outbound.IAttestationRepository
+import com.factstore.core.port.outbound.IArtifactRepository
+import com.factstore.core.port.outbound.IDeploymentRepository
 import com.factstore.core.port.outbound.IEnvironmentBaselineRepository
 import com.factstore.core.port.outbound.IDriftReportRepository
 import com.factstore.core.port.outbound.IEnvironmentRepository
 import com.factstore.core.port.outbound.IEnvironmentSnapshotRepository
+import com.factstore.core.port.outbound.IEventPublisher
+import com.factstore.core.port.outbound.IFlowRepository
+import com.factstore.core.port.outbound.IPolicyAttachmentRepository
 import com.factstore.core.port.outbound.ISnapshotArtifactRepository
+import com.factstore.core.port.outbound.ITrailRepository
+import com.factstore.core.port.outbound.SupplyChainEvent
 import com.factstore.dto.BaselineResponse
 import com.factstore.dto.CreateBaselineRequest
 import com.factstore.dto.CreateEnvironmentRequest
+import com.factstore.dto.DeploymentResponse
 import com.factstore.dto.DriftReportResponse
 import com.factstore.dto.EnvironmentResponse
 import com.factstore.dto.EnvironmentSnapshotResponse
+import com.factstore.dto.PageResponse
 import com.factstore.dto.RecordSnapshotRequest
 import com.factstore.dto.ScopeListDto
 import com.factstore.dto.SnapshotArtifactResponse
@@ -28,6 +40,7 @@ import com.factstore.dto.UpdateEnvironmentRequest
 import com.factstore.exception.ConflictException
 import com.factstore.exception.NotFoundException
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -40,7 +53,14 @@ class EnvironmentService(
     private val snapshotRepository: IEnvironmentSnapshotRepository,
     private val snapshotArtifactRepository: ISnapshotArtifactRepository,
     private val baselineRepository: IEnvironmentBaselineRepository,
-    private val driftReportRepository: IDriftReportRepository
+    private val driftReportRepository: IDriftReportRepository,
+    private val deploymentRepository: IDeploymentRepository,
+    private val eventPublisher: IEventPublisher,
+    private val policyAttachmentRepository: IPolicyAttachmentRepository,
+    private val artifactRepository: IArtifactRepository,
+    private val attestationRepository: IAttestationRepository,
+    private val flowRepository: IFlowRepository,
+    private val trailRepository: ITrailRepository
 ) : IEnvironmentService {
 
     private val log = LoggerFactory.getLogger(EnvironmentService::class.java)
@@ -65,6 +85,18 @@ class EnvironmentService(
     @Transactional(readOnly = true)
     override fun listEnvironments(): List<EnvironmentResponse> =
         environmentRepository.findAll().map { it.toResponse() }
+
+    @Transactional(readOnly = true)
+    override fun listEnvironments(page: Int, size: Int): PageResponse<EnvironmentResponse> {
+        val pageResult = environmentRepository.findAll(PageRequest.of(page, size))
+        return PageResponse(
+            items = pageResult.content.map { it.toResponse() },
+            page = pageResult.number,
+            size = pageResult.size,
+            totalItems = pageResult.totalElements,
+            totalPages = pageResult.totalPages
+        )
+    }
 
     @Transactional(readOnly = true)
     override fun getEnvironment(id: UUID): EnvironmentResponse =
@@ -123,6 +155,24 @@ class EnvironmentService(
                 )
             }
         )
+        filteredArtifacts.forEach { a ->
+            if (!deploymentRepository.existsByArtifactSha256AndEnvironmentId(a.artifactSha256, environmentId)) {
+                val deployment = deploymentRepository.save(
+                    Deployment(
+                        artifactSha256 = a.artifactSha256,
+                        environmentId = environmentId,
+                        snapshotIndex = nextIndex,
+                        deployedAt = Instant.now()
+                    )
+                )
+                eventPublisher.publish(SupplyChainEvent.ArtifactDeployedEvent(
+                    artifactSha256 = a.artifactSha256,
+                    environmentId = environmentId.toString(),
+                    snapshotIndex = nextIndex,
+                    deployedAt = deployment.deployedAt.toString()
+                ))
+            }
+        }
         log.info("Recorded snapshot #$nextIndex for environment: $environmentId")
         return snapshot.toResponse(artifacts)
     }
@@ -274,6 +324,14 @@ class EnvironmentService(
         }
     }
 
+    @Transactional(readOnly = true)
+    override fun listDeployments(environmentId: UUID): List<DeploymentResponse> {
+        if (!environmentRepository.existsById(environmentId)) {
+            throw NotFoundException("Environment not found: $environmentId")
+        }
+        return deploymentRepository.findByEnvironmentId(environmentId).map { it.toResponse() }
+    }
+
     private fun parseRawArtifacts(raw: String, isAdded: Boolean): List<SnapshotDiffEntry> {
         if (raw.isBlank()) return emptyList()
         return raw.split("||").mapNotNull { token ->
@@ -305,6 +363,34 @@ class EnvironmentService(
         environment.scopeIncludePatterns = dto.include.patterns.filter { it.isNotBlank() }.joinToString("||").ifBlank { null }
         environment.scopeExcludeNames = dto.exclude.names.filter { it.isNotBlank() }.joinToString("||").ifBlank { null }
         environment.scopeExcludePatterns = dto.exclude.patterns.filter { it.isNotBlank() }.joinToString("||").ifBlank { null }
+    }
+
+    private fun computeEnvironmentComplianceState(environmentId: UUID): String {
+        val attachments = policyAttachmentRepository.findByEnvironmentId(environmentId)
+        if (attachments.isEmpty()) return "UNKNOWN"
+        val latestSnapshot = snapshotRepository.findLatestByEnvironmentId(environmentId) ?: return "UNKNOWN"
+        val artifacts = snapshotArtifactRepository.findAllBySnapshotId(latestSnapshot.id)
+        if (artifacts.isEmpty()) return "UNKNOWN"
+        if (artifacts.any { it.complianceState == "NON_COMPLIANT" }) return "NON_COMPLIANT"
+        return if (artifacts.all { it.complianceState == "COMPLIANT" }) "COMPLIANT" else "UNKNOWN"
+    }
+
+    private fun computeArtifactComplianceState(sha256: String): String {
+        val artifact = artifactRepository.findBySha256Digest(sha256).firstOrNull() ?: return "UNKNOWN"
+        val trail = trailRepository.findById(artifact.trailId) ?: return "UNKNOWN"
+        val flow = flowRepository.findById(trail.flowId) ?: return "UNKNOWN"
+        val requiredTypes = flow.requiredAttestationTypes
+        if (requiredTypes.isEmpty()) return "UNKNOWN"
+        val attestations = attestationRepository.findByTrailId(artifact.trailId)
+        val attestationsByType = attestations.groupBy { it.type }
+        val hasFailed = requiredTypes.any { type ->
+            attestationsByType[type]?.any { it.status == AttestationStatus.FAILED } == true
+        }
+        if (hasFailed) return "NON_COMPLIANT"
+        val allPassed = requiredTypes.all { type ->
+            attestationsByType[type]?.any { it.status == AttestationStatus.PASSED } == true
+        }
+        return if (allPassed) "COMPLIANT" else "NON_COMPLIANT"
     }
 }
 
@@ -368,5 +454,13 @@ fun SnapshotArtifact.toResponse() = SnapshotArtifactResponse(
     artifactName = artifactName,
     artifactTag = artifactTag,
     instanceCount = instanceCount
+)
+
+fun Deployment.toResponse() = DeploymentResponse(
+    id = id,
+    artifactSha256 = artifactSha256,
+    environmentId = environmentId,
+    snapshotIndex = snapshotIndex,
+    deployedAt = deployedAt
 )
 

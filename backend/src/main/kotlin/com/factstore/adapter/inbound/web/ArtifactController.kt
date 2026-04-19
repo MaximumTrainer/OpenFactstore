@@ -13,6 +13,7 @@ import com.factstore.dto.RecordProvenanceRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -30,7 +31,7 @@ class ArtifactController(
     @Operation(summary = "Report an artifact for a trail")
     fun reportArtifact(
         @PathVariable trailId: UUID,
-        @RequestBody request: CreateArtifactRequest,
+        @Valid @RequestBody request: CreateArtifactRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {
         if (DryRunContext.isDryRun(httpRequest)) {

@@ -10,6 +10,7 @@ import java.util.UUID
 @Repository
 interface PolicyAttachmentRepositoryJpa : JpaRepository<PolicyAttachment, UUID> {
     fun existsByPolicyIdAndEnvironmentId(policyId: UUID, environmentId: UUID): Boolean
+    fun findByEnvironmentId(environmentId: UUID): List<PolicyAttachment>
 }
 
 @Component
@@ -21,4 +22,6 @@ class PolicyAttachmentRepositoryAdapter(private val jpa: PolicyAttachmentReposit
     override fun existsByPolicyIdAndEnvironmentId(policyId: UUID, environmentId: UUID): Boolean =
         jpa.existsByPolicyIdAndEnvironmentId(policyId, environmentId)
     override fun deleteById(id: UUID) = jpa.deleteById(id)
+    override fun findByEnvironmentId(environmentId: UUID): List<PolicyAttachment> =
+        jpa.findByEnvironmentId(environmentId)
 }

@@ -2,6 +2,9 @@ package com.factstore.adapter.mock
 
 import com.factstore.core.domain.Flow
 import com.factstore.core.port.outbound.IFlowRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.Pageable
 import java.util.UUID
 
 /**
@@ -19,6 +22,13 @@ class InMemoryFlowRepository : IFlowRepository {
     override fun findById(id: UUID): Flow? = store[id]
 
     override fun findAll(): List<Flow> = store.values.toList()
+
+    override fun findAll(pageable: Pageable): Page<Flow> {
+        val all = store.values.toList()
+        val start = (pageable.pageNumber * pageable.pageSize).coerceAtMost(all.size)
+        val end = (start + pageable.pageSize).coerceAtMost(all.size)
+        return PageImpl(all.subList(start, end), pageable, all.size.toLong())
+    }
 
     override fun findAllByIds(ids: Collection<UUID>): List<Flow> = ids.mapNotNull { store[it] }
 

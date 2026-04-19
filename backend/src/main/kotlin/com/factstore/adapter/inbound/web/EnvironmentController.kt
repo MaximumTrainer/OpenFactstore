@@ -5,10 +5,12 @@ import com.factstore.core.port.inbound.IEnvironmentService
 import com.factstore.dto.BaselineResponse
 import com.factstore.dto.CreateBaselineRequest
 import com.factstore.dto.CreateEnvironmentRequest
+import com.factstore.dto.DeploymentResponse
 import com.factstore.dto.DriftReportResponse
 import com.factstore.dto.DryRunResponse
 import com.factstore.dto.EnvironmentResponse
 import com.factstore.dto.EnvironmentSnapshotResponse
+import com.factstore.dto.PageResponse
 import com.factstore.dto.RecordSnapshotRequest
 import com.factstore.dto.SnapshotArtifactResponse
 import com.factstore.dto.SnapshotDiffResponse
@@ -16,6 +18,7 @@ import com.factstore.dto.UpdateEnvironmentRequest
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -30,7 +33,7 @@ class EnvironmentController(private val environmentService: IEnvironmentService)
     @PostMapping
     @Operation(summary = "Register a new environment")
     fun createEnvironment(
-        @RequestBody request: CreateEnvironmentRequest,
+        @Valid @RequestBody request: CreateEnvironmentRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {
         if (DryRunContext.isDryRun(httpRequest)) {
@@ -53,8 +56,11 @@ class EnvironmentController(private val environmentService: IEnvironmentService)
 
     @GetMapping
     @Operation(summary = "List all environments")
-    fun listEnvironments(): ResponseEntity<List<EnvironmentResponse>> =
-        ResponseEntity.ok(environmentService.listEnvironments())
+    fun listEnvironments(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int
+    ): ResponseEntity<PageResponse<EnvironmentResponse>> =
+        ResponseEntity.ok(environmentService.listEnvironments(page, size))
 
     @GetMapping("/{id}")
     @Operation(summary = "Get environment by ID")

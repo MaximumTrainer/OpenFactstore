@@ -1,5 +1,6 @@
 package com.factstore.application
 
+import com.factstore.application.attestation.AttestationTypeProcessor
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.AuditEventType
@@ -16,8 +17,10 @@ import com.factstore.core.port.outbound.SupplyChainEvent
 import com.factstore.dto.AttestationResponse
 import com.factstore.dto.CreateAttestationRequest
 import com.factstore.dto.EvidenceFileResponse
+import com.factstore.dto.PageResponse
 import com.factstore.exception.NotFoundException
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -32,7 +35,8 @@ class AttestationService(
     private val auditService: IAuditService,
     private val organisationRepository: IOrganisationRepository,
     private val flowRepository: IFlowRepository,
-    private val eventPublisher: IEventPublisher
+    private val eventPublisher: IEventPublisher,
+    private val processors: List<AttestationTypeProcessor> = emptyList()
 ) : IAttestationService {
 
     private val log = LoggerFactory.getLogger(AttestationService::class.java)
@@ -97,6 +101,19 @@ class AttestationService(
         return attestationRepository.findByTrailId(trailId).map { it.toResponse() }
     }
 
+    @Transactional(readOnly = true)
+    override fun listAttestations(trailId: UUID, page: Int, size: Int): PageResponse<AttestationResponse> {
+        if (!trailRepository.existsById(trailId)) throw NotFoundException("Trail not found: $trailId")
+        val pageResult = attestationRepository.findByTrailId(trailId, PageRequest.of(page, size))
+        return PageResponse(
+            items = pageResult.content.map { it.toResponse() },
+            page = pageResult.number,
+            size = pageResult.size,
+            totalItems = pageResult.totalElements,
+            totalPages = pageResult.totalPages
+        )
+    }
+
     override fun uploadEvidence(
         trailId: UUID,
         attestationId: UUID,
@@ -113,10 +130,27 @@ class AttestationService(
         attestation.evidenceFileHash = evidenceFile.sha256Hash
         attestation.evidenceFileName = evidenceFile.fileName
         attestation.evidenceFileSizeBytes = evidenceFile.fileSizeBytes
+        applyTypeProcessor(attestation, content)
         attestationRepository.save(attestation)
 
         log.info("Uploaded evidence for attestation: $attestationId hash=${evidenceFile.sha256Hash}")
         return evidenceFile.toResponse()
+    }
+
+    private fun applyTypeProcessor(attestation: Attestation, evidenceContent: ByteArray) {
+        val processor = processors.firstOrNull { it.typeName.equals(attestation.type, ignoreCase = true) }
+        if (processor != null) {
+            processor.process(evidenceContent, attestation)
+            if (attestation.status == AttestationStatus.FAILED) {
+                markTrailNonCompliant(attestation.trailId)
+            }
+            eventPublisher.publish(SupplyChainEvent.AttestationProcessedEvent(
+                attestationId = attestation.id.toString(),
+                type = attestation.type,
+                status = attestation.status.name,
+                details = attestation.details
+            ))
+        }
     }
 
     private fun markTrailNonCompliant(trailId: UUID) {

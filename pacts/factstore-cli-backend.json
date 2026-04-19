@@ -1,10 +1,10 @@
 {
   "consumer": {
-    "name": "kosli-cli"
+    "name": "factstore-cli"
   },
   "interactions": [
     {
-      "description": "a POST request to record a Kosli v2 attestation",
+      "description": "a POST request to record a v2 attestation",
       "providerStates": [
         {
           "name": "a trail with id aabbccdd-0000-0000-0000-000000000001 exists"

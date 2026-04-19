@@ -12,6 +12,9 @@
           <div>
             <h1 class="text-2xl font-bold text-gray-900 mb-1">{{ flow.name }}</h1>
             <p class="text-gray-500 mb-4">{{ flow.description }}</p>
+            <div class="flex items-center gap-2 mb-3">
+              <StatusBadge :status="flow.visibility ?? 'PRIVATE'" />
+            </div>
             <div class="flex flex-wrap gap-2 mb-3">
               <span
                 v-for="type in flow.requiredAttestationTypes"

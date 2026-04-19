@@ -15,12 +15,16 @@ const badgeClass = computed(() => {
   switch (props.status) {
     case 'COMPLIANT':
     case 'PASSED':
+    case 'PUBLIC':
       return 'bg-green-100 text-green-800'
     case 'NON_COMPLIANT':
     case 'FAILED':
       return 'bg-red-100 text-red-800'
     case 'PENDING':
       return 'bg-yellow-100 text-yellow-800'
+    case 'UNKNOWN':
+    case 'PRIVATE':
+      return 'bg-gray-100 text-gray-600'
     default:
       return 'bg-gray-100 text-gray-800'
   }

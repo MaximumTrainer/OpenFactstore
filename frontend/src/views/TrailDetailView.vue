@@ -44,16 +44,34 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tag</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SHA256 Digest</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reported By</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compliance</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provenance</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <template v-for="artifact in artifacts" :key="artifact.id">
               <tr>
-                <td class="px-6 py-4 text-sm text-gray-900">{{ artifact.imageName }}</td>
+                <td class="px-6 py-4 text-sm text-gray-900">
+                  <div class="flex items-center gap-2">
+                    {{ artifact.imageName }}
+                    <span v-if="artifact.artifactType" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                      {{ artifact.artifactType }}
+                    </span>
+                  </div>
+                  <div class="mt-1 flex gap-2 text-xs">
+                    <a v-if="artifact.buildUrl" :href="artifact.buildUrl" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-900">Build ↗</a>
+                    <a v-if="artifact.commitUrl" :href="artifact.commitUrl" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-900">Commit ↗</a>
+                  </div>
+                </td>
                 <td class="px-6 py-4 text-sm text-gray-500">{{ artifact.imageTag }}</td>
                 <td class="px-6 py-4 text-sm font-mono text-gray-500 truncate max-w-xs">{{ artifact.sha256Digest }}</td>
-                <td class="px-6 py-4 text-sm text-gray-500">{{ artifact.reportedBy }}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">
+                  <div>{{ artifact.reportedBy }}</div>
+                  <div v-if="artifact.runningInEnvironments?.length" class="mt-1 text-xs text-gray-400">
+                    Running in {{ artifact.runningInEnvironments.length }} environment{{ artifact.runningInEnvironments.length !== 1 ? 's' : '' }}
+                  </div>
+                </td>
+                <td class="px-6 py-4"><StatusBadge :status="artifact.complianceState ?? 'UNKNOWN'" /></td>
                 <td class="px-6 py-4">
                   <span :class="provenanceBadgeClass(artifact.provenanceStatus)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
                     {{ provenanceLabel(artifact.provenanceStatus) }}
@@ -66,7 +84,7 @@
                 </td>
               </tr>
               <tr v-if="expandedProvenance === artifact.id && provenanceMap[artifact.id]" class="bg-gray-50">
-                <td colspan="5" class="px-6 py-4">
+                <td colspan="6" class="px-6 py-4">
                   <div class="text-sm text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div><span class="font-medium">Builder ID:</span> {{ provenanceMap[artifact.id]?.builderId }}</div>
                     <div><span class="font-medium">Builder Type:</span> {{ provenanceMap[artifact.id]?.builderType }}</div>

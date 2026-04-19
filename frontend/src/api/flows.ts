@@ -8,6 +8,7 @@ export const createFlow = (data: {
   description: string
   requiredAttestationTypes: string[]
   tags?: Record<string, string>
+  visibility?: 'PUBLIC' | 'PRIVATE'
 }) =>
   client.post<Flow>('/flows', data)
 export const updateFlow = (id: string, data: {
@@ -15,5 +16,6 @@ export const updateFlow = (id: string, data: {
   description?: string
   requiredAttestationTypes?: string[]
   tags?: Record<string, string>
+  visibility?: 'PUBLIC' | 'PRIVATE'
 }) =>
   client.put<Flow>(`/flows/${id}`, data)

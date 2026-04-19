@@ -1,6 +1,6 @@
 # API Reference
 
-Complete HTTP API reference for OpenFactstore. All endpoints are under the base path `/api/v1` (or `/api/v2` for Kosli-compatible endpoints).
+Complete HTTP API reference for OpenFactstore. All endpoints are under the base path `/api/v1` (or `/api/v2` for v2 endpoints).
 
 Interactive documentation is also available at **[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)** when the server is running.
 
@@ -473,11 +473,11 @@ Interactive documentation is also available at **[http://localhost:8080/swagger-
 
 ---
 
-### Kosli v2 Compatible Attestations
+### V2 Attestations
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v2/attestations/{org}/{flow}/{trail}/{artifactFingerprint}` | Record an attestation in Kosli v2 format |
+| `POST` | `/api/v2/attestations/{org}/{flow}/{trail}/{artifactFingerprint}` | Record an attestation in v2 format |
 
 ---
 

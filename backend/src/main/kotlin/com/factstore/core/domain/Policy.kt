@@ -41,4 +41,7 @@ class Policy(
 
     @Column(name = "policy_evaluator", nullable = false, length = 50)
     var policyEvaluator: String = "opa"
+
+    @Column(name = "policy_yaml", columnDefinition = "TEXT")
+    var policyYaml: String? = null
 }

@@ -8,10 +8,12 @@ import com.factstore.core.port.inbound.ITrailService
 import com.factstore.dto.AuditEventResponse
 import com.factstore.dto.CreateTrailRequest
 import com.factstore.dto.DryRunResponse
+import com.factstore.dto.PageResponse
 import com.factstore.dto.TrailResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -28,7 +30,7 @@ class TrailController(
     @PostMapping("/api/v1/trails")
     @Operation(summary = "Create/begin a trail")
     fun createTrail(
-        @RequestBody request: CreateTrailRequest,
+        @Valid @RequestBody request: CreateTrailRequest,
         @RequestHeader(value = "X-Factstore-CI-Context", required = false) ciContext: String?,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {
@@ -71,8 +73,12 @@ class TrailController(
 
     @GetMapping("/api/v1/flows/{flowId}/trails")
     @Operation(summary = "List trails for a flow")
-    fun listTrailsForFlow(@PathVariable flowId: UUID): ResponseEntity<List<TrailResponse>> =
-        ResponseEntity.ok(trailService.listTrailsForFlow(flowId))
+    fun listTrailsForFlow(
+        @PathVariable flowId: UUID,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int
+    ): ResponseEntity<PageResponse<TrailResponse>> =
+        ResponseEntity.ok(trailService.listTrailsForFlow(flowId, page, size))
 
     @GetMapping("/api/v1/trails/{id}/audit")
     @Operation(summary = "Get audit events for a specific trail")
