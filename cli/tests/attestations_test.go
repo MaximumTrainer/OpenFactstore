@@ -11,7 +11,7 @@ import (
 
 func TestListAttestations(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/trails/trail-1/attestations" {
+		if r.URL.Path != "/api/v2/trails/trail-1/attestations" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -33,32 +33,30 @@ func TestListAttestations(t *testing.T) {
 
 func TestCreateAttestation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/trails/trail-1/attestations" {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v2/trails/trail-1/attestations" {
 			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
 		}
 		var req api.CreateAttestationRequest
 		json.NewDecoder(r.Body).Decode(&req)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(api.AttestationResponse{
-			ID:      "att-new",
-			TrailID: "trail-1",
-			Type:    req.Type,
-			Status:  req.Status,
+		json.NewEncoder(w).Encode(api.CommandResult{
+			ID:     "att-new",
+			Status: "created",
 		})
 	}))
 	defer server.Close()
 
 	c := mustNewClient(t, server.URL, "tok")
-	att, err := api.CreateAttestation(c, "trail-1", api.CreateAttestationRequest{
+	result, err := api.CreateAttestation(c, "trail-1", api.CreateAttestationRequest{
 		Type:   "SBOM",
 		Status: "PASSED",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if att.Type != "SBOM" || att.Status != "PASSED" {
-		t.Errorf("unexpected attestation: %+v", att)
+	if result.ID != "att-new" {
+		t.Errorf("expected ID 'att-new', got '%s'", result.ID)
 	}
 }
 

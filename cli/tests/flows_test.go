@@ -11,7 +11,7 @@ import (
 
 func TestListFlows(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/flows" {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v2/flows" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -36,7 +36,7 @@ func TestListFlows(t *testing.T) {
 
 func TestGetFlow(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/flows/flow-1" {
+		if r.URL.Path != "/api/v2/flows/flow-1" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -56,7 +56,7 @@ func TestGetFlow(t *testing.T) {
 
 func TestCreateFlow(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/flows" {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v2/flows" {
 			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
 		}
 		var req api.CreateFlowRequest
@@ -66,7 +66,7 @@ func TestCreateFlow(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(api.FlowResponse{ID: "flow-new", Name: req.Name})
+		json.NewEncoder(w).Encode(api.CommandResult{ID: "flow-new", Status: "created"})
 	}))
 	defer server.Close()
 
@@ -75,18 +75,18 @@ func TestCreateFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if flow.Name != "New Flow" {
-		t.Errorf("expected name 'New Flow', got '%s'", flow.Name)
+	if flow.ID != "flow-new" {
+		t.Errorf("expected ID 'flow-new', got '%s'", flow.ID)
 	}
 }
 
 func TestUpdateFlow(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut || r.URL.Path != "/api/v1/flows/flow-1" {
+		if r.Method != http.MethodPut || r.URL.Path != "/api/v2/flows/flow-1" {
 			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(api.FlowResponse{ID: "flow-1", Name: "Updated"})
+		json.NewEncoder(w).Encode(api.CommandResult{ID: "flow-1", Status: "updated"})
 	}))
 	defer server.Close()
 
@@ -95,14 +95,14 @@ func TestUpdateFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if flow.Name != "Updated" {
-		t.Errorf("expected name 'Updated', got '%s'", flow.Name)
+	if flow.ID != "flow-1" {
+		t.Errorf("expected ID 'flow-1', got '%s'", flow.ID)
 	}
 }
 
 func TestDeleteFlow(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete || r.URL.Path != "/api/v1/flows/flow-1" {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/v2/flows/flow-1" {
 			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -117,7 +117,7 @@ func TestDeleteFlow(t *testing.T) {
 
 func TestGetFlowNotFound(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.Path != "/api/v1/flows/missing" {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v2/flows/missing" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")

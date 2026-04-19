@@ -14,8 +14,8 @@ import (
 
 var configureCmd = &cobra.Command{
 	Use:   "configure",
-	Short: "Set the API host and authentication token",
-	Long:  "Interactively set the Factstore API host and bearer token, saved to ~/.factstore.yaml.",
+	Short: "Set the API host, query host, and authentication token",
+	Long:  "Interactively set the Factstore API host, query host, and bearer token, saved to ~/.factstore.yaml.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		reader := bufio.NewReader(os.Stdin)
 
@@ -26,6 +26,13 @@ var configureCmd = &cobra.Command{
 		}
 		host = strings.TrimSpace(host)
 
+		fmt.Print("Query host (leave blank to use API host for reads): ")
+		queryHost, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("read query host: %w", err)
+		}
+		queryHost = strings.TrimSpace(queryHost)
+
 		fmt.Print("Bearer token: ")
 		tokenBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
 		fmt.Println() // newline after the hidden input
@@ -34,7 +41,7 @@ var configureCmd = &cobra.Command{
 		}
 		token := strings.TrimSpace(string(tokenBytes))
 
-		if err := config.Save(host, token); err != nil {
+		if err := config.Save(host, token, queryHost); err != nil {
 			return fmt.Errorf("save config: %w", err)
 		}
 		output.PrintSuccess("Configuration saved to ~/.factstore.yaml")

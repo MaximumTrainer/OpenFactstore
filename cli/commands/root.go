@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	cfgHost   string
-	cfgToken  string
-	jsonOutput bool
+	cfgHost      string
+	cfgQueryHost string
+	cfgToken     string
+	jsonOutput   bool
 )
 
 // RootCmd is the top-level command.
@@ -25,6 +26,7 @@ attestations and compliance assertions in the Factstore API.`,
 
 func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgHost, "host", "", "API host (overrides config/FACTSTORE_HOST)")
+	RootCmd.PersistentFlags().StringVar(&cfgQueryHost, "query-host", "", "Query API host for read operations (overrides config/FACTSTORE_QUERY_HOST)")
 	RootCmd.PersistentFlags().StringVar(&cfgToken, "token", "", "Bearer token (overrides config/FACTSTORE_TOKEN)")
 	RootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 
@@ -41,6 +43,8 @@ func init() {
 }
 
 // newClient builds an HTTP client from merged config + flag overrides.
+// When a query-host is configured, GET requests are routed to the query
+// (read) service while mutating requests go to the command (write) service.
 func newClient() (*client.Client, error) {
 	cfg, err := config.Load()
 	if err != nil {
@@ -51,6 +55,10 @@ func newClient() (*client.Client, error) {
 	if cfgHost != "" {
 		host = cfgHost
 	}
+	queryHost := cfg.QueryHost
+	if cfgQueryHost != "" {
+		queryHost = cfgQueryHost
+	}
 	token := cfg.Token
 	if cfgToken != "" {
 		token = cfgToken
@@ -60,5 +68,5 @@ func newClient() (*client.Client, error) {
 		fmt.Fprintln(os.Stderr, "hint: run 'factstore configure' or set FACTSTORE_HOST to set the API host")
 		return nil, fmt.Errorf("no host configured")
 	}
-	return client.New(host, token)
+	return client.NewWithQueryHost(host, queryHost, token)
 }

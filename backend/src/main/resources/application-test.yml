@@ -1,0 +1,41 @@
+# Profile: test — Isolated H2 databases with in-memory event bus.
+#
+# Each test context gets its own H2 in-memory database.  The in-memory
+# event bus (backed by Spring ApplicationEvents) replaces RabbitMQ,
+# allowing full CQRS event-driven projection tests to run without
+# external dependencies.
+#
+# Activate with: --spring.profiles.active=test
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:factstore-test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+factstore:
+  events:
+    publisher: inmemory
+
+ledger:
+  enabled: true
+  type: local
+
+audit:
+  hmac-secret: test-secret-for-unit-tests
+
+security:
+  enforce-auth: false

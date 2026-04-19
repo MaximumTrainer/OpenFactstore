@@ -92,7 +92,7 @@ var artifactsCreateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		artifact, err := api.CreateArtifact(c, artifactCreateTrailID, api.CreateArtifactRequest{
+		result, err := api.CreateArtifact(c, artifactCreateTrailID, api.CreateArtifactRequest{
 			ImageName:    artifactCreateImageName,
 			ImageTag:     artifactCreateImageTag,
 			Sha256Digest: artifactCreateSha256,
@@ -103,10 +103,10 @@ var artifactsCreateCmd = &cobra.Command{
 			return err
 		}
 		if jsonOutput {
-			output.PrintJSON(artifact)
+			output.PrintJSON(result)
 			return nil
 		}
-		output.PrintSuccess(fmt.Sprintf("Artifact created: %s", artifact.ID))
+		output.PrintSuccess(fmt.Sprintf("Artifact created: %s", result.ID))
 		return nil
 	},
 }

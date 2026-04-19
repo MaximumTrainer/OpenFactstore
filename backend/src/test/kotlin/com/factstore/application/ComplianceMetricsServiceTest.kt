@@ -8,6 +8,7 @@ import com.factstore.core.domain.Approval
 import com.factstore.core.domain.ApprovalStatus
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
+import com.factstore.core.domain.DriftReport
 import com.factstore.core.domain.SecurityScanResult
 import com.factstore.core.domain.Trail
 import com.factstore.core.domain.TrailStatus
@@ -149,5 +150,150 @@ class ComplianceMetricsServiceTest {
         assertEquals(3.0, meterRegistry.find("factstore_trails_total").gauge()!!.value(), 0.001)
         assertEquals(2.0, meterRegistry.find("factstore_trails_compliant").gauge()!!.value(), 0.001)
         assertEquals(1.0, meterRegistry.find("factstore_trails_non_compliant").gauge()!!.value(), 0.001)
+    }
+
+    @Test
+    fun `attestation gauges reflect attestation statuses`() {
+        val trailId = UUID.randomUUID()
+        attestationRepository.save(Attestation(trailId = trailId, type = "junit", status = AttestationStatus.PASSED))
+        attestationRepository.save(Attestation(trailId = trailId, type = "snyk", status = AttestationStatus.PASSED))
+        attestationRepository.save(Attestation(trailId = trailId, type = "trivy", status = AttestationStatus.FAILED))
+
+        assertEquals(3.0, meterRegistry.find("factstore_attestations_total").gauge()!!.value(), 0.001)
+        assertEquals(2.0, meterRegistry.find("factstore_attestations_passed").gauge()!!.value(), 0.001)
+        assertEquals(1.0, meterRegistry.find("factstore_attestations_failed").gauge()!!.value(), 0.001)
+    }
+
+    @Test
+    fun `security scan gauges reflect scan vulnerability counts`() {
+        val trailId = UUID.randomUUID()
+        scanRepository.save(SecurityScanResult(trailId = trailId, tool = "Trivy", criticalVulnerabilities = 0, highVulnerabilities = 0))
+        scanRepository.save(SecurityScanResult(trailId = trailId, tool = "Snyk", criticalVulnerabilities = 1, highVulnerabilities = 0))
+        scanRepository.save(SecurityScanResult(trailId = trailId, tool = "ZAP", criticalVulnerabilities = 0, highVulnerabilities = 2))
+
+        assertEquals(3.0, meterRegistry.find("factstore_security_scans_total").gauge()!!.value(), 0.001)
+        assertEquals(1.0, meterRegistry.find("factstore_security_scans_passed").gauge()!!.value(), 0.001)
+        assertEquals(2.0, meterRegistry.find("factstore_security_scans_failed").gauge()!!.value(), 0.001)
+    }
+
+    @Test
+    fun `compliance rate gauge returns correct percentage`() {
+        trail(TrailStatus.COMPLIANT)
+        trail(TrailStatus.COMPLIANT)
+        trail(TrailStatus.NON_COMPLIANT)
+
+        val rate = meterRegistry.find("factstore_compliance_rate").gauge()!!.value()
+        assertEquals(2.0 / 3.0 * 100, rate, 0.001)
+    }
+
+    @Test
+    fun `compliance rate gauge returns zero when no trails exist`() {
+        val rate = meterRegistry.find("factstore_compliance_rate").gauge()!!.value()
+        assertEquals(0.0, rate, 0.001)
+    }
+
+    @Test
+    fun `approvals pending gauge reflects pending approval count`() {
+        val pendingList = mutableListOf<Approval>()
+        val customApprovalRepo = object : IApprovalRepository {
+            override fun save(approval: Approval): Approval { pendingList.add(approval); return approval }
+            override fun findById(id: UUID) = null
+            override fun findByTrailId(trailId: UUID) = emptyList<Approval>()
+            override fun findByStatus(status: ApprovalStatus) =
+                if (status == ApprovalStatus.PENDING_APPROVAL) pendingList.toList() else emptyList()
+            override fun findAll() = pendingList.toList()
+            override fun existsById(id: UUID) = false
+        }
+        val localRegistry = SimpleMeterRegistry()
+        val localService = ComplianceMetricsService(
+            localRegistry, trailRepository, attestationRepository, scanRepository, customApprovalRepo, driftReportRepository
+        )
+        localService.registerMetrics()
+
+        assertEquals(0.0, localRegistry.find("factstore_approvals_pending").gauge()!!.value(), 0.001)
+
+        pendingList.add(Approval(trailId = UUID.randomUUID(), flowId = UUID.randomUUID()))
+        pendingList.add(Approval(trailId = UUID.randomUUID(), flowId = UUID.randomUUID()))
+        assertEquals(2.0, localRegistry.find("factstore_approvals_pending").gauge()!!.value(), 0.001)
+    }
+
+    @Test
+    fun `drift detected gauge reflects reports with drift`() {
+        driftReportRepository.save(DriftReport(
+            environmentId = UUID.randomUUID(), snapshotId = UUID.randomUUID(), hasDrift = true
+        ))
+        driftReportRepository.save(DriftReport(
+            environmentId = UUID.randomUUID(), snapshotId = UUID.randomUUID(), hasDrift = false
+        ))
+
+        assertEquals(1.0, meterRegistry.find("factstore_drift_detected").gauge()!!.value(), 0.001)
+    }
+
+    @Test
+    fun `getSecurityMetrics correctly identifies scan with only high vulnerabilities as failed`() {
+        val trailId = UUID.randomUUID()
+        scanRepository.save(SecurityScanResult(trailId = trailId, tool = "ZAP", criticalVulnerabilities = 0, highVulnerabilities = 3))
+
+        val metrics = service.getSecurityMetrics()
+        assertEquals(0, metrics.passedScans)
+        assertEquals(1, metrics.failedScans)
+    }
+
+    @Test
+    fun `getSecurityMetrics correctly identifies scan with only critical vulnerabilities as failed`() {
+        val trailId = UUID.randomUUID()
+        scanRepository.save(SecurityScanResult(trailId = trailId, tool = "Trivy", criticalVulnerabilities = 2, highVulnerabilities = 0))
+
+        val metrics = service.getSecurityMetrics()
+        assertEquals(0, metrics.passedScans)
+        assertEquals(1, metrics.failedScans)
+    }
+
+    @Test
+    fun `getSecurityMetrics reports totalMedium and totalLow correctly`() {
+        val trailId = UUID.randomUUID()
+        scanRepository.save(SecurityScanResult(trailId = trailId, tool = "Trivy",
+            criticalVulnerabilities = 0, highVulnerabilities = 0, mediumVulnerabilities = 4, lowVulnerabilities = 6))
+        scanRepository.save(SecurityScanResult(trailId = trailId, tool = "Snyk",
+            criticalVulnerabilities = 0, highVulnerabilities = 0, mediumVulnerabilities = 2, lowVulnerabilities = 1))
+
+        val metrics = service.getSecurityMetrics()
+        assertEquals(6, metrics.totalMedium)
+        assertEquals(7, metrics.totalLow)
+    }
+
+    @Test
+    fun `getComplianceMetrics counts only passed attestations in passedAttestations`() {
+        val trailId = UUID.randomUUID()
+        attestationRepository.save(Attestation(trailId = trailId, type = "junit", status = AttestationStatus.PASSED))
+        attestationRepository.save(Attestation(trailId = trailId, type = "snyk", status = AttestationStatus.PASSED))
+        attestationRepository.save(Attestation(trailId = trailId, type = "trivy", status = AttestationStatus.FAILED))
+
+        val metrics = service.getComplianceMetrics()
+        assertEquals(2, metrics.passedAttestations)
+        assertEquals(1, metrics.failedAttestations)
+        assertEquals(3, metrics.totalAttestations)
+    }
+
+    @Test
+    fun `getComplianceMetrics with all attestations passed`() {
+        val trailId = UUID.randomUUID()
+        attestationRepository.save(Attestation(trailId = trailId, type = "junit", status = AttestationStatus.PASSED))
+        attestationRepository.save(Attestation(trailId = trailId, type = "snyk", status = AttestationStatus.PASSED))
+
+        val metrics = service.getComplianceMetrics()
+        assertEquals(2, metrics.passedAttestations)
+        assertEquals(0, metrics.failedAttestations)
+    }
+
+    @Test
+    fun `getComplianceMetrics with all attestations failed`() {
+        val trailId = UUID.randomUUID()
+        attestationRepository.save(Attestation(trailId = trailId, type = "junit", status = AttestationStatus.FAILED))
+        attestationRepository.save(Attestation(trailId = trailId, type = "snyk", status = AttestationStatus.FAILED))
+
+        val metrics = service.getComplianceMetrics()
+        assertEquals(0, metrics.passedAttestations)
+        assertEquals(2, metrics.failedAttestations)
     }
 }

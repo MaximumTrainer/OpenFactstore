@@ -55,7 +55,7 @@ var attestationsCreateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		attestation, err := api.CreateAttestation(c, attestationCreateTrailID, api.CreateAttestationRequest{
+		result, err := api.CreateAttestation(c, attestationCreateTrailID, api.CreateAttestationRequest{
 			Type:    attestationCreateType,
 			Status:  attestationCreateStatus,
 			Details: attestationCreateDetails,
@@ -64,10 +64,10 @@ var attestationsCreateCmd = &cobra.Command{
 			return err
 		}
 		if jsonOutput {
-			output.PrintJSON(attestation)
+			output.PrintJSON(result)
 			return nil
 		}
-		output.PrintSuccess(fmt.Sprintf("Attestation created: %s", attestation.ID))
+		output.PrintSuccess(fmt.Sprintf("Attestation created: %s", result.ID))
 		return nil
 	},
 }
@@ -86,15 +86,15 @@ var attestationsUploadEvidenceCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		attestation, err := api.UploadEvidence(c, evidenceTrailID, evidenceAttestationID, args[0])
+		result, err := api.UploadEvidence(c, evidenceTrailID, evidenceAttestationID, args[0])
 		if err != nil {
 			return err
 		}
 		if jsonOutput {
-			output.PrintJSON(attestation)
+			output.PrintJSON(result)
 			return nil
 		}
-		output.PrintSuccess(fmt.Sprintf("Evidence uploaded for attestation %s", attestation.ID))
+		output.PrintSuccess(fmt.Sprintf("Evidence uploaded for attestation %s", result.ID))
 		return nil
 	},
 }

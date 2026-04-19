@@ -13,12 +13,14 @@ const (
 	defaultConfigFile = ".factstore.yaml"
 	KeyHost           = "host"
 	KeyToken          = "token"
+	KeyQueryHost      = "query_host"
 )
 
 // Config holds CLI configuration values.
 type Config struct {
-	Host  string
-	Token string
+	Host      string
+	Token     string
+	QueryHost string
 }
 
 // Load initializes Viper and returns the current configuration.
@@ -46,14 +48,15 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Host:  viper.GetString(KeyHost),
-		Token: viper.GetString(KeyToken),
+		Host:      viper.GetString(KeyHost),
+		Token:     viper.GetString(KeyToken),
+		QueryHost: viper.GetString(KeyQueryHost),
 	}, nil
 }
 
-// Save writes host and token to ~/.factstore.yaml with owner-only permissions
-// (0600) to prevent token disclosure.
-func Save(host, token string) error {
+// Save writes host, token, and queryHost to ~/.factstore.yaml with owner-only
+// permissions (0600) to prevent token disclosure.
+func Save(host, token, queryHost string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("cannot determine home directory: %w", err)
@@ -76,6 +79,7 @@ func Save(host, token string) error {
 
 	viper.Set(KeyHost, host)
 	viper.Set(KeyToken, token)
+	viper.Set(KeyQueryHost, queryHost)
 	viper.SetConfigFile(path)
 
 	if err := viper.WriteConfig(); err != nil {

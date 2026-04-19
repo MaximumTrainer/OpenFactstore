@@ -18,23 +18,30 @@ type FlowResponse struct {
 	UpdatedAt                string   `json:"updatedAt"`
 }
 
-// CreateFlowRequest is the body for POST /api/v1/flows.
+// CreateFlowRequest is the body for POST /api/v2/flows.
 type CreateFlowRequest struct {
 	Name                     string   `json:"name"`
 	Description              string   `json:"description"`
 	RequiredAttestationTypes []string `json:"requiredAttestationTypes"`
 }
 
-// UpdateFlowRequest is the body for PUT /api/v1/flows/{id}.
+// UpdateFlowRequest is the body for PUT /api/v2/flows/{id}.
 type UpdateFlowRequest struct {
 	Name                     string   `json:"name,omitempty"`
 	Description              string   `json:"description,omitempty"`
 	RequiredAttestationTypes []string `json:"requiredAttestationTypes,omitempty"`
 }
 
-// ListFlows returns all flows.
+// CommandResult is the minimal response returned by CQRS command endpoints.
+type CommandResult struct {
+	ID        string `json:"id"`
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
+}
+
+// ListFlows returns all flows (query path).
 func ListFlows(c *client.Client) ([]FlowResponse, error) {
-	body, status, err := c.Get("/api/v1/flows")
+	body, status, err := c.Get("/api/v2/flows")
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +55,9 @@ func ListFlows(c *client.Client) ([]FlowResponse, error) {
 	return flows, nil
 }
 
-// GetFlow returns a single flow by ID.
+// GetFlow returns a single flow by ID (query path).
 func GetFlow(c *client.Client, id string) (*FlowResponse, error) {
-	body, status, err := c.Get("/api/v1/flows/" + id)
+	body, status, err := c.Get("/api/v2/flows/" + id)
 	if err != nil {
 		return nil, err
 	}
@@ -64,41 +71,41 @@ func GetFlow(c *client.Client, id string) (*FlowResponse, error) {
 	return &flow, nil
 }
 
-// CreateFlow creates a new flow.
-func CreateFlow(c *client.Client, req CreateFlowRequest) (*FlowResponse, error) {
-	body, status, err := c.Post("/api/v1/flows", req)
+// CreateFlow creates a new flow (command path).
+func CreateFlow(c *client.Client, req CreateFlowRequest) (*CommandResult, error) {
+	body, status, err := c.Post("/api/v2/flows", req)
 	if err != nil {
 		return nil, err
 	}
 	if status != http.StatusCreated && status != http.StatusOK {
 		return nil, client.ParseError(status, body)
 	}
-	var flow FlowResponse
-	if err := json.Unmarshal(body, &flow); err != nil {
+	var result CommandResult
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
-	return &flow, nil
+	return &result, nil
 }
 
-// UpdateFlow updates an existing flow.
-func UpdateFlow(c *client.Client, id string, req UpdateFlowRequest) (*FlowResponse, error) {
-	body, status, err := c.Put("/api/v1/flows/"+id, req)
+// UpdateFlow updates an existing flow (command path).
+func UpdateFlow(c *client.Client, id string, req UpdateFlowRequest) (*CommandResult, error) {
+	body, status, err := c.Put("/api/v2/flows/"+id, req)
 	if err != nil {
 		return nil, err
 	}
 	if status != http.StatusOK {
 		return nil, client.ParseError(status, body)
 	}
-	var flow FlowResponse
-	if err := json.Unmarshal(body, &flow); err != nil {
+	var result CommandResult
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
-	return &flow, nil
+	return &result, nil
 }
 
-// DeleteFlow deletes a flow by ID.
+// DeleteFlow deletes a flow by ID (command path).
 func DeleteFlow(c *client.Client, id string) error {
-	body, status, err := c.Delete("/api/v1/flows/" + id)
+	body, status, err := c.Delete("/api/v2/flows/" + id)
 	if err != nil {
 		return err
 	}

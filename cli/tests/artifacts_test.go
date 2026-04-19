@@ -11,7 +11,7 @@ import (
 
 func TestListArtifacts(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/trails/trail-1/artifacts" {
+		if r.URL.Path != "/api/v2/trails/trail-1/artifacts" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -33,7 +33,7 @@ func TestListArtifacts(t *testing.T) {
 
 func TestFindArtifact(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/artifacts" {
+		if r.URL.Path != "/api/v2/artifacts" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		if r.URL.Query().Get("sha256") != "sha256:abc" {
@@ -71,25 +71,22 @@ func TestFindArtifactNotFound(t *testing.T) {
 
 func TestCreateArtifact(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/trails/trail-1/artifacts" {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v2/trails/trail-1/artifacts" {
 			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
 		}
 		var req api.CreateArtifactRequest
 		json.NewDecoder(r.Body).Decode(&req)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(api.ArtifactResponse{
-			ID:           "art-new",
-			TrailID:      "trail-1",
-			ImageName:    req.ImageName,
-			ImageTag:     req.ImageTag,
-			Sha256Digest: req.Sha256Digest,
+		json.NewEncoder(w).Encode(api.CommandResult{
+			ID:     "art-new",
+			Status: "created",
 		})
 	}))
 	defer server.Close()
 
 	c := mustNewClient(t, server.URL, "tok")
-	artifact, err := api.CreateArtifact(c, "trail-1", api.CreateArtifactRequest{
+	result, err := api.CreateArtifact(c, "trail-1", api.CreateArtifactRequest{
 		ImageName:    "myapp",
 		ImageTag:     "v2.0",
 		Sha256Digest: "sha256:def",
@@ -98,10 +95,7 @@ func TestCreateArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if artifact.ID != "art-new" {
-		t.Errorf("expected art-new, got %s", artifact.ID)
-	}
-	if artifact.ImageName != "myapp" {
-		t.Errorf("expected myapp, got %s", artifact.ImageName)
+	if result.ID != "art-new" {
+		t.Errorf("expected art-new, got %s", result.ID)
 	}
 }

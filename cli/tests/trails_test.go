@@ -11,7 +11,7 @@ import (
 
 func TestListTrails(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/trails" {
+		if r.URL.Path != "/api/v2/trails" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -53,7 +53,7 @@ func TestListTrailsWithFlowID(t *testing.T) {
 
 func TestGetTrail(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/trails/trail-1" {
+		if r.URL.Path != "/api/v2/trails/trail-1" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -88,7 +88,7 @@ func TestGetTrailNotFound(t *testing.T) {
 
 func TestCreateTrail(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/trails" {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v2/trails" {
 			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
 		}
 		var req api.CreateTrailRequest
@@ -98,12 +98,12 @@ func TestCreateTrail(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(api.TrailResponse{ID: "trail-new", FlowID: req.FlowID})
+		json.NewEncoder(w).Encode(api.CommandResult{ID: "trail-new", Status: "created"})
 	}))
 	defer server.Close()
 
 	c := mustNewClient(t, server.URL, "tok")
-	trail, err := api.CreateTrail(c, api.CreateTrailRequest{
+	result, err := api.CreateTrail(c, api.CreateTrailRequest{
 		FlowID:         "flow-1",
 		GitCommitSha:   "abc123",
 		GitBranch:      "main",
@@ -113,7 +113,7 @@ func TestCreateTrail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if trail.ID != "trail-new" {
-		t.Errorf("expected trail-new, got %s", trail.ID)
+	if result.ID != "trail-new" {
+		t.Errorf("expected trail-new, got %s", result.ID)
 	}
 }

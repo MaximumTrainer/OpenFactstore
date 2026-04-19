@@ -1,0 +1,338 @@
+name: Verify Factstore — Persona Test Suite
+
+# Validates that a transient OpenFactstore instance correctly stores and retrieves
+# compliance facts through four representative personas used in a financial institution.
+
+on:
+  push:
+    branches: [ main, 'copilot/**' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  persona-tests:
+    name: Persona-Based Verification
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: factstore
+          POSTGRES_USER: factstore
+          POSTGRES_PASSWORD: factstore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      FACTSTORE_URL: http://localhost:8080
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      # Build the JAR without running tests — tests run in the ci.yml workflow
+      - name: Build backend JAR
+        working-directory: backend
+        run: ./gradlew bootJar -x test --no-daemon -q
+        env:
+          DB_USERNAME: factstore
+          DB_PASSWORD: factstore
+
+      # Start Factstore as a background process against the postgres service
+      - name: Start Factstore backend
+        working-directory: backend
+        run: |
+          # Exclude the *-plain.jar produced by the Spring Boot Gradle plugin so that
+          # only the executable boot JAR is selected.
+          BOOT_JAR=$(find build/libs -maxdepth 1 -name "*.jar" ! -name "*-plain.jar" | head -1)
+          java -jar "$BOOT_JAR" \
+            --spring.datasource.url="jdbc:postgresql://localhost:5432/factstore" \
+            --spring.datasource.username=factstore \
+            --spring.datasource.password=factstore \
+            --security.enforce-auth=false \
+            --vault.enabled=false \
+            > /tmp/factstore.log 2>&1 &
+          echo "FACTSTORE_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for Factstore to be ready
+        run: |
+          echo "Waiting for Factstore to start..."
+          for i in $(seq 1 36); do
+            if curl -sf "${FACTSTORE_URL}/api/v1/flows" > /dev/null 2>&1; then
+              echo "Factstore is ready after $((i * 5)) seconds"
+              break
+            fi
+            if [ "$i" -eq 36 ]; then
+              echo "ERROR: Factstore did not start within 3 minutes"
+              cat /tmp/factstore.log
+              exit 1
+            fi
+            echo "  Attempt $i/36 — retrying in 5 s..."
+            sleep 5
+          done
+
+      # ─────────────────────────────────────────────────────────────────────
+      # PERSONA 1: Platform / DevOps Engineer
+      # Responsible for defining the compliance flow and recording each build.
+      # ─────────────────────────────────────────────────────────────────────
+
+      - name: "[Persona: DevOps Engineer] Define compliance flow"
+        id: devops-flow
+        env:
+          GIT_ACTOR: ${{ github.actor }}
+        run: |
+          FLOW_PAYLOAD=$(jq -n '{
+            "name": "payment-service-ci",
+            "description": "SOC2/ISO27001 compliance flow for the payment processing microservice",
+            "requiredAttestationTypes": ["unit-tests", "security-scan", "compliance-check"]
+          }')
+
+          FLOW=$(curl -sf -X POST "${FACTSTORE_URL}/api/v1/flows" \
+            -H "Content-Type: application/json" \
+            -d "$FLOW_PAYLOAD")
+
+          FLOW_ID=$(echo "$FLOW" | jq -r '.id')
+          echo "FLOW_ID=$FLOW_ID" >> "$GITHUB_ENV"
+          echo "flow_id=$FLOW_ID" >> "$GITHUB_OUTPUT"
+          echo "✅ [DevOps Engineer] Compliance flow created: $FLOW_ID"
+
+      - name: "[Persona: DevOps Engineer] Create build trail"
+        id: devops-trail
+        env:
+          FLOW_ID: ${{ env.FLOW_ID }}
+          GIT_SHA: ${{ github.sha }}
+          GIT_BRANCH: ${{ github.ref_name }}
+          GIT_ACTOR: ${{ github.actor }}
+        run: |
+          TRAIL_PAYLOAD=$(jq -n \
+            --arg flowId  "$FLOW_ID" \
+            --arg sha     "$GIT_SHA" \
+            --arg branch  "$GIT_BRANCH" \
+            --arg author  "$GIT_ACTOR" \
+            --arg email   "${GIT_ACTOR}@users.noreply.github.com" \
+            '{
+              flowId:         $flowId,
+              gitCommitSha:   $sha,
+              gitBranch:      $branch,
+              gitAuthor:      $author,
+              gitAuthorEmail: $email
+            }')
+
+          TRAIL=$(curl -sf -X POST "${FACTSTORE_URL}/api/v1/trails" \
+            -H "Content-Type: application/json" \
+            -H "X-Factstore-CI-Context: github-actions" \
+            -d "$TRAIL_PAYLOAD")
+
+          TRAIL_ID=$(echo "$TRAIL" | jq -r '.id')
+          echo "TRAIL_ID=$TRAIL_ID" >> "$GITHUB_ENV"
+          echo "trail_id=$TRAIL_ID" >> "$GITHUB_OUTPUT"
+          echo "✅ [DevOps Engineer] Build trail created: $TRAIL_ID"
+
+      - name: "[Persona: DevOps Engineer] Report container artifact"
+        env:
+          TRAIL_ID: ${{ env.TRAIL_ID }}
+          GIT_SHA: ${{ github.sha }}
+          GIT_ACTOR: ${{ github.actor }}
+        run: |
+          # Simulate the SHA-256 digest that a real docker build-push would produce
+          ARTIFACT_SHA="sha256:$(printf '%s' "payment-service:${GIT_SHA}" | sha256sum | cut -d' ' -f1)"
+          echo "ARTIFACT_SHA=$ARTIFACT_SHA" >> "$GITHUB_ENV"
+
+          ARTIFACT_PAYLOAD=$(jq -n \
+            --arg imageName  "ghcr.io/myorg/payment-service" \
+            --arg imageTag   "$GIT_SHA" \
+            --arg sha256     "$ARTIFACT_SHA" \
+            --arg reportedBy "$GIT_ACTOR" \
+            '{
+              imageName:   $imageName,
+              imageTag:    $imageTag,
+              sha256Digest: $sha256,
+              reportedBy:  $reportedBy
+            }')
+
+          curl -sf -X POST "${FACTSTORE_URL}/api/v1/trails/${TRAIL_ID}/artifacts" \
+            -H "Content-Type: application/json" \
+            -d "$ARTIFACT_PAYLOAD"
+
+          echo "✅ [DevOps Engineer] Container artifact reported: $ARTIFACT_SHA"
+
+      # ─────────────────────────────────────────────────────────────────────
+      # PERSONA 2: Security Engineer
+      # Records evidence from automated quality gates (tests, scans, controls).
+      # ─────────────────────────────────────────────────────────────────────
+
+      - name: "[Persona: Security Engineer] Attest unit-test results"
+        env:
+          TRAIL_ID: ${{ env.TRAIL_ID }}
+        run: |
+          PAYLOAD=$(jq -n '{
+            "type":    "unit-tests",
+            "status":  "PASSED",
+            "details": "156 unit tests passed, 0 failed, 2 skipped. Branch coverage: 87%."
+          }')
+
+          curl -sf -X POST "${FACTSTORE_URL}/api/v1/trails/${TRAIL_ID}/attestations" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
+
+          echo "✅ [Security Engineer] Unit-test attestation recorded"
+
+      - name: "[Persona: Security Engineer] Attest security scan (Snyk)"
+        env:
+          TRAIL_ID: ${{ env.TRAIL_ID }}
+        run: |
+          PAYLOAD=$(jq -n '{
+            "type":    "security-scan",
+            "status":  "PASSED",
+            "details": "Snyk SCA: 0 critical, 0 high, 2 medium (accepted per risk register). CVSS threshold met."
+          }')
+
+          curl -sf -X POST "${FACTSTORE_URL}/api/v1/trails/${TRAIL_ID}/attestations" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
+
+          echo "✅ [Security Engineer] Security-scan attestation recorded"
+
+      - name: "[Persona: Security Engineer] Attest compliance controls"
+        env:
+          TRAIL_ID: ${{ env.TRAIL_ID }}
+        run: |
+          PAYLOAD=$(jq -n '{
+            "type":    "compliance-check",
+            "status":  "PASSED",
+            "details": "SOC2 CC6/CC7, ISO27001 A.12, PCI-DSS 6.3: all 23 automated controls passed. No exceptions."
+          }')
+
+          curl -sf -X POST "${FACTSTORE_URL}/api/v1/trails/${TRAIL_ID}/attestations" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
+
+          echo "✅ [Security Engineer] Compliance-check attestation recorded"
+
+      # ─────────────────────────────────────────────────────────────────────
+      # PERSONA 3: Release Manager
+      # Asserts compliance before approving production deployment.
+      # ─────────────────────────────────────────────────────────────────────
+
+      - name: "[Persona: Release Manager] Assert compliance before deployment"
+        env:
+          FLOW_ID: ${{ env.FLOW_ID }}
+          ARTIFACT_SHA: ${{ env.ARTIFACT_SHA }}
+        run: |
+          ASSERT_PAYLOAD=$(jq -n \
+            --arg flowId "$FLOW_ID" \
+            --arg sha    "$ARTIFACT_SHA" \
+            '{flowId: $flowId, sha256Digest: $sha}')
+
+          RESULT=$(curl -sf -X POST "${FACTSTORE_URL}/api/v1/assert" \
+            -H "Content-Type: application/json" \
+            -d "$ASSERT_PAYLOAD")
+
+          echo "$RESULT" | jq .
+
+          STATUS=$(echo "$RESULT" | jq -r '.status')
+          if [ "$STATUS" != "COMPLIANT" ]; then
+            echo "❌ [Release Manager] Artifact is NOT compliant — deployment blocked"
+            exit 1
+          fi
+          echo "✅ [Release Manager] Compliance assertion passed — deployment approved"
+
+      # ─────────────────────────────────────────────────────────────────────
+      # PERSONA 4: Compliance Officer
+      # Performs post-deployment evidence review and integrity checks.
+      # ─────────────────────────────────────────────────────────────────────
+
+      - name: "[Persona: Compliance Officer] Retrieve and verify stored trail"
+        env:
+          TRAIL_ID: ${{ env.TRAIL_ID }}
+          FLOW_ID: ${{ env.FLOW_ID }}
+        run: |
+          TRAIL=$(curl -sf "${FACTSTORE_URL}/api/v1/trails/${TRAIL_ID}")
+          echo "$TRAIL" | jq .
+
+          STORED_FLOW_ID=$(echo "$TRAIL" | jq -r '.flowId')
+          if [ "$STORED_FLOW_ID" != "$FLOW_ID" ]; then
+            echo "❌ [Compliance Officer] Trail flowId mismatch — expected $FLOW_ID, got $STORED_FLOW_ID"
+            exit 1
+          fi
+          echo "✅ [Compliance Officer] Trail data integrity verified: $TRAIL_ID"
+
+      - name: "[Persona: Compliance Officer] Verify all attestations are present"
+        env:
+          TRAIL_ID: ${{ env.TRAIL_ID }}
+        run: |
+          ATTESTATIONS=$(curl -sf "${FACTSTORE_URL}/api/v1/trails/${TRAIL_ID}/attestations")
+          echo "$ATTESTATIONS" | jq .
+
+          COUNT=$(echo "$ATTESTATIONS" | jq 'length')
+          if [ "$COUNT" -lt 3 ]; then
+            echo "❌ [Compliance Officer] Expected ≥ 3 attestations, found $COUNT"
+            exit 1
+          fi
+
+          # Verify all required types are present and PASSED
+          for TYPE in unit-tests security-scan compliance-check; do
+            STATUS=$(echo "$ATTESTATIONS" | jq -r --arg t "$TYPE" '.[] | select(.type == $t) | .status' | tail -1)
+            if [ "$STATUS" != "PASSED" ]; then
+              echo "❌ [Compliance Officer] Attestation '$TYPE' status is '$STATUS' (expected PASSED)"
+              exit 1
+            fi
+          done
+
+          echo "✅ [Compliance Officer] All $COUNT attestations verified — all required types PASSED"
+
+      - name: "[Persona: Compliance Officer] Retrieve audit log for trail"
+        env:
+          TRAIL_ID: ${{ env.TRAIL_ID }}
+        run: |
+          AUDIT=$(curl -sf "${FACTSTORE_URL}/api/v1/trails/${TRAIL_ID}/audit")
+          ENTRY_COUNT=$(echo "$AUDIT" | jq 'length')
+          echo "$AUDIT" | jq .
+          echo "✅ [Compliance Officer] Audit log retrieved — $ENTRY_COUNT entries recorded"
+
+      - name: "[Persona: Compliance Officer] Verify artifact retrieval by SHA-256 (idempotency)"
+        env:
+          ARTIFACT_SHA: ${{ env.ARTIFACT_SHA }}
+        run: |
+          ENCODED_SHA=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$ARTIFACT_SHA")
+
+          # Retrieve the artifact twice to validate idempotent fact storage
+          ARTIFACTS_1=$(curl -sf "${FACTSTORE_URL}/api/v1/artifacts?sha256=${ENCODED_SHA}")
+          ARTIFACTS_2=$(curl -sf "${FACTSTORE_URL}/api/v1/artifacts?sha256=${ENCODED_SHA}")
+
+          COUNT=$(echo "$ARTIFACTS_1" | jq 'length')
+          if [ "$COUNT" -lt 1 ]; then
+            echo "❌ [Compliance Officer] Artifact not found by SHA-256 — integrity check failed"
+            exit 1
+          fi
+
+          ID_1=$(echo "$ARTIFACTS_1" | jq -r '.[0].id')
+          ID_2=$(echo "$ARTIFACTS_2" | jq -r '.[0].id')
+          if [ "$ID_1" != "$ID_2" ]; then
+            echo "❌ [Compliance Officer] Idempotency violation — artifact IDs differ between reads"
+            exit 1
+          fi
+
+          echo "✅ [Compliance Officer] Artifact lookup idempotency verified: $ARTIFACT_SHA → $ID_1"
+
+      # Print server logs on failure to aid debugging
+      - name: Dump Factstore server logs (on failure)
+        if: failure()
+        run: cat /tmp/factstore.log

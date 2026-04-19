@@ -2,7 +2,12 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'factstore'
+  - job_name: 'factstore-command'
     static_configs:
-      - targets: ['backend:8080']
+      - targets: ['backend-command:8080']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'factstore-query'
+    static_configs:
+      - targets: ['backend-query:8080']
     metrics_path: '/actuator/prometheus'

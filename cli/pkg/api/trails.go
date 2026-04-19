@@ -25,7 +25,7 @@ type TrailResponse struct {
 	UpdatedAt           string `json:"updatedAt"`
 }
 
-// CreateTrailRequest is the body for POST /api/v1/trails.
+// CreateTrailRequest is the body for POST /api/v2/trails.
 type CreateTrailRequest struct {
 	FlowID              string `json:"flowId"`
 	GitCommitSha        string `json:"gitCommitSha"`
@@ -37,9 +37,9 @@ type CreateTrailRequest struct {
 	DeploymentActor     string `json:"deploymentActor,omitempty"`
 }
 
-// ListTrails returns all trails, optionally filtered by flowId.
+// ListTrails returns all trails, optionally filtered by flowId (query path).
 func ListTrails(c *client.Client, flowID string) ([]TrailResponse, error) {
-	path := "/api/v1/trails"
+	path := "/api/v2/trails"
 	if flowID != "" {
 		q := url.Values{}
 		q.Set("flowId", flowID)
@@ -59,9 +59,9 @@ func ListTrails(c *client.Client, flowID string) ([]TrailResponse, error) {
 	return trails, nil
 }
 
-// GetTrail returns a single trail by ID.
+// GetTrail returns a single trail by ID (query path).
 func GetTrail(c *client.Client, id string) (*TrailResponse, error) {
-	body, status, err := c.Get("/api/v1/trails/" + id)
+	body, status, err := c.Get("/api/v2/trails/" + id)
 	if err != nil {
 		return nil, err
 	}
@@ -75,18 +75,18 @@ func GetTrail(c *client.Client, id string) (*TrailResponse, error) {
 	return &trail, nil
 }
 
-// CreateTrail creates a new trail.
-func CreateTrail(c *client.Client, req CreateTrailRequest) (*TrailResponse, error) {
-	body, status, err := c.Post("/api/v1/trails", req)
+// CreateTrail creates a new trail (command path).
+func CreateTrail(c *client.Client, req CreateTrailRequest) (*CommandResult, error) {
+	body, status, err := c.Post("/api/v2/trails", req)
 	if err != nil {
 		return nil, err
 	}
 	if status != http.StatusCreated && status != http.StatusOK {
 		return nil, client.ParseError(status, body)
 	}
-	var trail TrailResponse
-	if err := json.Unmarshal(body, &trail); err != nil {
+	var result CommandResult
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
-	return &trail, nil
+	return &result, nil
 }
