@@ -88,7 +88,7 @@ configure<info.solidsoft.gradle.pitest.PitestPluginExtension> {
     avoidCallsTo.set(setOf("kotlin.jvm.internal"))
     mutators.set(setOf("STRONGER"))
     targetClasses.set(setOf(
-        "com.factstore.application.FlowTemplateParser",
+        "com.factstore.application.template.TemplateParser",
         "com.factstore.application.SlackCommandParser",
         "com.factstore.application.ScopeFilter",
         "com.factstore.application.CiContextResolver",
@@ -96,7 +96,8 @@ configure<info.solidsoft.gradle.pitest.PitestPluginExtension> {
         "com.factstore.application.SecurityScanService"
     ))
     targetTests.set(setOf(
-        "com.factstore.FlowTemplateParserTest",
+        "com.factstore.TemplateParserTest",
+        "com.factstore.application.TemplateParserTest",
         "com.factstore.SlackCommandParserTest",
         "com.factstore.SnapshotScopeFilterTest",
         "com.factstore.CiContextResolverTest",
