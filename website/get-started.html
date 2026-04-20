@@ -22,10 +22,9 @@
   <nav>
     <span class="nav-section">Documentation</span>
     <a href="index.html">🏠 Home</a>
-    <a href="get-started.html">🚀 Get Started</a>
+    <a href="get-started.html" class="active">🚀 Get Started</a>
     <a href="api-docs.html">📖 API Docs</a>
     <a href="user-guide.html">📘 User Guide</a>
-    <a href="known-issues.html">⚠️ Known Issues</a>
     <span class="nav-section">Links</span>
     <a href="https://github.com/MaximumTrainer/OpenFactstore" target="_blank" rel="noopener" class="external">GitHub ↗</a>
   </nav>
@@ -237,6 +236,154 @@ npm run dev             <span class="code-comment"># Starts on http://localhost:
   -d '{ ... }' | jq .</code></pre>
     </section>
 
+    <!-- Configuration Reference -->
+    <section id="configuration" style="padding:0; border:none; margin-bottom:40px;">
+      <h2>Configuration Reference</h2>
+      <p>All runtime settings are configured via environment variables. Here are the key options for a production deployment.</p>
+
+      <h3>Environment Variables</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>SPRING_DATASOURCE_URL</code></td>
+              <td><em>H2 in-memory</em></td>
+              <td>JDBC URL for PostgreSQL, e.g. <code>jdbc:postgresql://db:5432/factstore</code></td>
+            </tr>
+            <tr>
+              <td><code>SPRING_DATASOURCE_USERNAME</code></td>
+              <td><code>factstore</code></td>
+              <td>Database username</td>
+            </tr>
+            <tr>
+              <td><code>SPRING_DATASOURCE_PASSWORD</code></td>
+              <td><em>none</em></td>
+              <td>Database password</td>
+            </tr>
+            <tr>
+              <td><code>SECURITY_ENFORCE_AUTH</code></td>
+              <td><code>false</code></td>
+              <td>Set to <code>true</code> to require API key or JWT on all endpoints</td>
+            </tr>
+            <tr>
+              <td><code>FACTSTORE_SCM_ENCRYPTION_KEY</code></td>
+              <td><em>dev key</em></td>
+              <td>32-character AES key for encrypting SCM tokens at rest</td>
+            </tr>
+            <tr>
+              <td><code>FACTSTORE_EVENTS_PUBLISHER</code></td>
+              <td><code>logging</code></td>
+              <td>Event bus: <code>logging</code> | <code>rabbitmq</code> | <code>inmemory</code> | <code>none</code></td>
+            </tr>
+            <tr>
+              <td><code>FACTSTORE_CQRS_ROLE</code></td>
+              <td><em>none</em></td>
+              <td>CQRS deployment: <code>command</code> (write) or <code>query</code> (read-only)</td>
+            </tr>
+            <tr>
+              <td><code>SPRING_RABBITMQ_HOST</code></td>
+              <td><code>localhost</code></td>
+              <td>RabbitMQ hostname (only used when <code>FACTSTORE_EVENTS_PUBLISHER=rabbitmq</code>)</td>
+            </tr>
+            <tr>
+              <td><code>OPA_MODE</code></td>
+              <td><code>embedded</code></td>
+              <td>OPA policy mode: <code>embedded</code> (built-in evaluator) or <code>external</code></td>
+            </tr>
+            <tr>
+              <td><code>OPA_URL</code></td>
+              <td><em>none</em></td>
+              <td>URL of external OPA server when <code>OPA_MODE=external</code></td>
+            </tr>
+            <tr>
+              <td><code>SERVER_PORT</code></td>
+              <td><code>8080</code></td>
+              <td>HTTP port the backend listens on</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top:28px;">Production Docker Compose example</h3>
+      <p>A minimal production-ready compose file with PostgreSQL, RabbitMQ, and authentication enabled:</p>
+
+      <pre><code><span class="code-comment"># docker-compose.prod.yml</span>
+<span class="code-key">services:</span>
+  <span class="code-key">factstore:</span>
+    <span class="code-key">image:</span> <span class="code-value">ghcr.io/maximumtrainer/openfactstore:latest</span>
+    <span class="code-key">ports:</span>
+      - <span class="code-string">"8080:8080"</span>
+    <span class="code-key">environment:</span>
+      <span class="code-key">SPRING_DATASOURCE_URL:</span>     <span class="code-value">jdbc:postgresql://postgres:5432/factstore</span>
+      <span class="code-key">SPRING_DATASOURCE_USERNAME:</span> <span class="code-value">factstore</span>
+      <span class="code-key">SPRING_DATASOURCE_PASSWORD:</span> <span class="code-value">${DB_PASSWORD}</span>
+      <span class="code-key">SECURITY_ENFORCE_AUTH:</span>      <span class="code-string">"true"</span>
+      <span class="code-key">FACTSTORE_SCM_ENCRYPTION_KEY:</span> <span class="code-value">${SCM_KEY}</span>
+      <span class="code-key">FACTSTORE_EVENTS_PUBLISHER:</span> <span class="code-value">rabbitmq</span>
+      <span class="code-key">SPRING_RABBITMQ_HOST:</span>       <span class="code-value">rabbitmq</span>
+    <span class="code-key">depends_on:</span>
+      <span class="code-key">postgres:</span>
+        <span class="code-key">condition:</span> <span class="code-value">service_healthy</span>
+      <span class="code-key">rabbitmq:</span>
+        <span class="code-key">condition:</span> <span class="code-value">service_healthy</span>
+    <span class="code-key">healthcheck:</span>
+      <span class="code-key">test:</span> <span class="code-string">["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]</span>
+      <span class="code-key">interval:</span> <span class="code-value">15s</span>
+      <span class="code-key">timeout:</span> <span class="code-value">5s</span>
+      <span class="code-key">retries:</span> <span class="code-value">5</span>
+
+  <span class="code-key">postgres:</span>
+    <span class="code-key">image:</span> <span class="code-value">postgres:16-alpine</span>
+    <span class="code-key">environment:</span>
+      <span class="code-key">POSTGRES_DB:</span>       <span class="code-value">factstore</span>
+      <span class="code-key">POSTGRES_USER:</span>     <span class="code-value">factstore</span>
+      <span class="code-key">POSTGRES_PASSWORD:</span> <span class="code-value">${DB_PASSWORD}</span>
+    <span class="code-key">volumes:</span>
+      - <span class="code-value">pgdata:/var/lib/postgresql/data</span>
+    <span class="code-key">healthcheck:</span>
+      <span class="code-key">test:</span> <span class="code-string">["CMD", "pg_isready", "-U", "factstore"]</span>
+      <span class="code-key">interval:</span> <span class="code-value">10s</span>
+      <span class="code-key">retries:</span> <span class="code-value">5</span>
+
+  <span class="code-key">rabbitmq:</span>
+    <span class="code-key">image:</span> <span class="code-value">rabbitmq:3-management-alpine</span>
+    <span class="code-key">healthcheck:</span>
+      <span class="code-key">test:</span> <span class="code-string">["CMD", "rabbitmq-diagnostics", "ping"]</span>
+      <span class="code-key">interval:</span> <span class="code-value">10s</span>
+      <span class="code-key">retries:</span> <span class="code-value">5</span>
+
+<span class="code-key">volumes:</span>
+  <span class="code-key">pgdata:</span></code></pre>
+
+      <h3 style="margin-top:28px;">CLI configuration</h3>
+      <p>The <code>factstore</code> CLI stores its configuration in <code>~/.factstore.yaml</code>. Run <code>factstore configure</code> to set it interactively, or create the file manually:</p>
+
+      <pre><code><span class="code-comment"># ~/.factstore.yaml</span>
+<span class="code-key">host:</span>        <span class="code-value">https://factstore.example.com</span>
+<span class="code-key">token:</span>       <span class="code-value">fs_pat_your_api_key_here</span>
+<span class="code-key">query_host:</span>  <span class="code-value">https://factstore-query.example.com</span>  <span class="code-comment"># CQRS read replica (optional)</span></code></pre>
+
+      <p>All CLI settings can also be provided as environment variables:</p>
+      <pre><code><span class="code-key">FACTSTORE_HOST</span>=<span class="code-value">https://factstore.example.com</span> \
+<span class="code-key">FACTSTORE_TOKEN</span>=<span class="code-value">fs_pat_...</span> \
+factstore attest --type unit-tests --trail &lt;trail-id&gt;</code></pre>
+
+      <div class="callout callout-success">
+        <span class="callout-icon">✅</span>
+        <div>
+          Use <code>SECURITY_ENFORCE_AUTH=true</code> and rotate API keys regularly in production.
+          Each CI pipeline should use a dedicated <strong>SERVICE_ACCOUNT</strong> API key with least-privilege scoping.
+        </div>
+      </div>
+    </section>
+
     <!-- Further reading -->
     <section id="further" style="padding:0; border:none; margin-bottom:40px;">
       <h2>Further Reading</h2>
@@ -251,7 +398,8 @@ npm run dev             <span class="code-comment"># Starts on http://localhost:
         <span class="callout-icon">⚠️</span>
         <div>
           The default configuration uses an in-memory H2 database. All data is lost on restart.
-          Review the <a href="known-issues.html">Known Issues</a> page before deploying to production.
+          Set <code>SPRING_DATASOURCE_URL</code> to a PostgreSQL instance for persistent storage — see the
+          <a href="get-started.html#configuration">Configuration Reference</a> below.
         </div>
       </div>
     </section>

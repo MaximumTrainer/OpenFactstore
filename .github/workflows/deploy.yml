@@ -71,6 +71,11 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Copy screenshots into website
+        run: |
+          mkdir -p website/screenshots
+          cp docs/public/screenshots/*.png website/screenshots/ 2>/dev/null || true
+
       - name: Upload website artifact
         uses: actions/upload-pages-artifact@v3
         with:

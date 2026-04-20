@@ -25,7 +25,6 @@
     <a href="get-started.html">🚀 Get Started</a>
     <a href="api-docs.html">📖 API Docs</a>
     <a href="user-guide.html" class="active">📘 User Guide</a>
-    <a href="known-issues.html">⚠️ Known Issues</a>
     <span class="nav-section">Links</span>
     <a href="https://github.com/MaximumTrainer/OpenFactstore" target="_blank" rel="noopener" class="external">GitHub ↗</a>
   </nav>
@@ -152,6 +151,10 @@
         <li><strong>Recent trails</strong> — the five most recently updated build records</li>
         <li><strong>Active environments</strong> — environments with deployed artifacts</li>
       </ul>
+      <figure class="screenshot">
+        <img src="screenshots/01-dashboard.png" alt="Dashboard overview showing summary cards and compliance bar" loading="lazy">
+        <figcaption>Dashboard — compliance summary cards and recent activity</figcaption>
+      </figure>
       <p>Use the Dashboard as a daily health check before releases and after incidents.</p>
     </section>
 
@@ -163,6 +166,10 @@
         present — and passing — before a release is approved. Navigate to <strong>Flows</strong>
         in the sidebar.
       </p>
+      <figure class="screenshot">
+        <img src="screenshots/02-flows-list.png" alt="Flows list page showing compliance flow templates" loading="lazy">
+        <figcaption>Flows list — browse and manage compliance flow templates</figcaption>
+      </figure>
       <h3 style="font-size:16px;margin-top:24px;">Creating a flow</h3>
       <ol>
         <li>Click <strong>New Flow</strong>.</li>
@@ -191,6 +198,10 @@
             (e.g. <code>sha256:abc123…</code>).</li>
         <li>Click <strong>Check Compliance</strong>.</li>
       </ol>
+      <figure class="screenshot">
+        <img src="screenshots/03-assert-compliance.png" alt="Assert compliance page with digest input and result" loading="lazy">
+        <figcaption>Assert — check a container image digest against a compliance flow</figcaption>
+      </figure>
       <p>
         The result panel shows <code>COMPLIANT</code> or <code>NON_COMPLIANT</code> with a breakdown
         of which attestation types passed, failed, or are missing.
@@ -205,6 +216,10 @@
         Evidence files are typically JUnit XML, SARIF scan reports, or PDF approvals uploaded via the
         API or CLI.
       </p>
+      <figure class="screenshot">
+        <img src="screenshots/04-evidence-vault.png" alt="Evidence Vault listing uploaded evidence files" loading="lazy">
+        <figcaption>Evidence Vault — browse and download uploaded evidence files</figcaption>
+      </figure>
       <ul>
         <li>Filter by trail, type, or date range using the toolbar controls.</li>
         <li>Click a file name to download the original evidence artifact.</li>
@@ -220,6 +235,10 @@
         <em>production-eu</em>). Each environment holds a <strong>snapshot</strong> — the set of
         artifacts currently deployed there.
       </p>
+      <figure class="screenshot">
+        <img src="screenshots/05-environments.png" alt="Environments list showing deployment targets" loading="lazy">
+        <figcaption>Environments — deployment targets with artifact snapshots</figcaption>
+      </figure>
       <ul>
         <li>The environment list shows each environment's name, current artifact count, and last-updated timestamp.</li>
         <li>Click an environment to open the detail view with its full artifact snapshot.</li>
@@ -237,6 +256,10 @@
         This lets compliance officers assert that <em>all</em> members of a logical group are
         up to date.
       </p>
+      <figure class="screenshot">
+        <img src="screenshots/07-logical-environments.png" alt="Logical environments grouping page" loading="lazy">
+        <figcaption>Logical Environments — group physical environments for aggregate compliance checks</figcaption>
+      </figure>
       <p>Navigate to <strong>Logical Environments</strong> in the sidebar to create groups and
          assign physical environments to them.</p>
     </section>
@@ -255,6 +278,10 @@
         <li><strong>Timestamp</strong> — immutable UTC timestamp</li>
         <li><strong>HMAC digest</strong> — cryptographic integrity proof</li>
       </ul>
+      <figure class="screenshot">
+        <img src="screenshots/06-audit-log.png" alt="Audit log listing compliance events" loading="lazy">
+        <figcaption>Audit Log — immutable append-only compliance event history</figcaption>
+      </figure>
       <p>Use the filter toolbar to narrow by event type, actor, or date range. Each entry can be
          expanded to show the full JSON payload.</p>
     </section>
@@ -267,6 +294,10 @@
         evaluates a trail's attestations and returns <code>allow</code> or <code>deny</code> with
         a reason.
       </p>
+      <figure class="screenshot">
+        <img src="screenshots/09-policies.png" alt="Deployment policies management page" loading="lazy">
+        <figcaption>Policies — manage OPA deployment gate rules</figcaption>
+      </figure>
       <h3 style="font-size:16px;margin-top:24px;">Creating a policy</h3>
       <ol>
         <li>Navigate to <strong>Policies</strong> and click <strong>New Policy</strong>.</li>
@@ -290,6 +321,10 @@
         <li>Which controls each framework requires and their current pass/fail state.</li>
         <li>An aggregate compliance score per framework.</li>
       </ul>
+      <figure class="screenshot">
+        <img src="screenshots/11-compliance.png" alt="Compliance frameworks with control scores" loading="lazy">
+        <figcaption>Compliance — regulatory framework mappings and aggregate scores</figcaption>
+      </figure>
     </section>
 
     <!-- 13. Drift -->
@@ -304,6 +339,10 @@
         <li>A diff of the expected vs actual artifact digests.</li>
         <li>The timestamp when drift was first detected.</li>
       </ul>
+      <figure class="screenshot">
+        <img src="screenshots/12-drift.png" alt="Drift detection page showing environment divergence" loading="lazy">
+        <figcaption>Drift Detection — identify environments where deployed artifacts have diverged from approved state</figcaption>
+      </figure>
     </section>
 
     <!-- 14. Search -->
@@ -314,6 +353,10 @@
         and attestations. Enter any term — commit SHA, image name, attestation type, or actor — and
         results appear grouped by entity type.
       </p>
+      <figure class="screenshot">
+        <img src="screenshots/10-search.png" alt="Search page with results grouped by entity type" loading="lazy">
+        <figcaption>Search — global full-text search across all entities</figcaption>
+      </figure>
     </section>
 
     <!-- 15. Troubleshooting -->
