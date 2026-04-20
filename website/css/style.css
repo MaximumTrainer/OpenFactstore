@@ -363,6 +363,8 @@ p:last-child { margin-bottom: 0; }
   border-radius: var(--radius-lg);
   padding: 22px;
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  display: flex;
+  flex-direction: column;
 }
 
 .feature-card:hover {
@@ -394,9 +396,21 @@ p:last-child { margin-bottom: 0; }
   color: var(--text-muted);
   margin: 0;
   line-height: 1.55;
+  flex: 1;
 }
 
-/* ── Tech Stack ──────────────────────────────────────────── */
+.feature-card-link {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.feature-card-link:hover { text-decoration: underline; }
+
+/* ── Tech Stack──────────────────────────────────────────── */
 
 .stack-grid {
   display: grid;
