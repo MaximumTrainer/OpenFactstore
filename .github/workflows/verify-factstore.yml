@@ -281,8 +281,8 @@ jobs:
           ATTESTATIONS=$(curl -sf "${FACTSTORE_URL}/api/v1/trails/${TRAIL_ID}/attestations")
           echo "$ATTESTATIONS" | jq .
 
-          # Support both plain array and paginated { content: [...] } responses
-          ATTEST_LIST=$(echo "$ATTESTATIONS" | jq 'if .content then .content else . end')
+          # Support both plain array and paginated { items: [...] } responses
+          ATTEST_LIST=$(echo "$ATTESTATIONS" | jq 'if .items then .items else . end')
 
           COUNT=$(echo "$ATTEST_LIST" | jq 'length')
           if [ "$COUNT" -lt 3 ]; then
