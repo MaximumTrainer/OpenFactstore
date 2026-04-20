@@ -91,6 +91,11 @@ management:
     export:
       prometheus:
         enabled: true
+  health:
+    rabbit:
+      # Disable the RabbitMQ health indicator so /actuator/health returns UP even when
+      # no broker is present (e.g. single-node deployments where events.publisher=logging).
+      enabled: false
 
 server:
   port: 8080

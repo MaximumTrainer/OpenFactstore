@@ -27,7 +27,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U factstore"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -281,7 +281,10 @@ jobs:
           ATTESTATIONS=$(curl -sf "${FACTSTORE_URL}/api/v1/trails/${TRAIL_ID}/attestations")
           echo "$ATTESTATIONS" | jq .
 
-          COUNT=$(echo "$ATTESTATIONS" | jq 'length')
+          # Support both plain array and paginated { content: [...] } responses
+          ATTEST_LIST=$(echo "$ATTESTATIONS" | jq 'if .content then .content else . end')
+
+          COUNT=$(echo "$ATTEST_LIST" | jq 'length')
           if [ "$COUNT" -lt 3 ]; then
             echo "❌ [Compliance Officer] Expected ≥ 3 attestations, found $COUNT"
             exit 1
@@ -289,7 +292,7 @@ jobs:
 
           # Verify all required types are present and PASSED
           for TYPE in unit-tests security-scan compliance-check; do
-            STATUS=$(echo "$ATTESTATIONS" | jq -r --arg t "$TYPE" '.[] | select(.type == $t) | .status' | tail -1)
+            STATUS=$(echo "$ATTEST_LIST" | jq -r --arg t "$TYPE" '.[] | select(.type == $t) | .status' | tail -1)
             if [ "$STATUS" != "PASSED" ]; then
               echo "❌ [Compliance Officer] Attestation '$TYPE' status is '$STATUS' (expected PASSED)"
               exit 1

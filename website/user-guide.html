@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Guide — OpenFactstore</title>
+  <meta name="description" content="Step-by-step guide to using the OpenFactstore web UI — flows, trails, attestations, compliance assertions, and more.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+
+<aside class="sidebar">
+  <a class="sidebar-brand" href="index.html">
+    <div class="sidebar-brand-icon">🏛</div>
+    <div>
+      <div class="sidebar-brand-name">OpenFactstore</div>
+      <div class="sidebar-brand-sub">v1.0</div>
+    </div>
+  </a>
+  <nav>
+    <span class="nav-section">Documentation</span>
+    <a href="index.html">🏠 Home</a>
+    <a href="get-started.html">🚀 Get Started</a>
+    <a href="api-docs.html">📖 API Docs</a>
+    <a href="user-guide.html" class="active">📘 User Guide</a>
+    <a href="known-issues.html">⚠️ Known Issues</a>
+    <span class="nav-section">Links</span>
+    <a href="https://github.com/MaximumTrainer/OpenFactstore" target="_blank" rel="noopener" class="external">GitHub ↗</a>
+  </nav>
+</aside>
+
+<main class="content">
+  <div class="page-inner">
+
+    <h2 style="font-size:32px; margin-bottom:8px;">User Guide</h2>
+    <p style="color:var(--text-muted); margin-bottom:32px;">A walkthrough of every key activity in the OpenFactstore web UI.</p>
+
+    <div class="toc-box" style="background:var(--surface-2,#f8f9fa);border:1px solid var(--border,#dee2e6);border-radius:8px;padding:20px 24px;margin-bottom:40px;">
+      <strong>Contents</strong>
+      <ol style="margin:8px 0 0 0;padding-left:20px;line-height:2;">
+        <li><a href="#introduction">Introduction</a></li>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#navigating">Navigating the UI</a></li>
+        <li><a href="#dashboard">Dashboard</a></li>
+        <li><a href="#flows">Managing Flows</a></li>
+        <li><a href="#assert">Asserting Compliance</a></li>
+        <li><a href="#evidence">Evidence Vault</a></li>
+        <li><a href="#environments">Environments</a></li>
+        <li><a href="#logical-environments">Logical Environments</a></li>
+        <li><a href="#audit">Audit Log</a></li>
+        <li><a href="#policies">Deployment Policies</a></li>
+        <li><a href="#compliance">Compliance Frameworks</a></li>
+        <li><a href="#drift">Drift Detection</a></li>
+        <li><a href="#search">Search</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+      </ol>
+    </div>
+
+    <!-- 1. Introduction -->
+    <section id="introduction" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>1. Introduction</h2>
+      <p>
+        OpenFactstore is an open-source <strong>Supply Chain Compliance Fact Store</strong> for teams
+        operating in regulated environments. The web UI gives engineers and compliance officers a single
+        place to:
+      </p>
+      <ul>
+        <li><strong>Define</strong> delivery processes (Flows) with mandatory quality gates.</li>
+        <li><strong>Browse</strong> build records (Trails) and the artifacts they produced.</li>
+        <li><strong>Assert</strong> whether a specific container image digest is compliant before deployment.</li>
+        <li><strong>Inspect</strong> evidence files (test reports, scan results, approval decisions) attached to each build.</li>
+        <li><strong>Monitor</strong> deployment environments for drift and policy violations.</li>
+        <li><strong>Search</strong> across all artifacts, trails, and attestations in seconds.</li>
+      </ul>
+      <p>
+        Screenshots in the full source guide (<code>docs/user-guide.md</code>) are generated
+        automatically by the Playwright E2E test suite — run <code>npm run test:e2e</code> from the
+        <code>frontend/</code> directory to refresh them.
+      </p>
+    </section>
+
+    <!-- 2. Prerequisites -->
+    <section id="prerequisites" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>2. Prerequisites</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border,#dee2e6);">
+            <th style="text-align:left;padding:8px 12px;">Requirement</th>
+            <th style="text-align:left;padding:8px 12px;">Version</th>
+            <th style="text-align:left;padding:8px 12px;">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border,#dee2e6);">
+            <td style="padding:8px 12px;"><strong>Java</strong></td>
+            <td style="padding:8px 12px;">21+ (Eclipse Temurin)</td>
+            <td style="padding:8px 12px;">Required to run the backend</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border,#dee2e6);">
+            <td style="padding:8px 12px;"><strong>Node.js</strong></td>
+            <td style="padding:8px 12px;">20+</td>
+            <td style="padding:8px 12px;">Required for the frontend dev server</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border,#dee2e6);">
+            <td style="padding:8px 12px;"><strong>Docker</strong></td>
+            <td style="padding:8px 12px;">Any recent version</td>
+            <td style="padding:8px 12px;">Optional — enables <code>docker-compose up</code></td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;"><strong>Browser</strong></td>
+            <td style="padding:8px 12px;">Chrome / Edge / Firefox</td>
+            <td style="padding:8px 12px;">Desktop viewport recommended</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px;">See the <a href="get-started.html">Get Started</a> page for full stack setup instructions.</p>
+    </section>
+
+    <!-- 3. Navigating -->
+    <section id="navigating" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>3. Navigating the UI</h2>
+      <p>
+        The persistent sidebar on the left gives access to all major areas. The top-level items are:
+      </p>
+      <ul>
+        <li>🏠 <strong>Dashboard</strong> — overview stats, recent activity, and compliance bar</li>
+        <li>🔄 <strong>Flows</strong> — compliance flow definitions</li>
+        <li>🧪 <strong>Trails</strong> — per-release evidence collections</li>
+        <li>✅ <strong>Assert</strong> — check a container image digest against a flow</li>
+        <li>📁 <strong>Evidence Vault</strong> — uploaded evidence files</li>
+        <li>🌍 <strong>Environments</strong> — deployment environment snapshots</li>
+        <li>🗂 <strong>Logical Environments</strong> — groupings of physical environments</li>
+        <li>📋 <strong>Audit Log</strong> — immutable compliance event history</li>
+        <li>🚪 <strong>Policies</strong> — OPA-backed deployment gates</li>
+        <li>⚖️ <strong>Compliance</strong> — regulatory framework mapping</li>
+        <li>🔀 <strong>Drift</strong> — environment drift detection</li>
+        <li>🔍 <strong>Search</strong> — global search across all entities</li>
+      </ul>
+    </section>
+
+    <!-- 4. Dashboard -->
+    <section id="dashboard" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>4. Dashboard</h2>
+      <p>
+        The Dashboard (<code>/</code>) is the landing page after login. It shows:
+      </p>
+      <ul>
+        <li><strong>Summary cards</strong> — total flows, trails, artifacts, and attestations</li>
+        <li><strong>Compliance bar</strong> — percentage of trails that are fully compliant</li>
+        <li><strong>Recent trails</strong> — the five most recently updated build records</li>
+        <li><strong>Active environments</strong> — environments with deployed artifacts</li>
+      </ul>
+      <p>Use the Dashboard as a daily health check before releases and after incidents.</p>
+    </section>
+
+    <!-- 5. Flows -->
+    <section id="flows" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>5. Managing Flows</h2>
+      <p>
+        A <strong>Flow</strong> is a named template that declares which attestation types must be
+        present — and passing — before a release is approved. Navigate to <strong>Flows</strong>
+        in the sidebar.
+      </p>
+      <h3 style="font-size:16px;margin-top:24px;">Creating a flow</h3>
+      <ol>
+        <li>Click <strong>New Flow</strong>.</li>
+        <li>Enter a <strong>name</strong> (e.g. <code>payment-service-ci</code>) and optional description.</li>
+        <li>Add one or more <strong>required attestation types</strong> (e.g. <code>unit-tests</code>, <code>security-scan</code>).</li>
+        <li>Optionally paste a <strong>YAML template</strong> for conditional rules.</li>
+        <li>Click <strong>Create</strong>.</li>
+      </ol>
+      <h3 style="font-size:16px;margin-top:24px;">Viewing flow details</h3>
+      <p>
+        Click any flow in the list to open its detail view. The detail panel shows all associated
+        trails, aggregate compliance statistics, and the required attestation type manifest.
+      </p>
+    </section>
+
+    <!-- 6. Assert -->
+    <section id="assert" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>6. Asserting Compliance</h2>
+      <p>
+        Navigate to <strong>Assert</strong> to check whether a specific container image is compliant
+        with a given flow.
+      </p>
+      <ol>
+        <li>Select the <strong>flow</strong> from the dropdown.</li>
+        <li>Enter the full <strong>SHA-256 digest</strong> of the container image
+            (e.g. <code>sha256:abc123…</code>).</li>
+        <li>Click <strong>Check Compliance</strong>.</li>
+      </ol>
+      <p>
+        The result panel shows <code>COMPLIANT</code> or <code>NON_COMPLIANT</code> with a breakdown
+        of which attestation types passed, failed, or are missing.
+      </p>
+    </section>
+
+    <!-- 7. Evidence Vault -->
+    <section id="evidence" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>7. Evidence Vault</h2>
+      <p>
+        The <strong>Evidence Vault</strong> page lists all uploaded evidence files across all trails.
+        Evidence files are typically JUnit XML, SARIF scan reports, or PDF approvals uploaded via the
+        API or CLI.
+      </p>
+      <ul>
+        <li>Filter by trail, type, or date range using the toolbar controls.</li>
+        <li>Click a file name to download the original evidence artifact.</li>
+        <li>The <strong>hash</strong> column shows the SHA-256 of each file, enabling tamper detection.</li>
+      </ul>
+    </section>
+
+    <!-- 8. Environments -->
+    <section id="environments" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>8. Environments</h2>
+      <p>
+        <strong>Environments</strong> represent deployment targets (e.g. <em>staging</em>,
+        <em>production-eu</em>). Each environment holds a <strong>snapshot</strong> — the set of
+        artifacts currently deployed there.
+      </p>
+      <ul>
+        <li>The environment list shows each environment's name, current artifact count, and last-updated timestamp.</li>
+        <li>Click an environment to open the detail view with its full artifact snapshot.</li>
+        <li>Snapshots are written by the CLI or API at deploy time using
+            <code>POST /api/v1/environments/{id}/snapshots</code>.</li>
+      </ul>
+    </section>
+
+    <!-- 9. Logical Environments -->
+    <section id="logical-environments" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>9. Logical Environments</h2>
+      <p>
+        <strong>Logical Environments</strong> group multiple physical environments under a single
+        name (e.g. <em>production</em> grouping <em>production-eu</em> and <em>production-us</em>).
+        This lets compliance officers assert that <em>all</em> members of a logical group are
+        up to date.
+      </p>
+      <p>Navigate to <strong>Logical Environments</strong> in the sidebar to create groups and
+         assign physical environments to them.</p>
+    </section>
+
+    <!-- 10. Audit Log -->
+    <section id="audit" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>10. Audit Log</h2>
+      <p>
+        The <strong>Audit Log</strong> is an append-only record of every compliance event in the
+        system — trail creation, attestation recording, gate decisions, and approval actions.
+        Each entry includes:
+      </p>
+      <ul>
+        <li><strong>Event type</strong> — e.g. <code>ATTESTATION_RECORDED</code>, <code>GATE_ALLOWED</code></li>
+        <li><strong>Actor</strong> — the user or system that triggered the event</li>
+        <li><strong>Timestamp</strong> — immutable UTC timestamp</li>
+        <li><strong>HMAC digest</strong> — cryptographic integrity proof</li>
+      </ul>
+      <p>Use the filter toolbar to narrow by event type, actor, or date range. Each entry can be
+         expanded to show the full JSON payload.</p>
+    </section>
+
+    <!-- 11. Policies -->
+    <section id="policies" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>11. Deployment Policies</h2>
+      <p>
+        <strong>Policies</strong> are OPA (Open Policy Agent) rules that gate deployments. A policy
+        evaluates a trail's attestations and returns <code>allow</code> or <code>deny</code> with
+        a reason.
+      </p>
+      <h3 style="font-size:16px;margin-top:24px;">Creating a policy</h3>
+      <ol>
+        <li>Navigate to <strong>Policies</strong> and click <strong>New Policy</strong>.</li>
+        <li>Enter a <strong>name</strong> and optional description.</li>
+        <li>Paste your <strong>Rego rule</strong> in the code editor.</li>
+        <li>Click <strong>Create</strong>.</li>
+      </ol>
+      <p>The policy is immediately applied to all subsequent compliance assertions for the
+         flows it is linked to.</p>
+    </section>
+
+    <!-- 12. Compliance -->
+    <section id="compliance" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>12. Compliance Frameworks</h2>
+      <p>
+        OpenFactstore ships with built-in mappings for <strong>SOX</strong>, <strong>PCI-DSS v4.0</strong>,
+        and <strong>GDPR</strong>. Navigate to <strong>Compliance</strong> to see:
+      </p>
+      <ul>
+        <li>The list of active regulatory frameworks.</li>
+        <li>Which controls each framework requires and their current pass/fail state.</li>
+        <li>An aggregate compliance score per framework.</li>
+      </ul>
+    </section>
+
+    <!-- 13. Drift -->
+    <section id="drift" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>13. Drift Detection</h2>
+      <p>
+        <strong>Drift</strong> occurs when the artifact deployed in an environment does not match
+        the one approved by the compliance flow. The Drift page shows:
+      </p>
+      <ul>
+        <li>Environments where the deployed artifact's SHA-256 is not in the approved set.</li>
+        <li>A diff of the expected vs actual artifact digests.</li>
+        <li>The timestamp when drift was first detected.</li>
+      </ul>
+    </section>
+
+    <!-- 14. Search -->
+    <section id="search" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>14. Search</h2>
+      <p>
+        The <strong>Search</strong> page provides full-text search across flows, trails, artifacts,
+        and attestations. Enter any term — commit SHA, image name, attestation type, or actor — and
+        results appear grouped by entity type.
+      </p>
+    </section>
+
+    <!-- 15. Troubleshooting -->
+    <section id="troubleshooting" style="padding:0;border:none;margin-bottom:40px;">
+      <h2>15. Troubleshooting</h2>
+
+      <h3 style="font-size:16px;margin-top:24px;">Empty lists / "No data" messages</h3>
+      <p>
+        Most list pages show an empty state when no records have been created yet. Follow the
+        <a href="get-started.html">Get Started</a> guide or use the CLI (<code>factstore flow create</code>)
+        to seed initial data.
+      </p>
+
+      <h3 style="font-size:16px;margin-top:24px;">Frontend cannot reach the backend</h3>
+      <p>
+        If the UI shows network errors, verify that the backend is running on port 8080 and that
+        the Vite proxy (<code>frontend/vite.config.ts</code>) forwards <code>/api</code> to
+        <code>http://localhost:8080</code>.
+      </p>
+
+      <h3 style="font-size:16px;margin-top:24px;">Compliance assertion returns NON_COMPLIANT unexpectedly</h3>
+      <p>
+        Check the trail's attestation list to confirm that all required types for the selected flow
+        are present with status <code>PASSED</code>. Missing or <code>FAILED</code> attestations
+        will block the assertion.
+      </p>
+
+      <h3 style="font-size:16px;margin-top:24px;">Full source guide</h3>
+      <p>
+        The full developer guide including API examples, CLI commands, and CI integration patterns
+        is in <a href="https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/user-guide.md" target="_blank" rel="noopener"><code>docs/user-guide.md</code> on GitHub ↗</a>.
+      </p>
+    </section>
+
+  </div>
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>
