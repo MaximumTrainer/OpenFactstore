@@ -8,12 +8,6 @@ import java.time.Instant
 /**
  * Smoke-tests the IonStruct entry-resolution helpers in [AwsQldbLedger] without
  * requiring a live QLDB connection.
- *
- * These tests verify the `entryId` → `metaId` fallback logic introduced for
- * backward compatibility with pre-migration QLDB documents (issue #112).
- * The fallback can be removed once:
- *   SELECT COUNT(*) FROM FactLedger WHERE entryId IS MISSING
- * returns 0 in production, and these tests are updated accordingly.
  */
 class AwsQldbLedgerEntryResolutionTest {
 
@@ -25,32 +19,22 @@ class AwsQldbLedgerEntryResolutionTest {
     fun `resolveEntryId returns explicit entryId when present`() {
         val struct = ionSystem.newEmptyStruct().apply {
             put("entryId", ionSystem.newString("explicit-entry-id"))
-            put("metaId", ionSystem.newString("meta-should-be-ignored"))
         }
         assertEquals("explicit-entry-id", AwsQldbLedger.resolveEntryId(struct))
     }
 
     @Test
-    fun `resolveEntryId falls back to metaId when entryId is missing`() {
-        val struct = ionSystem.newEmptyStruct().apply {
-            put("metaId", ionSystem.newString("fallback-meta-id"))
-        }
-        assertEquals("fallback-meta-id", AwsQldbLedger.resolveEntryId(struct))
-    }
-
-    @Test
-    fun `resolveEntryId returns empty string when both entryId and metaId are absent`() {
+    fun `resolveEntryId returns empty string when entryId is absent`() {
         val struct = ionSystem.newEmptyStruct()
         assertEquals("", AwsQldbLedger.resolveEntryId(struct))
     }
 
     @Test
-    fun `resolveEntryId ignores non-IonText entryId field and falls back to metaId`() {
+    fun `resolveEntryId returns empty string when entryId is not an IonText`() {
         val struct = ionSystem.newEmptyStruct().apply {
             put("entryId", ionSystem.newInt(42))
-            put("metaId", ionSystem.newString("type-mismatch-fallback"))
         }
-        assertEquals("type-mismatch-fallback", AwsQldbLedger.resolveEntryId(struct))
+        assertEquals("", AwsQldbLedger.resolveEntryId(struct))
     }
 
     // ── resolveTimestamp ──────────────────────────────────────────────────────
