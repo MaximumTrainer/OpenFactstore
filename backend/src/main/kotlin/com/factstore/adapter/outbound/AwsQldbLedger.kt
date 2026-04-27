@@ -143,29 +143,15 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
     override fun getHistory(recordId: UUID): List<LedgerEntry> {
         val history = mutableListOf<LedgerEntry>()
         driver.execute { txn: TransactionExecutor ->
-            // Project metadata.id (QLDB document ID) and metadata.txTime (commit timestamp)
-            // alongside h.data.* so we have both fallback sources for entryId and timestamp.
-            // New documents store `entryId` and `createdAt` as explicit fields (preferred).
-            // The metaId/txTime projections provide a fallback for any documents inserted
-            // before this schema was in place, ensuring backward compatibility.
+            // Project txTime (QLDB commit timestamp) alongside h.data.* for accurate timestamp resolution.
+            // Documents store `entryId` and `createdAt` as explicit fields.
             val result = txn.execute(
-                "SELECT h.metadata.id AS metaId, h.metadata.txTime AS txTime, h.data.* " +
+                "SELECT h.metadata.txTime AS txTime, h.data.* " +
                     "FROM history(FactLedger) AS h WHERE h.data.factId = ?",
                 ionSystem.newString(recordId.toString())
             )
             result.forEach { doc ->
                 val struct = doc as? IonStruct ?: return@forEach
-                // Prefer explicit entryId field; fall back to QLDB metadata.id for older documents.
-                // TODO(backfill): Remove the `metaId` fallback once the QLDB backfill migration has been
-                // verified in production:
-                //   Step 1 — verify backfill is complete (should return 0):
-                //     SELECT COUNT(*) FROM FactLedger WHERE entryId IS MISSING
-                //   Step 2 — run the backfill if the count is non-zero:
-                //     UPDATE FactLedger AS f SET f.entryId = f.metadata.id WHERE f.entryId IS MISSING
-                //   Step 3 — once Step 1 returns 0 in production, remove the companion.resolveEntryId
-                //     fallback branch (the `?: struct.get("metaId")` path inside it) and the metaId
-                //     projection from the SELECT above. The resolveEntryId behaviour is covered by
-                //     AwsQldbLedgerEntryResolutionTest.
                 val resolvedEntryId = resolveEntryId(struct)
                 // Prefer QLDB txTime (accurate commit time) over createdAt (client time).
                 val timestamp = resolveTimestamp(
@@ -269,19 +255,13 @@ class AwsQldbLedger(private val properties: LedgerProperties) : IImmutableLedger
         /**
          * Resolves the entryId from a QLDB history IonStruct.
          *
-         * Prefers the explicit `entryId` field written since the schema migration.
-         * Falls back to `metaId` (projected from QLDB document metadata.id) for pre-migration
-         * documents that were written before `entryId` was added as an explicit field.
-         *
-         * This fallback can be removed once:
-         *   `SELECT COUNT(*) FROM FactLedger WHERE entryId IS MISSING` returns 0 in production.
+         * Reads the explicit `entryId` field stored in every document since the schema migration.
+         * Returns an empty string when the field is absent or is not a string value.
          *
          * Covered by [AwsQldbLedgerEntryResolutionTest].
          */
         internal fun resolveEntryId(struct: IonStruct): String =
-            (struct.get("entryId") as? IonText)?.stringValue()
-                ?: (struct.get("metaId") as? IonText)?.stringValue()
-                ?: ""
+            (struct.get("entryId") as? IonText)?.stringValue() ?: ""
 
         /**
          * Resolves an [Instant] from QLDB history metadata timestamps or a stored `createdAt` field.
