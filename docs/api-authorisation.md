@@ -68,6 +68,7 @@ A key carries `resource:action` scopes, and its authorities are derived from the
 | `assert:execute` | Run compliance assertions |
 | `policies:read` / `policies:write` | Read / upload and delete policies |
 | `approvals:write` | Grant approvals |
+| `metrics:read` | Scrape `/actuator/prometheus`, and nothing else. What the Prometheus scrape key carries |
 | `admin` | Everything, including key management, service accounts, organisation and SSO configuration |
 
 `GET /api/v1/api-keys/scopes` returns this vocabulary and the presets, so a client need not
@@ -267,6 +268,31 @@ even in a permissive deployment. It is why `dogfood.yml`, `verify-factstore.yml`
 A credential supplied this way is known to anyone who can read that configuration. Use it for
 development and CI; for production, prefer the generated credential and rotate it.
 
+### The Prometheus scrape key
+
+`SECURITY_BOOTSTRAP_METRICS_API_KEY` seeds a second key the same way, carrying only
+`metrics:read` (365-day TTL by default, `SECURITY_BOOTSTRAP_METRICS_API_KEY_TTL_DAYS`). With
+enforcement on, `/actuator/prometheus` requires `metrics:read` and the rest of `/actuator`
+(other than health and info) requires `admin`. The scrape key can read nothing else: it cannot
+list flows or reach `/actuator/env`. `monitoring/prometheus.yml` presents it from
+`monitoring/secrets/prometheus-scrape-key`.
+
+Each service seeds configured keys into its own database, so the command and query services
+both accept the same bootstrap and scrape keys. A key created through the API exists only in
+the command service's database.
+
+### A local stack with Docker Compose
+
+```bash
+scripts/bootstrap-env.sh
+docker compose up -d
+```
+
+The script generates a strong `SSO_JWT_SECRET`, a bootstrap admin key and the scrape key into a
+git-ignored `.env`, and writes the scrape key file for Prometheus. It refuses to overwrite an
+existing `.env` without `--force`. Enforcement stays off until `.env` sets
+`SECURITY_ENFORCE_AUTH=true`.
+
 ---
 
 ## Rolling out enforcement
@@ -283,7 +309,12 @@ security:
 ```
 
 Authenticate and authorise as normal, but on failure **log what would have been rejected and
-allow the request**. Endpoint rules written as `@authz...` log `WARN-MODE: would refuse <caller>
+allow the request**. Each one is counted as
+`factstore_warn_mode_refusals_total{source="credential"|"rule"}`: a missing, bad or expired
+credential, or an endpoint rule the caller does not meet. In warn mode an anonymous caller is
+counted too, with or without enforcement, so this works as the pre-flight check before the
+flip. A deployment is ready when
+`sum(increase(factstore_warn_mode_refusals_total[7d]))` reaches zero. Endpoint rules written as `@authz...` log `WARN-MODE: would refuse <caller>
 lacking <scope>; allowing`. This is how you find every unauthenticated caller before switching over,
 instead of discovering them as an outage.
 

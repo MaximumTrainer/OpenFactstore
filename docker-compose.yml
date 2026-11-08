@@ -91,6 +91,14 @@ services:
       VAULT_ENABLED: "true"
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: dev-root-token
+      # Authentication (#205). Run scripts/bootstrap-env.sh once to create .env with a
+      # session secret, a bootstrap admin key and the Prometheus scrape key. Without it the
+      # stack still starts, unauthenticated, and Prometheus cannot scrape.
+      SECURITY_ENFORCE_AUTH: ${SECURITY_ENFORCE_AUTH:-false}
+      SECURITY_WARN_MODE: ${SECURITY_WARN_MODE:-false}
+      SSO_JWT_SECRET: ${SSO_JWT_SECRET:-}
+      SECURITY_BOOTSTRAP_API_KEY: ${SECURITY_BOOTSTRAP_API_KEY:-}
+      SECURITY_BOOTSTRAP_METRICS_API_KEY: ${SECURITY_BOOTSTRAP_METRICS_API_KEY:-}
     ports:
       - "8080:8080"
 
@@ -119,6 +127,14 @@ services:
       VAULT_ENABLED: "true"
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: dev-root-token
+      # Authentication (#205). Run scripts/bootstrap-env.sh once to create .env with a
+      # session secret, a bootstrap admin key and the Prometheus scrape key. Without it the
+      # stack still starts, unauthenticated, and Prometheus cannot scrape.
+      SECURITY_ENFORCE_AUTH: ${SECURITY_ENFORCE_AUTH:-false}
+      SECURITY_WARN_MODE: ${SECURITY_WARN_MODE:-false}
+      SSO_JWT_SECRET: ${SSO_JWT_SECRET:-}
+      SECURITY_BOOTSTRAP_API_KEY: ${SECURITY_BOOTSTRAP_API_KEY:-}
+      SECURITY_BOOTSTRAP_METRICS_API_KEY: ${SECURITY_BOOTSTRAP_METRICS_API_KEY:-}
     ports:
       - "8081:8080"
 
@@ -127,6 +143,8 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./monitoring/alerts:/etc/prometheus/alerts
+      # The scrape key written by scripts/bootstrap-env.sh (#205).
+      - ./monitoring/secrets:/etc/prometheus/secrets:ro
     ports:
       - "9090:9090"
     depends_on:

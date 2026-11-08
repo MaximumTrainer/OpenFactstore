@@ -99,6 +99,20 @@ class FailureMetrics(
             .increment()
     }
 
+    /**
+     * A request warn mode let through that enforcement would have refused (#205). `source` is
+     * `credential` (a missing, bad or expired key at the filter) or `rule` (an endpoint's
+     * authorisation rule). The count falling to zero is the signal that the flip is safe.
+     */
+    fun warnModeRefusal(source: String) {
+        Counter.builder("factstore.warn.mode.refusals")
+            .description("Requests warn mode allowed that enforcement would refuse")
+            .tag("source", if (source == "credential") "credential" else "rule")
+            .tag("service", service)
+            .register(registry)
+            .increment()
+    }
+
     fun authFailure(reason: String) {
         Counter.builder("factstore.auth.failures")
             .description("Rejected credentials, by bounded reason")

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
+import com.factstore.core.domain.security.Permission
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy
 import org.springframework.web.cors.CorsConfiguration
@@ -48,6 +49,13 @@ class SecurityConfig(
     private val githubClientId: String,
     @Value("\${security.enforce-auth:false}")
     private val enforceAuth: Boolean,
+    /**
+     * Warn mode lets a would-be refusal through (#155 §5 step 2). With enforcement on, the route
+     * rules therefore admit everyone, and the endpoints' `@authz` rules log and count each
+     * caller enforcement would have refused (see [AuthorisationRules]).
+     */
+    @Value("\${security.warn-mode:false}")
+    private val warnMode: Boolean,
     /**
      * Comma-separated origins permitted to call the API. Empty means none, which is the
      * correct default for an API the browser reaches through the same origin.
@@ -113,7 +121,11 @@ class SecurityConfig(
                         "/api/v1/organisations/*/slack/actions").permitAll()
                     // Remaining endpoints: enforce authentication when the flag is enabled.
                     // Set SECURITY_ENFORCE_AUTH=true in production to require authentication.
-                if (enforceAuth) {
+                if (enforceAuth && !warnMode) {
+                    // Prometheus scrapes with a key carrying only metrics:read (#205); the rest
+                    // of /actuator (env, loggers, heapdump, metrics) is for administrators.
+                    auth.requestMatchers("/actuator/prometheus").hasAuthority(Permission.METRICS_READ.authority)
+                    auth.requestMatchers("/actuator/**").hasAuthority(Permission.ADMIN.authority)
                     auth.anyRequest().authenticated()
                 } else {
                     auth.anyRequest().permitAll()

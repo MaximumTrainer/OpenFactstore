@@ -187,6 +187,9 @@ security:
     # An admin credential supplied by configuration, for CI and local development. Empty means
     # generate one on first start instead (only when enforcement is on).
     api-key: ${SECURITY_BOOTSTRAP_API_KEY:}
+    # The key Prometheus scrapes with: metrics:read only (#205). See scripts/bootstrap-env.sh.
+    metrics-api-key: ${SECURITY_BOOTSTRAP_METRICS_API_KEY:}
+    metrics-api-key-ttl-days: ${SECURITY_BOOTSTRAP_METRICS_API_KEY_TTL_DAYS:365}
     ttl-days: ${SECURITY_BOOTSTRAP_TTL_DAYS:7}
 
   cors:
