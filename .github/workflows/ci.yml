@@ -27,6 +27,8 @@ jobs:
       # #185: the alert rules ship with the repo, so a rule that does not parse must fail the build.
       - name: promtool check config and rules
         run: |
+          # prometheus.yml reads the scrape key from a git-ignored file (#205); stand one in.
+          printf 'ci-placeholder' > monitoring/secrets/prometheus-scrape-key
           docker run --rm -v "$PWD/monitoring:/etc/prometheus:ro" --entrypoint promtool             prom/prometheus:v2.53.0 check config /etc/prometheus/prometheus.yml
           docker run --rm -v "$PWD/monitoring:/etc/prometheus:ro" --entrypoint promtool             prom/prometheus:v2.53.0 check rules /etc/prometheus/alerts/factstore.yml
       - name: amtool check-config

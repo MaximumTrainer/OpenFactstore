@@ -104,6 +104,7 @@ class ApiKeyAuthFilter(
         auditFailure(request, source, prefix, reason)
 
         if (warnMode) {
+            failureMetrics.warnModeRefusal("credential")
             log.warn(
                 "WARN MODE: would have rejected ${request.method} ${request.requestURI} " +
                     "from $source (key prefix $prefix, reason $reason)"

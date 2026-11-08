@@ -48,7 +48,13 @@ class BootstrapCredential(
      * `enforce-auth` is set to, because method security is always live — so even a permissive
      * deployment needs a credential to create a flow or upload a policy.
      */
-    @Value("\${security.bootstrap.api-key:}") private val seededApiKey: String
+    @Value("\${security.bootstrap.api-key:}") private val seededApiKey: String,
+    /**
+     * The key Prometheus scrapes with, supplied by configuration (#205). It carries only
+     * `metrics:read`, so it opens `/actuator/prometheus` and nothing else.
+     */
+    @Value("\${security.bootstrap.metrics-api-key:}") private val seededMetricsKey: String = "",
+    @Value("\${security.bootstrap.metrics-api-key-ttl-days:365}") private val metricsKeyTtlDays: Int = 365
 ) {
 
     private val log = LoggerFactory.getLogger(BootstrapCredential::class.java)
@@ -56,6 +62,7 @@ class BootstrapCredential(
     @EventListener(ApplicationReadyEvent::class)
     @Transactional
     fun bootstrapIfNeeded() {
+        if (seededMetricsKey.isNotBlank()) seedMetricsCredential()
         // A configuration-supplied credential is honoured regardless of enforcement, because
         // @PreAuthorize is always live: without a credential, an unauthenticated caller cannot
         // create a flow even when authentication is not enforced.
@@ -154,6 +161,26 @@ class BootstrapCredential(
                 "SECURITY_ENFORCE_AUTH is false: every endpoint is reachable without a " +
                     "credential, though operations carrying an authorisation rule still need one. " +
                     "This is for local development only — see docs/authentication.md."
+            )
+        }
+    }
+
+    private fun seedMetricsCredential() {
+        val user = bootstrapUser()
+        try {
+            withAdminAuthority {
+                apiKeyService.seedApiKey(
+                    ownerId = user.id,
+                    ownerType = OwnerType.USER,
+                    label = "prometheus scrape (from configuration)",
+                    scopes = setOf(Permission.METRICS_READ),
+                    plainTextKey = seededMetricsKey,
+                    ttlDays = metricsKeyTtlDays
+                )
+            }
+        } catch (ex: IllegalArgumentException) {
+            throw IllegalStateException(
+                "security.bootstrap.metrics-api-key is not a usable API key: ${ex.message}", ex
             )
         }
     }

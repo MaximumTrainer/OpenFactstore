@@ -27,6 +27,11 @@ enum class Permission(val scope: String) {
     POLICIES_WRITE("policies:write"),
     APPROVALS_WRITE("approvals:write"),
     /**
+     * Scrape `/actuator/prometheus` and nothing else (#205). What the monitoring stack's key
+     * carries, so the secret Prometheus holds cannot read or change a single fact.
+     */
+    METRICS_READ("metrics:read"),
+    /**
      * Full access, including key management, service accounts, organisation and SSO
      * configuration. It is not a narrower privilege than the rest: a holder may mint a key
      * carrying any scope, so it expands to every permission — see
@@ -98,6 +103,7 @@ object RoleModel {
     private val ADMIN_PERMISSIONS: Set<Permission> = MEMBER_PERMISSIONS + setOf(
         Permission.FLOWS_WRITE,
         Permission.POLICIES_WRITE,
+        Permission.METRICS_READ,
         Permission.ADMIN
     )
 

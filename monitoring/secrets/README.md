@@ -6,6 +6,7 @@
 |---|---|---|
 | `page-webhook-url` | `page` (on-call) | Your paging provider's alert API, or a webhook bridge to it |
 | `warn-webhook-url` | `warn` (team channel) | A Slack or Teams incoming webhook |
+| `prometheus-scrape-key` | Prometheus, not Alertmanager | The API key Prometheus presents to `/actuator/prometheus`. It carries only `metrics:read`. `scripts/bootstrap-env.sh` writes it, along with the matching `SECURITY_BOOTSTRAP_METRICS_API_KEY` in `.env` |
 
 Each file holds the URL on a single line. For local use with Docker Compose:
 

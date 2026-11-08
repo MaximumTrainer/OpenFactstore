@@ -12,8 +12,11 @@ A **Supply Chain Compliance Fact Store** — a full-stack web application for tr
 ```bash
 git clone https://github.com/MaximumTrainer/OpenFactstore.git
 cd OpenFactstore
+scripts/bootstrap-env.sh   # once: session secret, bootstrap admin key, Prometheus scrape key
 docker compose up --build
 ```
+
+`scripts/bootstrap-env.sh` writes a git-ignored `.env`. Its bootstrap admin key is printed once; use it as `Authorization: Bearer <key>`. See [docs/api-authorisation.md](docs/api-authorisation.md#a-local-stack-with-docker-compose).
 
 - **Command API** → http://localhost:8080
 - **Query API** → http://localhost:8081

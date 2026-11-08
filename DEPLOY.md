@@ -7,6 +7,7 @@ A user should be able to download a single image and have Factstore running in a
 ## Table of Contents
 
 - [Quick Start (Docker — recommended)](#quick-start-docker--recommended)
+- [Full stack with Docker Compose](#full-stack-with-docker-compose)
 - [Quick Start (JAR — requires Java 21)](#quick-start-jar--requires-java-21)
 - [Terraform Infrastructure Bootstrap](#terraform-infrastructure-bootstrap)
 - [CLI Flags](#cli-flags)
@@ -59,6 +60,35 @@ docker run -d -p 9090:9090 \
   ghcr.io/maximumtrainer/factstore:latest \
   --server.port=9090
 ```
+
+---
+
+## Full stack with Docker Compose
+
+The Compose file runs the command and query services, their PostgreSQL databases, RabbitMQ,
+Vault, Prometheus and Grafana. Generate its secrets once, then start it:
+
+```bash
+scripts/bootstrap-env.sh
+```
+
+```bash
+docker compose up -d
+```
+
+`scripts/bootstrap-env.sh` writes a git-ignored `.env` holding:
+
+| Variable | Purpose |
+|---|---|
+| `SSO_JWT_SECRET` | Session signing secret, 48 random bytes |
+| `SECURITY_BOOTSTRAP_API_KEY` | Admin key for first use; create your real admin identity with it, then revoke it |
+| `SECURITY_BOOTSTRAP_METRICS_API_KEY` | Prometheus scrape key, `metrics:read` only; also written to `monitoring/secrets/prometheus-scrape-key` |
+| `SECURITY_ENFORCE_AUTH`, `SECURITY_WARN_MODE` | Both `false`; see below |
+
+To prepare for enforcement, set `SECURITY_WARN_MODE=true` and watch
+`factstore_warn_mode_refusals_total` in Prometheus. When it stays at zero, set
+`SECURITY_ENFORCE_AUTH=true` and restart. The rollback is `SECURITY_ENFORCE_AUTH=false`.
+See [docs/api-authorisation.md](docs/api-authorisation.md#rolling-out-enforcement).
 
 ---
 

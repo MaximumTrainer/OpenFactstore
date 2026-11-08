@@ -112,9 +112,14 @@ The fastest way to run the full stack:
 git clone https://github.com/MaximumTrainer/OpenFactstore.git
 cd OpenFactstore
 
+# Once: generate the session secret, a bootstrap admin key and the Prometheus scrape key
+scripts/bootstrap-env.sh
+
 # Start everything: PostgreSQL, Vault, backend, Prometheus, Grafana
 docker compose up --build
 ```
+
+The script writes a git-ignored `.env` and prints the bootstrap admin key once. Without it, the stack still starts unauthenticated, but Prometheus cannot scrape. To try enforcement locally, set `SECURITY_WARN_MODE=true` or `SECURITY_ENFORCE_AUTH=true` in `.env` and restart.
 
 Services will be available at:
 
