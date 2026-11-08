@@ -10,3 +10,8 @@ spring:
 ledger:
   enabled: true
   type: local
+
+# Sign in without an identity provider (#156 FR-8.4); only from this machine.
+security:
+  dev-login:
+    enabled: true

@@ -152,6 +152,12 @@ security:
     absolute-lifetime-seconds: ${SESSION_ABSOLUTE_LIFETIME_SECONDS:43200}
     idle-timeout-seconds: ${SESSION_IDLE_TIMEOUT_SECONDS:1800}
 
+  dev-login:
+    # Sign in as any email and role with no identity provider, for local development only
+    # (#156 FR-8.4). Refused at startup under the prod profile. See docs/authentication.md.
+    enabled: ${SECURITY_DEV_LOGIN_ENABLED:false}
+    loopback-only: ${SECURITY_DEV_LOGIN_LOOPBACK_ONLY:true}
+
   github:
     # Organisation a first-time GitHub sign-in joins, as VIEWER (#156 FR-5.3). Empty means none:
     # the user signs in but has no organisation until an admin adds them.

@@ -96,6 +96,9 @@ class SecurityConfig(
                     // authentication *before* it has a credential, or the UI cannot know
                     // whether to gate navigation. It discloses only that one fact.
                     .requestMatchers("/api/v1/auth/config").permitAll()
+                    // Dev sign-in answers 404 unless switched on, refuses non-loopback callers,
+                    // and cannot be switched on under the prod profile (#156 FR-8.4).
+                    .requestMatchers("/api/v1/auth/dev-login").permitAll()
                     // Remaining endpoints: enforce authentication when the flag is enabled.
                     // Set SECURITY_ENFORCE_AUTH=true in production to require authentication.
                 if (enforceAuth) {
