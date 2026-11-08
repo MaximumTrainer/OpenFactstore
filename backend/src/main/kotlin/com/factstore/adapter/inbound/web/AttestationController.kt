@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.DryRunContext
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.port.inbound.IAttestationService
@@ -32,6 +33,7 @@ class AttestationController(
     private val pullRequestAttestationService: IPullRequestAttestationService
 ) {
 
+    @PreAuthorize("@authz.has('attestations:write')")
     @PostMapping
     @Operation(
         summary = "Record an attestation for a trail",
@@ -71,6 +73,7 @@ class AttestationController(
         return ResponseEntity.status(HttpStatus.CREATED).body(attestationService.recordAttestation(trailId, request))
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "List attestations for a trail")
     fun listAttestations(
@@ -80,6 +83,7 @@ class AttestationController(
     ): ResponseEntity<PageResponse<AttestationResponse>> =
         ResponseEntity.ok(attestationService.listAttestations(trailId, page, size))
 
+    @PreAuthorize("@authz.has('evidence:write')")
     @PostMapping("/{attestationId}/evidence", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @Operation(summary = "Upload evidence file for an attestation")
     fun uploadEvidence(
@@ -94,6 +98,7 @@ class AttestationController(
         )
     }
 
+    @PreAuthorize("@authz.has('attestations:write')")
     @PostMapping("/pull-request")
     @Operation(summary = "Record a pull request attestation by querying the SCM provider")
     fun attestPullRequest(
@@ -108,6 +113,7 @@ class AttestationController(
 @Tag(name = "Attestations", description = "Attestation management")
 class ArtifactAttestationController(private val attestationService: IAttestationService) {
 
+    @PreAuthorize("@authz.has('attestations:write')")
     @PostMapping("/api/v1/artifacts/{artifactId}/attestations")
     @Operation(summary = "Record an artifact-level attestation")
     fun recordArtifactAttestation(
@@ -116,6 +122,7 @@ class ArtifactAttestationController(private val attestationService: IAttestation
     ): ResponseEntity<AttestationResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(attestationService.recordArtifactAttestation(artifactId, request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/artifacts/{artifactId}/attestations")
     @Operation(summary = "List attestations for an artifact")
     fun listArtifactAttestations(
@@ -123,6 +130,7 @@ class ArtifactAttestationController(private val attestationService: IAttestation
     ): ResponseEntity<List<AttestationResponse>> =
         ResponseEntity.ok(attestationService.listArtifactAttestations(artifactId))
 
+    @PreAuthorize("@authz.has('admin')")
     @PostMapping("/api/v1/attestations/{id}/override")
     @Operation(summary = "Override a failed attestation with a justification")
     fun overrideAttestation(

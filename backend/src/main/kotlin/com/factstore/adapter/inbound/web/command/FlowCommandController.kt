@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web.command
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.DryRunContext
 import com.factstore.core.port.inbound.command.IFlowCommandHandler
 import com.factstore.dto.command.CommandResult
@@ -23,6 +24,7 @@ import java.util.UUID
 @Tag(name = "Flows – Commands", description = "Flow write operations (CQRS command path)")
 class FlowCommandController(private val commandHandler: IFlowCommandHandler) {
 
+    @PreAuthorize("@authz.has('flows:write')")
     @PostMapping
     @Operation(summary = "Create a new flow")
     fun createFlow(
@@ -49,6 +51,7 @@ class FlowCommandController(private val commandHandler: IFlowCommandHandler) {
         return ResponseEntity.status(HttpStatus.CREATED).body(commandHandler.createFlow(command))
     }
 
+    @PreAuthorize("@authz.has('flows:write')")
     @PutMapping("/{id}")
     @Operation(summary = "Update a flow")
     fun updateFlow(@PathVariable id: UUID, @RequestBody request: UpdateFlowRequest): ResponseEntity<CommandResult> =
@@ -63,6 +66,7 @@ class FlowCommandController(private val commandHandler: IFlowCommandHandler) {
             requiredApproverRoles = request.requiredApproverRoles
         )))
 
+    @PreAuthorize("@authz.has('flows:write')")
     @DeleteMapping("/{id}")
     @Operation(
         summary = "Delete a flow",

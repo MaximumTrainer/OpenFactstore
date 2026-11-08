@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web.command
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.CiContextResolver
 import com.factstore.application.DryRunContext
 import com.factstore.core.domain.TrailStatus
@@ -21,6 +22,7 @@ import java.util.UUID
 @Tag(name = "Trails – Commands", description = "Trail write operations (CQRS command path)")
 class TrailCommandController(private val commandHandler: ITrailCommandHandler) {
 
+    @PreAuthorize("@authz.has('trails:write')")
     @PostMapping("/api/v2/trails")
     @Operation(summary = "Create/begin a trail")
     fun createTrail(

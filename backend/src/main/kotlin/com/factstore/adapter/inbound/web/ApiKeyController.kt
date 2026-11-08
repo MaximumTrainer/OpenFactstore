@@ -54,6 +54,7 @@ class ApiKeyController(private val apiKeyService: IApiKeyService) {
     fun listApiKeysForOwner(@PathVariable ownerId: UUID): ResponseEntity<List<ApiKeyResponse>> =
         ResponseEntity.ok(apiKeyService.listApiKeysForOwner(ownerId))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/scopes")
     @Operation(
         summary = "The scope vocabulary",

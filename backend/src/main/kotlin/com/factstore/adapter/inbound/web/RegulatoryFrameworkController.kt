@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IRegulatoryComplianceService
 import com.factstore.dto.CreateControlRequest
 import com.factstore.dto.CreateFrameworkRequest
@@ -17,21 +18,25 @@ import java.util.UUID
 @Tag(name = "Regulatory Frameworks", description = "Manage regulatory compliance frameworks and controls")
 class RegulatoryFrameworkController(private val complianceService: IRegulatoryComplianceService) {
 
+    @PreAuthorize("@authz.has('policies:write')")
     @PostMapping
     @Operation(summary = "Create a regulatory framework")
     fun createFramework(@RequestBody request: CreateFrameworkRequest): ResponseEntity<FrameworkResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(complianceService.createFramework(request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "List all regulatory frameworks")
     fun listFrameworks(): ResponseEntity<List<FrameworkResponse>> =
         ResponseEntity.ok(complianceService.listFrameworks())
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}")
     @Operation(summary = "Get a framework with its controls")
     fun getFramework(@PathVariable id: UUID): ResponseEntity<FrameworkResponse> =
         ResponseEntity.ok(complianceService.getFramework(id))
 
+    @PreAuthorize("@authz.has('policies:write')")
     @PostMapping("/{id}/controls")
     @Operation(summary = "Add a control to a framework")
     fun addControl(

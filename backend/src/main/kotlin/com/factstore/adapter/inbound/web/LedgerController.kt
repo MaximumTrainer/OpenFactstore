@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.ILedgerService
 import com.factstore.dto.ChainVerificationResponse
 import com.factstore.dto.LedgerEntryResponse
@@ -28,6 +29,7 @@ class LedgerController(
     private val ledgerService: ILedgerService
 ) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/entries")
     @Operation(summary = "List ledger entries (paginated)")
     fun listEntries(
@@ -36,21 +38,25 @@ class LedgerController(
     ): ResponseEntity<PagedLedgerEntriesResponse> =
         ResponseEntity.ok(ledgerService.listEntries(page, size))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/entries/{recordId}")
     @Operation(summary = "Get ledger entry for a specific record")
     fun getEntry(@PathVariable recordId: UUID): ResponseEntity<LedgerEntryResponse> =
         ResponseEntity.ok(ledgerService.getEntry(recordId))
 
+    @PreAuthorize("@authz.authenticated()")
     @PostMapping("/verify/{recordId}")
     @Operation(summary = "Verify the integrity of a specific record")
     fun verifyFact(@PathVariable recordId: UUID): ResponseEntity<VerificationResponse> =
         ResponseEntity.ok(ledgerService.verifyFact(recordId))
 
+    @PreAuthorize("@authz.authenticated()")
     @PostMapping("/verify-chain")
     @Operation(summary = "Verify chain integrity for a date range")
     fun verifyChain(@RequestBody request: VerifyChainRequest): ResponseEntity<ChainVerificationResponse> =
         ResponseEntity.ok(ledgerService.verifyChain(request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/status")
     @Operation(summary = "Ledger health and sync status")
     fun getStatus(): ResponseEntity<LedgerStatusResponse> =

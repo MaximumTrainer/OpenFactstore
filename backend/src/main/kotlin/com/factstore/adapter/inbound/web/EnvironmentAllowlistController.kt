@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IEnvironmentAllowlistService
 import com.factstore.dto.AllowlistEntryResponse
 import com.factstore.dto.CreateAllowlistEntryRequest
@@ -15,6 +16,7 @@ import java.util.UUID
 @Tag(name = "Environment Allowlist", description = "Third-party artifact allow-listing")
 class EnvironmentAllowlistController(private val allowlistService: IEnvironmentAllowlistService) {
 
+    @PreAuthorize("@authz.has('policies:write')")
     @PostMapping("/{id}/allowlist")
     @Operation(summary = "Add an allow-list entry")
     fun addEntry(
@@ -23,11 +25,13 @@ class EnvironmentAllowlistController(private val allowlistService: IEnvironmentA
     ): ResponseEntity<AllowlistEntryResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(allowlistService.addEntry(id, request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/allowlist")
     @Operation(summary = "List allow-list entries")
     fun listEntries(@PathVariable id: UUID): ResponseEntity<List<AllowlistEntryResponse>> =
         ResponseEntity.ok(allowlistService.listEntries(id))
 
+    @PreAuthorize("@authz.has('policies:write')")
     @DeleteMapping("/{id}/allowlist/{entryId}")
     @Operation(summary = "Remove an allow-list entry")
     fun removeEntry(

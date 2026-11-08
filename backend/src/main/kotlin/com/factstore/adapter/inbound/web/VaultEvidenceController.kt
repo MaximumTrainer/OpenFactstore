@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IVaultEvidenceService
 import com.factstore.dto.StoreEvidenceRequest
 import com.factstore.dto.VaultEvidenceListResponse
@@ -38,6 +39,7 @@ class VaultEvidenceController(
     private val vaultEvidenceService: IVaultEvidenceService
 ) {
 
+    @PreAuthorize("@authz.has('evidence:write')")
     @PostMapping("/{entityType}/{entityId}")
     @Operation(summary = "Store evidence in Vault", description = "Stores evidence key-value data in Vault KV v2 at the configured KV backend under evidence/{entityType}/{entityId}/{evidenceType}")
     fun storeEvidence(
@@ -49,6 +51,7 @@ class VaultEvidenceController(
         return ResponseEntity.status(201).body(response)
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{entityType}/{entityId}")
     @Operation(summary = "Retrieve evidence metadata", description = "Returns evidence metadata stored in Vault for the given entity")
     fun retrieveEvidence(
@@ -58,6 +61,7 @@ class VaultEvidenceController(
     ): ResponseEntity<VaultEvidenceResponse> =
         ResponseEntity.ok(vaultEvidenceService.retrieveEvidence(entityType, entityId, evidenceType))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{entityType}/{entityId}/list")
     @Operation(summary = "List evidence types for an entity", description = "Returns all evidence types stored in Vault for the given entity")
     fun listEvidence(
@@ -66,6 +70,7 @@ class VaultEvidenceController(
     ): ResponseEntity<VaultEvidenceListResponse> =
         ResponseEntity.ok(vaultEvidenceService.listEvidence(entityType, entityId))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{entityType}/{entityId}/download")
     @Operation(summary = "Download evidence artifact", description = "Returns the raw evidence key-value payload from Vault")
     fun downloadEvidence(
@@ -83,6 +88,7 @@ class VaultEvidenceController(
             .body(data)
     }
 
+    @PreAuthorize("@authz.has('admin')")
     @DeleteMapping("/{entityType}/{entityId}")
     @Operation(summary = "Soft-delete evidence", description = "Marks evidence as archived in Vault (soft-delete — data is not permanently destroyed)")
     fun deleteEvidence(
@@ -94,6 +100,7 @@ class VaultEvidenceController(
         return ResponseEntity.noContent().build()
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/health")
     @Operation(summary = "Vault connectivity health check", description = "Checks whether the Vault server is reachable and initialised")
     fun health(): ResponseEntity<VaultHealthResponse> =

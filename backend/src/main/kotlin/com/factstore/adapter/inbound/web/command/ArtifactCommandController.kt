@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web.command
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.DryRunContext
 import com.factstore.core.domain.ProvenanceStatus
 import com.factstore.core.port.inbound.command.IArtifactCommandHandler
@@ -28,6 +29,7 @@ class ArtifactCommandController(
     private val buildProvenanceService: IBuildProvenanceService
 ) {
 
+    @PreAuthorize("@authz.has('artifacts:write')")
     @PostMapping("/api/v2/trails/{trailId}/artifacts")
     @Operation(summary = "Report an artifact for a trail")
     fun reportArtifact(
@@ -63,6 +65,7 @@ class ArtifactCommandController(
             .body(commandHandler.reportArtifact(command))
     }
 
+    @PreAuthorize("@authz.has('artifacts:write')")
     @PostMapping("/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance")
     @Operation(summary = "Record build provenance for an artifact")
     fun recordProvenance(
@@ -73,6 +76,7 @@ class ArtifactCommandController(
         ResponseEntity.status(HttpStatus.CREATED)
             .body(buildProvenanceService.recordProvenance(trailId, artifactId, request))
 
+    @PreAuthorize("@authz.has('artifacts:write')")
     @PostMapping("/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance/verify")
     @Operation(summary = "Verify the provenance signature of an artifact")
     fun verifyProvenance(

@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IReportService
 import com.factstore.dto.AuditTrailExportResponse
 import com.factstore.dto.FlowComplianceReport
@@ -15,6 +16,7 @@ import java.util.UUID
 @Tag(name = "Reports", description = "Compliance reports and audit trail export")
 class ReportController(private val reportService: IReportService) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/compliance")
     @Operation(
         summary = "Per-flow compliance summary report",
@@ -27,6 +29,7 @@ class ReportController(private val reportService: IReportService) {
     ): ResponseEntity<FlowComplianceReport> =
         ResponseEntity.ok(reportService.getComplianceReport(flowId, from, to))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/audit-trail/{trailId}")
     @Operation(
         summary = "Full audit trail export",

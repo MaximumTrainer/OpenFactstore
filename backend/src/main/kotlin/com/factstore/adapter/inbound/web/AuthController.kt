@@ -59,6 +59,7 @@ class AuthController(
      * reveals by being accepted or refused, and deliberately not the issuer, client id or
      * bootstrap state.
      */
+    @PublicEndpoint("a client must learn whether sign-in is required before it has a credential")
     @GetMapping("/config")
     @Operation(
         summary = "Whether this instance enforces authentication",
@@ -68,6 +69,7 @@ class AuthController(
     fun config(): ResponseEntity<AuthConfigResponse> =
         ResponseEntity.ok(AuthConfigResponse(enforceAuth = enforceAuth))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/me")
     @Operation(
         summary = "The authenticated principal, its organisation, role and permissions",
@@ -89,6 +91,7 @@ class AuthController(
         }
     }
 
+    @PublicEndpoint("must clear the cookie even for an expired or revoked session")
     @PostMapping("/logout")
     @Operation(
         summary = "End the session",
@@ -107,6 +110,7 @@ class AuthController(
         return ResponseEntity.noContent().build()
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @PostMapping("/refresh")
     @Operation(
         summary = "Extend the session without returning to the identity provider",
@@ -129,6 +133,7 @@ class AuthController(
         return ResponseEntity.ok(RefreshedSessionResponse(expiresAt = refreshed.expiresAt))
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/sessions")
     @Operation(summary = "The signed-in user's own active sessions")
     fun mySessions(authentication: Authentication?): ResponseEntity<List<SessionResponse>> {
@@ -139,6 +144,7 @@ class AuthController(
         )
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @DeleteMapping("/sessions/{sessionId}")
     @Operation(
         summary = "Revoke one of the signed-in user's own sessions",
@@ -173,6 +179,7 @@ class AuthController(
         return ResponseEntity.ok(mapOf("revoked" to revoked))
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @PostMapping("/organisation")
     @Operation(
         summary = "Switch the organisation this session acts in",

@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.DryRunContext
 import com.factstore.core.domain.ProvenanceStatus
 import com.factstore.core.port.inbound.IArtifactService
@@ -27,6 +28,7 @@ class ArtifactController(
     private val buildProvenanceService: IBuildProvenanceService
 ) {
 
+    @PreAuthorize("@authz.has('artifacts:write')")
     @PostMapping("/api/v1/trails/{trailId}/artifacts")
     @Operation(summary = "Report an artifact for a trail")
     fun reportArtifact(
@@ -52,21 +54,25 @@ class ArtifactController(
         return ResponseEntity.status(HttpStatus.CREATED).body(artifactService.reportArtifact(trailId, request))
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/trails/{trailId}/artifacts")
     @Operation(summary = "List artifacts for a trail")
     fun listArtifacts(@PathVariable trailId: UUID): ResponseEntity<List<ArtifactResponse>> =
         ResponseEntity.ok(artifactService.listArtifactsForTrail(trailId))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/artifacts")
     @Operation(summary = "Find artifacts by SHA256 digest")
     fun findBySha256(@RequestParam sha256: String): ResponseEntity<List<ArtifactResponse>> =
         ResponseEntity.ok(artifactService.findBySha256(sha256))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/artifacts/search")
     @Operation(summary = "Search artifacts by git commit SHA")
     fun searchByCommitSha(@RequestParam commitSha: String): ResponseEntity<List<ArtifactResponse>> =
         ResponseEntity.ok(artifactService.searchByCommitSha(commitSha))
 
+    @PreAuthorize("@authz.has('artifacts:write')")
     @PostMapping("/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance")
     @Operation(summary = "Record build provenance for an artifact")
     fun recordProvenance(
@@ -77,6 +83,7 @@ class ArtifactController(
         ResponseEntity.status(HttpStatus.CREATED)
             .body(buildProvenanceService.recordProvenance(trailId, artifactId, request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance")
     @Operation(summary = "Retrieve build provenance for an artifact")
     fun getProvenance(
@@ -85,11 +92,13 @@ class ArtifactController(
     ): ResponseEntity<BuildProvenanceResponse> =
         ResponseEntity.ok(buildProvenanceService.getProvenance(trailId, artifactId))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/artifacts/{sha256}/provenance")
     @Operation(summary = "Get provenance by artifact SHA256 digest")
     fun getProvenanceBySha256(@PathVariable sha256: String): ResponseEntity<BuildProvenanceResponse> =
         ResponseEntity.ok(buildProvenanceService.getProvenanceBySha256(sha256))
 
+    @PreAuthorize("@authz.has('artifacts:write')")
     @PostMapping("/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance/verify")
     @Operation(summary = "Verify the provenance signature of an artifact")
     fun verifyProvenance(

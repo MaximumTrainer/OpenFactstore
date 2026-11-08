@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IEvidenceVaultService
 import com.factstore.dto.EvidenceFileResponse
 import com.factstore.exception.BadRequestException
@@ -20,6 +21,7 @@ class EvidenceVaultController(private val evidenceVaultService: IEvidenceVaultSe
 
     private val log = LoggerFactory.getLogger(EvidenceVaultController::class.java)
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/evidence/{sha256Hash}")
     @Operation(summary = "Download an evidence file by its SHA-256 hash")
     fun getByHash(@PathVariable sha256Hash: String): ResponseEntity<*> {
@@ -49,11 +51,13 @@ class EvidenceVaultController(private val evidenceVaultService: IEvidenceVaultSe
         }
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/trails/{trailId}/evidence")
     @Operation(summary = "List all evidence files for a trail")
     fun listByTrail(@PathVariable trailId: UUID): ResponseEntity<List<EvidenceFileResponse>> =
         ResponseEntity.ok(evidenceVaultService.findByTrailId(trailId))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/attestations/{attestationId}/evidence")
     @Operation(summary = "List evidence files for an attestation")
     fun listByAttestation(@PathVariable attestationId: UUID): ResponseEntity<List<EvidenceFileResponse>> =

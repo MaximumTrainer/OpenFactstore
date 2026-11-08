@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.ISlackService
 import com.factstore.dto.ApprovalRequestedNotificationRequest
 import com.factstore.dto.ConfigureSlackRequest
@@ -22,6 +23,7 @@ class SlackController(private val slackService: ISlackService) {
 
     // ── Organisation-scoped configuration ──────────────────────────────────
 
+    @PreAuthorize("@authz.has('admin')")
     @PostMapping("/api/v1/organisations/{slug}/slack")
     @Operation(summary = "Configure Slack integration for an organisation")
     fun configureSlack(
@@ -30,6 +32,7 @@ class SlackController(private val slackService: ISlackService) {
     ): ResponseEntity<SlackConfigResponse> =
         ResponseEntity.ok(slackService.configureSlack(slug, request))
 
+    @PreAuthorize("@authz.has('admin')")
     @DeleteMapping("/api/v1/organisations/{slug}/slack")
     @Operation(summary = "Remove Slack integration for an organisation")
     fun removeSlack(@PathVariable slug: String): ResponseEntity<Void> {
@@ -37,6 +40,7 @@ class SlackController(private val slackService: ISlackService) {
         return ResponseEntity.noContent().build()
     }
 
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping("/api/v1/organisations/{slug}/slack")
     @Operation(summary = "Get Slack configuration for an organisation")
     fun getSlackConfig(@PathVariable slug: String): ResponseEntity<SlackConfigResponse> =
@@ -46,6 +50,7 @@ class SlackController(private val slackService: ISlackService) {
     // Slack sends application/x-www-form-urlencoded. We read the raw body so
     // we can verify the X-Slack-Signature before delegating to the service.
 
+    @PublicEndpoint("Slack slash command, authenticated by X-Slack-Signature")
     @PostMapping(
         "/api/v1/organisations/{slug}/slack/commands",
         consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE]
@@ -74,6 +79,7 @@ class SlackController(private val slackService: ISlackService) {
     // Slack sends application/x-www-form-urlencoded with a single "payload"
     // field containing a JSON string.
 
+    @PublicEndpoint("Slack interactive action, authenticated by X-Slack-Signature")
     @PostMapping(
         "/api/v1/organisations/{slug}/slack/actions",
         consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE]
@@ -96,6 +102,7 @@ class SlackController(private val slackService: ISlackService) {
 
     // ── Outbound notification triggers ─────────────────────────────────────
 
+    @PreAuthorize("@authz.has('trails:write')")
     @PostMapping("/api/v1/organisations/{slug}/slack/notify/trail-non-compliant")
     @Operation(summary = "Send a trail non-compliant notification to Slack")
     fun notifyTrailNonCompliant(
@@ -115,6 +122,7 @@ class SlackController(private val slackService: ISlackService) {
         return ResponseEntity.accepted().build()
     }
 
+    @PreAuthorize("@authz.has('trails:write')")
     @PostMapping("/api/v1/organisations/{slug}/slack/notify/approval-requested")
     @Operation(summary = "Send an approval-requested notification to Slack")
     fun notifyApprovalRequested(

@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.CiContextResolver
 import com.factstore.application.DryRunContext
 import com.factstore.core.domain.TrailStatus
@@ -33,6 +34,7 @@ class TrailController(
     private val auditService: IAuditService
 ) {
 
+    @PreAuthorize("@authz.has('trails:write')")
     @PostMapping("/api/v1/trails")
     @Operation(summary = "Create/begin a trail")
     fun createTrail(
@@ -71,6 +73,7 @@ class TrailController(
         return ResponseEntity.status(status).body(result.trail)
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/trails/lookup")
     @Operation(
         summary = "Resolve a trail without knowing its UUID",
@@ -86,6 +89,7 @@ class TrailController(
     ): ResponseEntity<TrailResponse> =
         ResponseEntity.ok(trailService.lookupTrail(flowId, externalId, name, gitCommitSha))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/trails")
     @Operation(summary = "List trails, optionally filter by flowId; archived trails are hidden by default")
     fun listTrails(
@@ -94,11 +98,13 @@ class TrailController(
     ): ResponseEntity<List<TrailResponse>> =
         ResponseEntity.ok(trailService.listTrails(flowId, includeArchived))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/trails/{id}")
     @Operation(summary = "Get trail by ID")
     fun getTrail(@PathVariable id: UUID): ResponseEntity<TrailResponse> =
         ResponseEntity.ok(trailService.getTrail(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/flows/{flowId}/trails")
     @Operation(summary = "List trails for a flow; archived trails are hidden by default")
     fun listTrailsForFlow(
@@ -109,6 +115,7 @@ class TrailController(
     ): ResponseEntity<PageResponse<TrailResponse>> =
         ResponseEntity.ok(trailService.listTrailsForFlow(flowId, page, size, includeArchived))
 
+    @PreAuthorize("@authz.has('trails:write')")
     @PostMapping("/api/v1/trails/{id}/archive")
     @Operation(
         summary = "Archive a trail (soft delete)",
@@ -118,16 +125,19 @@ class TrailController(
     fun archiveTrail(@PathVariable id: UUID): ResponseEntity<TrailResponse> =
         ResponseEntity.ok(trailCleanupService.archiveTrail(id))
 
+    @PreAuthorize("@authz.has('trails:write')")
     @PostMapping("/api/v1/trails/{id}/unarchive")
     @Operation(summary = "Unarchive a trail")
     fun unarchiveTrail(@PathVariable id: UUID): ResponseEntity<TrailResponse> =
         ResponseEntity.ok(trailCleanupService.unarchiveTrail(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/trails/{id}/cascade")
     @Operation(summary = "What deleting this trail would remove")
     fun getTrailCascade(@PathVariable id: UUID): ResponseEntity<TrailCascadeCounts> =
         ResponseEntity.ok(trailCleanupService.cascadeFor(id))
 
+    @PreAuthorize("@authz.has('admin')")
     @DeleteMapping("/api/v1/trails/{id}")
     @Operation(
         summary = "Permanently delete a trail and the evidence it owns",
@@ -138,6 +148,7 @@ class TrailController(
     fun deleteTrail(@PathVariable id: UUID): ResponseEntity<TrailDeletionResponse> =
         ResponseEntity.ok(trailCleanupService.deleteTrail(id))
 
+    @PreAuthorize("@authz.has('admin')")
     @PostMapping("/api/v1/trails/cleanup")
     @Operation(
         summary = "Bulk cleanup of trails by flow, tag or age",
@@ -147,6 +158,7 @@ class TrailController(
     fun cleanupTrails(@RequestBody request: TrailCleanupRequest): ResponseEntity<TrailCleanupResponse> =
         ResponseEntity.ok(trailCleanupService.cleanup(request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v1/trails/{id}/audit")
     @Operation(summary = "Get audit events for a specific trail")
     fun getTrailAuditEvents(@PathVariable id: UUID): ResponseEntity<List<AuditEventResponse>> =

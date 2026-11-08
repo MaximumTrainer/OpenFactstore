@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.INotificationRuleService
 import com.factstore.dto.CreateNotificationRuleRequest
 import com.factstore.dto.NotificationDeliveryResponse
@@ -17,21 +18,25 @@ import java.util.UUID
 @Tag(name = "Notification Rules", description = "Notification rule management")
 class NotificationRuleController(private val notificationRuleService: INotificationRuleService) {
 
+    @PreAuthorize("@authz.has('admin')")
     @PostMapping
     @Operation(summary = "Create a notification rule")
     fun createRule(@RequestBody request: CreateNotificationRuleRequest): ResponseEntity<NotificationRuleResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(notificationRuleService.createRule(request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "List all notification rules")
     fun listRules(): ResponseEntity<List<NotificationRuleResponse>> =
         ResponseEntity.ok(notificationRuleService.listRules())
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}")
     @Operation(summary = "Get a notification rule by ID")
     fun getRule(@PathVariable id: UUID): ResponseEntity<NotificationRuleResponse> =
         ResponseEntity.ok(notificationRuleService.getRule(id))
 
+    @PreAuthorize("@authz.has('admin')")
     @PutMapping("/{id}")
     @Operation(summary = "Update a notification rule")
     fun updateRule(
@@ -40,6 +45,7 @@ class NotificationRuleController(private val notificationRuleService: INotificat
     ): ResponseEntity<NotificationRuleResponse> =
         ResponseEntity.ok(notificationRuleService.updateRule(id, request))
 
+    @PreAuthorize("@authz.has('admin')")
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a notification rule")
     fun deleteRule(@PathVariable id: UUID): ResponseEntity<Void> {
@@ -47,6 +53,7 @@ class NotificationRuleController(private val notificationRuleService: INotificat
         return ResponseEntity.noContent().build()
     }
 
+    @PreAuthorize("@authz.has('admin')")
     @PostMapping("/{id}/test")
     @Operation(summary = "Send a test notification for a rule")
     fun testRule(@PathVariable id: UUID): ResponseEntity<Void> {
@@ -54,6 +61,7 @@ class NotificationRuleController(private val notificationRuleService: INotificat
         return ResponseEntity.accepted().build()
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/deliveries")
     @Operation(summary = "Get delivery history for a notification rule")
     fun getRuleDeliveries(@PathVariable id: UUID): ResponseEntity<List<NotificationDeliveryResponse>> =

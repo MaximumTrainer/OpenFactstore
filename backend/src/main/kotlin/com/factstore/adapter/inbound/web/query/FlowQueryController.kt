@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web.query
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.query.IFlowQueryHandler
 import com.factstore.dto.query.FlowTemplateView
 import com.factstore.dto.query.FlowView
@@ -14,16 +15,19 @@ import java.util.UUID
 @Tag(name = "Flows – Queries", description = "Flow read operations (CQRS query path)")
 class FlowQueryController(private val queryHandler: IFlowQueryHandler) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "List all flows")
     fun listFlows(): ResponseEntity<List<FlowView>> =
         ResponseEntity.ok(queryHandler.listFlows())
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}")
     @Operation(summary = "Get flow by ID")
     fun getFlow(@PathVariable id: UUID): ResponseEntity<FlowView> =
         ResponseEntity.ok(queryHandler.getFlow(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/template")
     @Operation(summary = "Get flow template")
     fun getFlowTemplate(@PathVariable id: UUID): ResponseEntity<FlowTemplateView> =

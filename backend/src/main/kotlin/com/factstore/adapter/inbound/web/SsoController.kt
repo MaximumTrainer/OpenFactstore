@@ -31,6 +31,7 @@ class SsoController(private val ssoService: ISsoConfigService) {
     ): ResponseEntity<SsoConfigResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(ssoService.createSsoConfig(slug, request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "Get SSO configuration for an organisation")
     fun getSsoConfig(@PathVariable slug: String): ResponseEntity<SsoConfigResponse> =
@@ -59,6 +60,7 @@ class SsoController(private val ssoService: ISsoConfigService) {
     fun testSsoConnection(@PathVariable slug: String): ResponseEntity<SsoTestConnectionResponse> =
         ResponseEntity.ok(ssoService.testSsoConnection(slug))
 
+    @PublicEndpoint("sign-in entry point")
     @GetMapping("/login")
     @Operation(
         summary = "Initiate SSO login — returns the IdP authorization URL",
@@ -71,6 +73,7 @@ class SsoController(private val ssoService: ISsoConfigService) {
     ): ResponseEntity<SsoLoginUrlResponse> =
         ResponseEntity.ok(ssoService.initiateSsoLogin(slug, redirectUri))
 
+    @PublicEndpoint("sign-in callback; the ID token is verified against the IdP's JWKS")
     @GetMapping("/callback")
     @Operation(
         summary = "Handle the OIDC callback from the identity provider",
