@@ -1,5 +1,16 @@
 global:
   scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alert rules (#185). Paths are relative to this file; docker-compose mounts
+# monitoring/alerts at /etc/prometheus/alerts.
+rule_files:
+  - alerts/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
 
 scrape_configs:
   - job_name: 'factstore-command'

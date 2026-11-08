@@ -126,10 +126,23 @@ services:
     image: prom/prometheus:latest
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alerts:/etc/prometheus/alerts
     ports:
       - "9090:9090"
     depends_on:
       - backend-command
+
+  # Alert routing (#185). Opt in with `docker compose --profile alerting up`, after putting the
+  # receiver webhook URLs in monitoring/secrets/ (see monitoring/secrets/README.md). Without it,
+  # Prometheus still evaluates the rules and shows firing alerts at :9090/alerts.
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    profiles: ["alerting"]
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./monitoring/secrets:/etc/alertmanager/secrets:ro
+    ports:
+      - "9093:9093"
 
   grafana:
     image: grafana/grafana:latest

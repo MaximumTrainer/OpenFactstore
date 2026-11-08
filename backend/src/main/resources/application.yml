@@ -103,6 +103,11 @@ management:
     export:
       prometheus:
         enabled: true
+    # Every meter carries these, so alert rules can select Factstore and tell the command and
+    # query services apart (#185).
+    tags:
+      application: factstore
+      service: ${factstore.cqrs.role:all}
   health:
     rabbit:
       # Disable the RabbitMQ health indicator so /actuator/health returns UP even when
