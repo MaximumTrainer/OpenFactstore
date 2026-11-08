@@ -201,6 +201,27 @@ and the binding travels with the request for scoping.
 A resource belonging to another organisation returns **`404`, not `403`** — a `403` confirms the
 resource exists, which is enough to enumerate another tenant's data.
 
+This is enforced (`TenantScope`) for a caller bound to an organisation, whether a key with
+`orgSlug` or a signed-in user acting in their active organisation:
+
+| Surface | Behaviour |
+|---|---|
+| `GET /api/v1/flows/{id}`, `/api/v1/trails/{id}`, `/api/v1/evidence/{sha256}` and the v2 equivalents | another organisation's resource is `404` |
+| `GET /api/v1/flows`, `/api/v1/trails`, `/api/v2/flows`, `/api/v2/trails`, and a trail list for another organisation's flow | only the caller's organisation |
+| `GET /api/v1/search`, `POST /api/v1/search` | only the caller's organisation, whatever `orgSlug` the request names |
+| `GET /api/v1/dashboard/stats` | counts only the caller's organisation |
+
+The same lookups back attestation recording and flow and trail edits, so a bound key cannot
+write to another organisation's trail either: it gets the same `404`.
+
+A trail without its own `orgSlug` belongs to its flow's organisation, and evidence to its
+attestation's, then its trail's. A resource with no organisation at all is visible only to
+**unbound** callers. An unbound credential (no `orgSlug`, such as the bootstrap admin key) sees
+every organisation, which is how every deployment behaved before tenant binding.
+
+Not yet scoped: environments, policies, reports, the audit log and the remaining list endpoints.
+They are tracked on #155.
+
 ---
 
 ## First run

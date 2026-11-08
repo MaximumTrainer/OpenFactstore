@@ -34,8 +34,13 @@ class FlowService(
     private val auditService: IAuditService,
     private val actorResolver: ActorResolver,
     private val hubService: HubService,
-    private val templateParser: com.factstore.application.template.TemplateParser
+    private val templateParser: com.factstore.application.template.TemplateParser,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : IFlowService {
+
+    /** A flow the caller may see; another organisation's flow is "not found" (#155 FR-5.2). */
+    private fun findVisibleFlow(id: UUID): com.factstore.core.domain.Flow =
+        tenantScope.require(flowRepository.findById(id), { it.orgSlug }) { "Flow not found: $id" }
 
     private val log = LoggerFactory.getLogger(FlowService::class.java)
 
@@ -74,11 +79,18 @@ class FlowService(
 
     @Transactional(readOnly = true)
     override fun listFlows(includeArchived: Boolean): List<FlowResponse> =
-        if (includeArchived) flowRepository.findAll().map { it.toResponse() }
-        else flowRepository.findAllActive().map { it.toResponse() }
+        (if (includeArchived) flowRepository.findAll() else flowRepository.findAllActive())
+            .filter { tenantScope.visible(it.orgSlug) }
+            .map { it.toResponse() }
 
     @Transactional(readOnly = true)
     override fun listFlows(page: Int, size: Int): PageResponse<FlowResponse> {
+        if (tenantScope.orgSlug() != null) {
+            val visible = flowRepository.findAll().filter { tenantScope.visible(it.orgSlug) }
+            val items = visible.drop(page * size).take(size).map { it.toResponse() }
+            val totalPages = if (size <= 0) 0 else (visible.size + size - 1) / size
+            return PageResponse(items = items, page = page, size = size, totalItems = visible.size.toLong(), totalPages = totalPages)
+        }
         val pageResult = flowRepository.findAll(PageRequest.of(page, size))
         return PageResponse(
             items = pageResult.content.map { it.toResponse() },
@@ -91,10 +103,10 @@ class FlowService(
 
     @Transactional(readOnly = true)
     override fun getFlow(id: UUID): FlowResponse =
-        (flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")).toResponse()
+        (findVisibleFlow(id)).toResponse()
 
     override fun updateFlow(id: UUID, request: UpdateFlowRequest): FlowResponse {
-        val flow = flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val flow = findVisibleFlow(id)
         val changes = mutableMapOf<String, Map<String, Any?>>()
 
         request.name?.let {
@@ -158,7 +170,7 @@ class FlowService(
      */
     @Transactional(readOnly = true)
     override fun getFlowImpact(id: UUID): FlowImpactResponse {
-        val flow = flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val flow = findVisibleFlow(id)
         val trails = trailRepository.findByFlowId(id)
         return FlowImpactResponse(
             flowId = flow.id,
@@ -176,7 +188,7 @@ class FlowService(
      */
     @Transactional(readOnly = true)
     override fun getTemplateDrift(id: UUID): TemplateDriftResponse {
-        val flow = flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val flow = findVisibleFlow(id)
         val templateIds = flow.templateId?.split("+")?.filter { it.isNotBlank() } ?: emptyList()
         if (templateIds.isEmpty()) {
             return TemplateDriftResponse(
@@ -236,7 +248,7 @@ class FlowService(
     }
 
     override fun deleteFlow(id: UUID, force: Boolean) {
-        val flow = flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val flow = findVisibleFlow(id)
         val trailCount = trailRepository.findByFlowId(id).size
         if (trailCount > 0 && !force) {
             throw ConflictException(
@@ -254,7 +266,7 @@ class FlowService(
     }
 
     override fun archiveFlow(id: UUID): FlowResponse {
-        val flow = flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val flow = findVisibleFlow(id)
         val before = flow.archivedAt
         flow.archivedAt = Instant.now()
         flow.updatedAt = Instant.now()
@@ -268,7 +280,7 @@ class FlowService(
     }
 
     override fun unarchiveFlow(id: UUID): FlowResponse {
-        val flow = flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val flow = findVisibleFlow(id)
         val before = flow.archivedAt
         flow.archivedAt = null
         flow.updatedAt = Instant.now()
@@ -282,7 +294,7 @@ class FlowService(
     }
 
     override fun renameFlow(id: UUID, newName: String): FlowResponse {
-        val flow = flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val flow = findVisibleFlow(id)
         if (newName != flow.name && flowRepository.findByName(newName) != null) {
             throw ConflictException("Flow with name '$newName' already exists")
         }
@@ -296,7 +308,7 @@ class FlowService(
     }
 
     override fun getFlowEntity(id: UUID): Flow =
-        flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        findVisibleFlow(id)
 
     @Transactional(readOnly = true)
     override fun listFlowsByOrg(orgSlug: String): List<FlowResponse> =
@@ -304,7 +316,7 @@ class FlowService(
 
     @Transactional(readOnly = true)
     override fun getFlowTemplate(id: UUID): FlowTemplateResponse {
-        val flow = flowRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val flow = findVisibleFlow(id)
         val effectiveTemplate = flow.templateYaml?.let { yaml ->
             @Suppress("UNCHECKED_CAST")
             Yaml().load<Map<String, Any>>(yaml)
