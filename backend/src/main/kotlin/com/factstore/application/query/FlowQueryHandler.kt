@@ -1,5 +1,6 @@
 package com.factstore.application.query
 
+import com.factstore.application.TenantScope
 import com.factstore.core.port.inbound.query.IFlowQueryHandler
 import com.factstore.core.port.outbound.read.IFlowReadRepository
 import com.factstore.dto.query.FlowTemplateView
@@ -15,20 +16,24 @@ import java.util.UUID
 
 @Service
 @Transactional(readOnly = true)
-class FlowQueryHandler(private val flowReadRepository: IFlowReadRepository) : IFlowQueryHandler {
+class FlowQueryHandler(
+    private val flowReadRepository: IFlowReadRepository,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
+) : IFlowQueryHandler {
 
     private val log = LoggerFactory.getLogger(FlowQueryHandler::class.java)
 
+    // Another organisation's flow is "not found" (#155 FR-5.2).
     override fun getFlow(id: UUID): FlowView =
-        flowReadRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        tenantScope.require(flowReadRepository.findById(id), { it.orgSlug }) { "Flow not found: $id" }
 
-    override fun listFlows(): List<FlowView> = flowReadRepository.findAll()
+    override fun listFlows(): List<FlowView> = flowReadRepository.findAll().filter { tenantScope.visible(it.orgSlug) }
 
     override fun listFlowsByOrg(orgSlug: String): List<FlowView> =
-        flowReadRepository.findAllByOrgSlug(orgSlug)
+        flowReadRepository.findAllByOrgSlug(orgSlug).filter { tenantScope.visible(it.orgSlug) }
 
     override fun getFlowTemplate(id: UUID): FlowTemplateView {
-        val flow = flowReadRepository.findById(id) ?: throw NotFoundException("Flow not found: $id")
+        val flow = getFlow(id)
         val effectiveTemplate = flow.templateYaml?.let { yaml ->
             try {
                 @Suppress("UNCHECKED_CAST")

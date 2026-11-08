@@ -2,7 +2,10 @@ package com.factstore.application
 
 import com.factstore.core.domain.EvidenceFile
 import com.factstore.core.port.inbound.IEvidenceVaultService
+import com.factstore.core.port.outbound.IAttestationRepository
 import com.factstore.core.port.outbound.IEvidenceFileRepository
+import com.factstore.core.port.outbound.IFlowRepository
+import com.factstore.core.port.outbound.ITrailRepository
 import com.factstore.dto.EvidenceFileResponse
 import com.factstore.exception.IntegrityException
 import org.slf4j.LoggerFactory
@@ -13,7 +16,27 @@ import java.util.UUID
 
 @Service
 @Transactional
-class EvidenceVaultService(private val evidenceFileRepository: IEvidenceFileRepository) : IEvidenceVaultService {
+class EvidenceVaultService(
+    private val evidenceFileRepository: IEvidenceFileRepository,
+    private val attestationRepository: IAttestationRepository? = null,
+    private val trailRepository: ITrailRepository? = null,
+    private val flowRepository: IFlowRepository? = null,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
+) : IEvidenceVaultService {
+
+    /**
+     * Evidence belongs to the organisation of its attestation, falling back to the trail's and
+     * then the flow's. Another organisation's evidence is "not found" (#155 FR-5.2).
+     */
+    private fun orgOfAttestation(attestationId: UUID): String? {
+        val attestation = attestationRepository?.findById(attestationId) ?: return null
+        attestation.orgSlug?.let { return it }
+        val trail = trailRepository?.findById(attestation.trailId) ?: return null
+        return trail.orgSlug ?: flowRepository?.findById(trail.flowId)?.orgSlug
+    }
+
+    private fun visible(file: EvidenceFile): Boolean =
+        tenantScope.orgSlug() == null || tenantScope.visible(orgOfAttestation(file.attestationId))
 
     private val log = LoggerFactory.getLogger(EvidenceVaultService::class.java)
 
@@ -61,7 +84,7 @@ class EvidenceVaultService(private val evidenceFileRepository: IEvidenceFileRepo
 
     @Transactional(readOnly = true)
     override fun findByAttestationId(attestationId: UUID): List<EvidenceFileResponse> =
-        evidenceFileRepository.findByAttestationId(attestationId).map { it.toResponse() }
+        evidenceFileRepository.findByAttestationId(attestationId).filter(::visible).map { it.toResponse() }
 
     @Transactional(readOnly = true)
     override fun verifyIntegrity(id: UUID): Boolean {
@@ -83,11 +106,11 @@ class EvidenceVaultService(private val evidenceFileRepository: IEvidenceFileRepo
 
     @Transactional(readOnly = true)
     override fun findBySha256Hash(sha256Hash: String): EvidenceFile? =
-        evidenceFileRepository.findTopBySha256HashOrderedByStoredAt(sha256Hash)
+        evidenceFileRepository.findTopBySha256HashOrderedByStoredAt(sha256Hash)?.takeIf(::visible)
 
     @Transactional(readOnly = true)
     override fun findByTrailId(trailId: UUID): List<EvidenceFileResponse> =
-        evidenceFileRepository.findByTrailId(trailId).map { it.toResponse() }
+        evidenceFileRepository.findByTrailId(trailId).filter(::visible).map { it.toResponse() }
 
     fun computeSha256(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256")

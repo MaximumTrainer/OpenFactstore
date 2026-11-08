@@ -20,10 +20,18 @@ private val ALLOWED_TYPES = setOf("trail", "artifact")
 class SearchService(
     private val trailRepository: ITrailRepository,
     private val artifactRepository: IArtifactRepository,
-    private val flowRepository: IFlowRepository
+    private val flowRepository: IFlowRepository,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : ISearchService {
 
     private val log = LoggerFactory.getLogger(SearchService::class.java)
+
+    // Search never reaches past the caller's organisation (#155 FR-5.3).
+    private fun visible(trail: com.factstore.core.domain.Trail): Boolean =
+        tenantScope.visible(trail.orgSlug ?: flowRepository.findById(trail.flowId)?.orgSlug)
+
+    private fun visible(artifact: com.factstore.core.domain.Artifact): Boolean =
+        tenantScope.visible(artifact.orgSlug)
 
     override fun search(query: String, type: String?): SearchResponse {
         val trimmed = query.trim()
@@ -36,7 +44,7 @@ class SearchService(
         val results = mutableListOf<SearchResultItem>()
 
         if (type == null || type.equals("trail", ignoreCase = true)) {
-            trailRepository.searchByQuery(trimmed).mapTo(results) { trail ->
+            trailRepository.searchByQuery(trimmed).filter { visible(it) }.mapTo(results) { trail ->
                 SearchResultItem(
                     type = "trail",
                     id = trail.id,
@@ -55,7 +63,7 @@ class SearchService(
         }
 
         if (type == null || type.equals("artifact", ignoreCase = true)) {
-            artifactRepository.searchByQuery(trimmed).mapTo(results) { artifact ->
+            artifactRepository.searchByQuery(trimmed).filter { visible(it) }.mapTo(results) { artifact ->
                 SearchResultItem(
                     type = "artifact",
                     id = artifact.id,
@@ -81,6 +89,7 @@ class SearchService(
 
         val flows = flowRepository.findAll()
             .filter { flow ->
+                tenantScope.visible(flow.orgSlug) &&
                 (request.orgSlug == null || flow.orgSlug == request.orgSlug) &&
                 (query.isNullOrBlank() || flow.name.contains(query, ignoreCase = true) || flow.description.contains(query, ignoreCase = true)) &&
                 request.tags.all { (k, v) -> flow.tags[k] == v }
@@ -89,6 +98,7 @@ class SearchService(
 
         val trails = trailRepository.findAll()
             .filter { trail ->
+                visible(trail) &&
                 (request.orgSlug == null || trail.orgSlug == request.orgSlug) &&
                 (query.isNullOrBlank() || trail.gitCommitSha.contains(query, ignoreCase = true) ||
                     trail.name?.contains(query, ignoreCase = true) == true ||
@@ -100,6 +110,7 @@ class SearchService(
 
         val artifacts = artifactRepository.findAll()
             .filter { artifact ->
+                visible(artifact) &&
                 (request.orgSlug == null || artifact.orgSlug == request.orgSlug) &&
                 (query.isNullOrBlank() || artifact.imageName.contains(query, ignoreCase = true) ||
                     artifact.imageTag.contains(query, ignoreCase = true)) &&

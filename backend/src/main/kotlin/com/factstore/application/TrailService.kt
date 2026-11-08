@@ -22,10 +22,25 @@ import java.util.UUID
 @Transactional
 class TrailService(
     private val trailRepository: ITrailRepository,
-    private val flowRepository: IFlowRepository
+    private val flowRepository: IFlowRepository,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : ITrailService {
 
     private val log = LoggerFactory.getLogger(TrailService::class.java)
+
+    /** A trail's organisation is its own, or its flow's when it was created without one. */
+    private fun orgOf(trail: Trail): String? =
+        trail.orgSlug ?: flowRepository.findById(trail.flowId)?.orgSlug
+
+    private fun visible(trail: Trail): Boolean = tenantScope.visible(orgOf(trail))
+
+    /** Another organisation's trail is "not found" (#155 FR-5.2). */
+    private fun findVisibleTrail(id: UUID): Trail =
+        tenantScope.require(trailRepository.findById(id), ::orgOf) { "Trail not found: $id" }
+
+    private fun requireVisibleFlow(flowId: UUID) {
+        tenantScope.require(flowRepository.findById(flowId), { it.orgSlug }) { "Flow not found: $flowId" }
+    }
 
     override fun createTrail(request: CreateTrailRequest): TrailResponse = createOrGetTrail(request).trail
 
@@ -73,16 +88,16 @@ class TrailService(
     @Transactional(readOnly = true)
     override fun listTrails(flowId: UUID?, includeArchived: Boolean): List<TrailResponse> {
         val trails = if (flowId != null) trailRepository.findByFlowId(flowId) else trailRepository.findAll()
-        return trails.filter { includeArchived || it.archivedAt == null }.map { it.toResponse() }
+        return trails.filter { (includeArchived || it.archivedAt == null) && visible(it) }.map { it.toResponse() }
     }
 
     @Transactional(readOnly = true)
     override fun getTrail(id: UUID): TrailResponse =
-        (trailRepository.findById(id) ?: throw NotFoundException("Trail not found: $id")).toResponse()
+        (findVisibleTrail(id)).toResponse()
 
     @Transactional(readOnly = true)
     override fun listTrailsForFlow(flowId: UUID, includeArchived: Boolean): List<TrailResponse> {
-        if (!flowRepository.existsById(flowId)) throw NotFoundException("Flow not found: $flowId")
+        requireVisibleFlow(flowId)
         return trailRepository.findByFlowId(flowId)
             .filter { includeArchived || it.archivedAt == null }
             .map { it.toResponse() }
@@ -95,7 +110,7 @@ class TrailService(
         size: Int,
         includeArchived: Boolean
     ): PageResponse<TrailResponse> {
-        if (!flowRepository.existsById(flowId)) throw NotFoundException("Flow not found: $flowId")
+        requireVisibleFlow(flowId)
         if (includeArchived) {
             val pageResult = trailRepository.findByFlowId(flowId, PageRequest.of(page, size))
             return PageResponse(
@@ -121,14 +136,14 @@ class TrailService(
     }
 
     override fun updateTrailStatus(id: UUID, status: TrailStatus): Trail {
-        val trail = trailRepository.findById(id) ?: throw NotFoundException("Trail not found: $id")
+        val trail = findVisibleTrail(id)
         trail.status = status
         trail.updatedAt = Instant.now()
         return trailRepository.save(trail)
     }
 
     override fun getTrailEntity(id: UUID): Trail =
-        trailRepository.findById(id) ?: throw NotFoundException("Trail not found: $id")
+        findVisibleTrail(id)
 
     /**
      * Resolves the trail a downstream pipeline was told to attest against. Exactly one selector
@@ -142,7 +157,7 @@ class TrailService(
         name: String?,
         gitCommitSha: String?
     ): TrailResponse {
-        if (!flowRepository.existsById(flowId)) throw NotFoundException("Flow not found: $flowId")
+        requireVisibleFlow(flowId)
 
         val trail = when {
             !externalId.isNullOrBlank() -> trailRepository.findByFlowIdAndExternalId(flowId, externalId)

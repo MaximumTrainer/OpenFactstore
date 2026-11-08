@@ -88,7 +88,8 @@ class EveryEndpointIsAuthorisedTest {
             doc.writeText(text.substringBefore(begin) + begin + "\n" + table + end + text.substringAfter(end))
         }
 
-        val documented = doc.readText().substringAfter(begin).substringBefore(end).trim()
+        // Line endings are normalised: Windows checkouts get CRLF via core.autocrlf.
+        val documented = doc.readText().replace("\r\n", "\n").substringAfter(begin).substringBefore(end).trim()
         assertThat(documented)
             .describedAs("docs/api-authorisation-matrix.md is stale; regenerate it (see this test's KDoc)")
             .isEqualTo(table.trim())
