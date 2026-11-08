@@ -29,6 +29,9 @@ spring:
 factstore:
   events:
     publisher: inmemory
+  # Tests drive the event outbox relay directly rather than racing a scheduler thread (#185).
+  scheduling:
+    enabled: false
 
 ledger:
   enabled: true
