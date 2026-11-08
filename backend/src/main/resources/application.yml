@@ -152,6 +152,11 @@ security:
     absolute-lifetime-seconds: ${SESSION_ABSOLUTE_LIFETIME_SECONDS:43200}
     idle-timeout-seconds: ${SESSION_IDLE_TIMEOUT_SECONDS:1800}
 
+  github:
+    # Organisation a first-time GitHub sign-in joins, as VIEWER (#156 FR-5.3). Empty means none:
+    # the user signs in but has no organisation until an admin adds them.
+    default-org: ${GITHUB_DEFAULT_ORG:}
+
   bootstrap:
     # A fresh deployment with enforcement on must be administrable; see docs/api-authorisation.md.
     enabled: ${SECURITY_BOOTSTRAP_ENABLED:true}

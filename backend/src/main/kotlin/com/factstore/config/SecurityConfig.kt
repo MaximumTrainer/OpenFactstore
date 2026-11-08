@@ -1,6 +1,7 @@
 package com.factstore.config
 
 import com.factstore.adapter.inbound.web.ApiKeyAuthFilter
+import com.factstore.adapter.inbound.web.GitHubSignInSuccessHandler
 import com.factstore.adapter.inbound.web.SessionAuthFilter
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -39,6 +40,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class SecurityConfig(
     private val apiKeyAuthFilter: ApiKeyAuthFilter,
     private val sessionAuthFilter: SessionAuthFilter,
+    private val gitHubSignInSuccessHandler: GitHubSignInSuccessHandler,
     @Value("\${spring.security.oauth2.client.registration.github.client-id:}")
     private val githubClientId: String,
     @Value("\${security.enforce-auth:false}")
@@ -109,7 +111,13 @@ class SecurityConfig(
 
         // Enable GitHub OAuth2 login only when credentials are configured
         if (githubClientId.isNotBlank()) {
-            http.oauth2Login { }
+            // A successful GitHub sign-in becomes a Factstore session, exactly like the OIDC
+            // path (#156 FR-1.2). A failed or cancelled one returns to /login with a reason,
+            // never with GitHub's error detail in the address bar (FR-1.4).
+            http.oauth2Login { login ->
+                login.successHandler(gitHubSignInSuccessHandler)
+                login.failureHandler { _, response, _ -> response.sendRedirect(GitHubSignInSuccessHandler.FAILED) }
+            }
         }
 
         return http.build()
