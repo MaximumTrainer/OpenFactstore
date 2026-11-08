@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import com.factstore.application.observability.FailureMetrics
 import com.factstore.application.ApiKeyRateLimiter
 import com.factstore.core.domain.AuditEventType
 import com.factstore.core.domain.AuthFailureReason
@@ -46,6 +47,7 @@ class ApiKeyAuthFilter(
     private val rateLimiter: ApiKeyRateLimiter,
     private val auditService: IAuditService,
     private val objectMapper: ObjectMapper,
+    private val failureMetrics: FailureMetrics,
     @Value("\${security.enforce-auth:false}") private val enforceAuth: Boolean,
     @Value("\${security.warn-mode:false}") private val warnMode: Boolean
 ) : OncePerRequestFilter() {
@@ -206,6 +208,8 @@ class ApiKeyAuthFilter(
         prefix: String,
         reason: AuthFailureReason
     ) {
+        // Counted by the bounded reason only, never by prefix or source: those are unbounded (#185).
+        failureMetrics.authFailure(reason.name)
         runCatching {
             auditService.record(
                 eventType = AuditEventType.AUTH_FAILED,

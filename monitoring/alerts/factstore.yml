@@ -1,0 +1,98 @@
+# Factstore alert rules (#185).
+#
+# Loaded by monitoring/prometheus.yml (rule_files) and checked in CI with `promtool check rules`.
+# Every rule carries:
+#   severity     page (wake someone) or warn (look during working hours)
+#   service      command, query or all — taken from the `service` tag every Factstore meter carries
+#   runbook_url  what fired, first checks and recovery, under docs/runbooks/
+#
+# Thresholds marked "tune" are starting points, to be adjusted once normal traffic is observed.
+groups:
+  - name: factstore-availability
+    rules:
+      - alert: FactstoreHigh5xxRatio
+        expr: |
+          (
+            sum by (service) (rate(http_server_requests_seconds_count{application="factstore", status=~"5.."}[5m]))
+          /
+            sum by (service) (rate(http_server_requests_seconds_count{application="factstore"}[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: page
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "More than 1% of {{ $labels.service }} requests are failing with 5xx"
+          description: "5xx ratio is {{ $value | humanizePercentage }} over the last 5 minutes."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/high-5xx-ratio.md
+
+      - alert: FactstoreDbPoolSaturated
+        expr: |
+          max by (service, pool) (hikaricp_connections_active{application="factstore"} / hikaricp_connections_max{application="factstore"}) > 0.9
+        for: 5m
+        labels:
+          severity: warn
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Database connection pool {{ $labels.pool }} on {{ $labels.service }} is over 90% in use"
+          description: "Active connections are {{ $value | humanizePercentage }} of the pool maximum."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/db-pool-saturated.md
+
+  - name: factstore-integrity
+    rules:
+      - alert: FactstoreIntegrityFailure
+        expr: sum by (service, source) (increase(factstore_integrity_failures_total[5m])) > 0
+        labels:
+          severity: page
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Integrity failure detected by {{ $labels.source }} on {{ $labels.service }}"
+          description: "{{ $value }} integrity failure(s) in the last 5 minutes. Treat as possible tampering until shown otherwise."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/integrity-failure.md
+
+      - alert: FactstoreProjectionFailure
+        expr: sum by (service) (increase(factstore_projection_failures_total[15m])) > 0
+        labels:
+          severity: warn
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "The read model on {{ $labels.service }} could not apply a domain event"
+          description: "{{ $value }} event(s) recorded in projection_failures in the last 15 minutes; query results may be stale."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/projection-failure.md
+
+      - alert: FactstoreEventPublishFailing
+        expr: sum by (service) (increase(factstore_event_publish_failures_total[15m])) > 0
+        for: 15m
+        labels:
+          severity: warn
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Domain events on {{ $labels.service }} have been failing to publish for 15 minutes"
+          description: "Committed facts are held in event_outbox and will be relayed when the broker recovers; the query side is behind until then."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/event-publish-failing.md
+
+  - name: factstore-security
+    rules:
+      - alert: FactstoreAuthFailureSpike
+        # tune: one rejected credential per second, sustained, is well above a healthy CI fleet.
+        expr: sum by (service) (rate(factstore_auth_failures_total[10m])) > 1
+        for: 10m
+        labels:
+          severity: warn
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Rejected credentials on {{ $labels.service }} are above 1/s"
+          description: "{{ $value | humanize }} rejected credentials per second over 10 minutes: a broken pipeline secret, or credential stuffing."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/auth-failure-spike.md
+
+  - name: factstore-notifications
+    rules:
+      - alert: FactstoreNotificationDeadLetter
+        expr: sum by (service, channel) (increase(factstore_notification_dead_letters_total[15m])) > 0
+        labels:
+          severity: warn
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "{{ $labels.channel }} notifications are being dead-lettered"
+          description: "{{ $value }} notification(s) exhausted their retries in the last 15 minutes; see the rule's delivery history."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/notification-dead-letter.md

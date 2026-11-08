@@ -44,3 +44,17 @@ spring:
 factstore:
   events:
     publisher: rabbitmq
+
+# The broker carries the CQRS event feed in this profile, so a pod that cannot reach it is not
+# ready for traffic (#185). The base configuration disables the RabbitMQ health indicator for
+# single-node deployments that run without a broker.
+management:
+  health:
+    rabbit:
+      enabled: true
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,db,rabbit
+          show-components: always

@@ -1,5 +1,6 @@
 package com.factstore.application
 
+import com.factstore.application.observability.FailureMetrics
 import com.factstore.config.LedgerProperties
 import com.factstore.core.port.inbound.ILedgerService
 import com.factstore.core.port.outbound.IImmutableLedger
@@ -21,7 +22,8 @@ import kotlin.math.ceil
 @ConditionalOnProperty(name = ["ledger.enabled"], havingValue = "true")
 class LedgerService(
     private val ledger: IImmutableLedger,
-    private val properties: LedgerProperties
+    private val properties: LedgerProperties,
+    private val failureMetrics: FailureMetrics
 ) : ILedgerService {
 
     private val log = LoggerFactory.getLogger(LedgerService::class.java)
@@ -66,6 +68,12 @@ class LedgerService(
     override fun verifyChain(request: VerifyChainRequest): ChainVerificationResponse {
         log.info("Verifying chain integrity from={} to={}", request.from, request.to)
         val result = ledger.verifyChainIntegrity(request.from, request.to)
+        if (!result.valid) {
+            // A broken chain is tampering or corruption; it must page, not just be reported (#185).
+            failureMetrics.integrityFailure(FailureMetrics.IntegritySource.LEDGER)
+            log.error("Ledger chain verification failed from={} to={} brokenAt={}: {}",
+                request.from, request.to, result.brokenAt, result.message)
+        }
         return ChainVerificationResponse(
             valid = result.valid,
             entriesChecked = result.entriesChecked,

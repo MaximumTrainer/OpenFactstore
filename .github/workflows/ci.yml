@@ -17,6 +17,22 @@ jobs:
       - name: Run actionlint
         uses: raven-actions/actionlint@v2
 
+  monitoring:
+    name: Check Prometheus and Alertmanager config
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # #185: the alert rules ship with the repo, so a rule that does not parse must fail the build.
+      - name: promtool check config and rules
+        run: |
+          docker run --rm -v "$PWD/monitoring:/etc/prometheus:ro" --entrypoint promtool             prom/prometheus:v2.53.0 check config /etc/prometheus/prometheus.yml
+          docker run --rm -v "$PWD/monitoring:/etc/prometheus:ro" --entrypoint promtool             prom/prometheus:v2.53.0 check rules /etc/prometheus/alerts/factstore.yml
+      - name: amtool check-config
+        run: |
+          docker run --rm -v "$PWD/monitoring:/etc/alertmanager:ro" --entrypoint amtool             prom/alertmanager:v0.27.0 check-config /etc/alertmanager/alertmanager.yml
+
   backend:
     name: Backend Build & Test
     runs-on: ubuntu-latest

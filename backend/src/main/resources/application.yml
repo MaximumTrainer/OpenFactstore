@@ -87,10 +87,27 @@ management:
   endpoint:
     prometheus:
       enabled: true
+    health:
+      # Kubernetes-style probes (#185). Liveness says "restart me"; readiness says "send me
+      # traffic". Readiness therefore includes the dependencies a request needs, and liveness
+      # deliberately does not: a database outage must not restart every pod in a loop.
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+          show-components: always
   metrics:
     export:
       prometheus:
         enabled: true
+    # Every meter carries these, so alert rules can select Factstore and tell the command and
+    # query services apart (#185).
+    tags:
+      application: factstore
+      service: ${factstore.cqrs.role:all}
   health:
     rabbit:
       # Disable the RabbitMQ health indicator so /actuator/health returns UP even when

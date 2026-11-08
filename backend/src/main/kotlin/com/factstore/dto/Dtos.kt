@@ -568,7 +568,9 @@ data class ErrorResponse(
     val status: Int,
     val error: String,
     val message: String,
-    val timestamp: Instant = Instant.now()
+    val timestamp: Instant = Instant.now(),
+    /** The request's correlation id (#185): quote it to an operator to find the matching log lines. */
+    val correlationId: String? = null
 )
 
 // Deployment event DTO

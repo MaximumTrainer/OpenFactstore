@@ -10,7 +10,10 @@ enum class TriggerEvent {
     DRIFT_DETECTED,
     APPROVAL_REQUIRED,
     TRAIL_NON_COMPLIANT,
-    APPROVAL_REJECTED
+    APPROVAL_REJECTED,
+    // Operational triggers (#185): route system failures through the same rules as compliance events.
+    INTEGRITY_FAILURE,
+    SYSTEM_ERROR
 }
 
 enum class ChannelType { SLACK, WEBHOOK, IN_APP }

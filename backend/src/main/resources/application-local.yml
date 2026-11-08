@@ -11,6 +11,11 @@ ledger:
   enabled: true
   type: local
 
+# Plain-text logs for local work; every other environment logs JSON (#185).
+factstore:
+  logging:
+    format: plain
+
 # Sign in without an identity provider (#156 FR-8.4); only from this machine.
 security:
   dev-login:

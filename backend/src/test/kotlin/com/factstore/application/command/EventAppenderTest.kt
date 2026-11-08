@@ -1,6 +1,9 @@
 package com.factstore.application.command
 
+import com.factstore.adapter.mock.InMemoryEventOutbox
 import com.factstore.adapter.mock.InMemoryEventStore
+import com.factstore.application.observability.FailureMetrics
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import com.factstore.core.domain.EventLogEntry
 import com.factstore.core.domain.event.DomainEvent
 import com.factstore.core.port.outbound.IDomainEventBus
@@ -25,7 +28,8 @@ class EventAppenderTest {
     fun setUp() {
         eventStore = InMemoryEventStore()
         objectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
-        eventAppender = EventAppender(eventStore, objectMapper, noopBus)
+        eventAppender = EventAppender(eventStore, objectMapper, noopBus, InMemoryEventOutbox(),
+            FailureMetrics(SimpleMeterRegistry(), "all"))
     }
 
     @Test

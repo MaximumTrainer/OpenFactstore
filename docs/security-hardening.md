@@ -122,11 +122,30 @@ Use this checklist during initial deployment, periodic security reviews, and bef
 - [ ] **Ship logs to a centralised SIEM**  
   Forward application logs (stdout/stderr) and audit events to Splunk, Elastic SIEM, or equivalent. Set a minimum retention of 1 year (SOC2/PCI-DSS requirement).
 
-- [ ] **Configure Prometheus alerts**  
-  Set up alerts for:
-  - High 5xx error rates (`> 1%` over 5 minutes)
-  - Unusual authentication failure spikes
-  - Database connection pool saturation
+- [ ] **Load the shipped Prometheus alert rules**  
+  [`monitoring/alerts/factstore.yml`](../monitoring/alerts/factstore.yml) defines them; `monitoring/prometheus.yml` loads them and CI checks them with `promtool`. They cover:
+  - 5xx ratio above 1% for 5 minutes (`page`)
+  - any integrity failure: API, ledger chain or projection (`page`)
+  - rejected credentials above 1/s for 10 minutes (`warn`, tune to your traffic)
+  - database connection pool over 90% for 5 minutes (`warn`)
+  - projection failures, sustained event publish failures and notification dead letters (`warn`)
+
+  Every rule has a runbook under [`docs/runbooks/alerts/`](runbooks/alerts/README.md).
+
+- [ ] **Route alerts to on-call**  
+  [`monitoring/alertmanager.yml`](../monitoring/alertmanager.yml) sends `page` to an on-call webhook and `warn` to a team channel. The receiver URLs are read from files mounted from your secret store; see [`monitoring/secrets/README.md`](../monitoring/secrets/README.md). Nothing is routed until those are in place.
+
+- [ ] **Keep logs structured**  
+  Outside the `local` and `dev` profiles, logs are one JSON object per line with `timestamp`, `level`, `logger`, `message`, `correlationId`, `service`, `path`, `method` and `status`. Do not set `factstore.logging.format=plain` in production; the SIEM and the runbooks rely on these fields.
+
+- [ ] **Wire the health probes**  
+  Point the orchestrator's liveness probe at `/actuator/health/liveness` and its readiness probe at `/actuator/health/readiness`. Both are unauthenticated. Liveness reports only the application's own state, so a database outage does not restart every pod; readiness includes the database, and RabbitMQ in the `prod` profile. A healthy readiness response looks like:
+
+  ```json
+  {"status":"UP","components":{"db":{"status":"UP"},"rabbit":{"status":"UP"},"readinessState":{"status":"UP"}}}
+  ```
+
+  A failing dependency turns the overall status to `DOWN` and the endpoint answers `503`, which takes the instance out of rotation. `/actuator/health` itself keeps reporting the aggregate status.
 
 - [ ] **Review Grafana dashboards post-deployment**  
   The included dashboards cover Audit Forensics, Compliance Overview, Deployment Gates, and Security Scans. Verify data is flowing from Prometheus.

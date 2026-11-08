@@ -40,7 +40,8 @@ class NotificationDispatchServiceUnitTest {
 
     private fun buildDispatchService(channel: INotificationChannel): NotificationDispatchService =
         // Use baseBackoffSeconds=0 for instantaneous retries in tests
-        NotificationDispatchService(ruleRepository, deliveryRepository, listOf(channel), ObjectMapper(), 0L)
+        NotificationDispatchService(ruleRepository, deliveryRepository, listOf(channel), ObjectMapper(),
+            com.factstore.application.observability.FailureMetrics(io.micrometer.core.instrument.simple.SimpleMeterRegistry(), "all"), 0L)
 
     private fun createRule(channelType: ChannelType = ChannelType.IN_APP): NotificationRule {
         val rule = NotificationRule(

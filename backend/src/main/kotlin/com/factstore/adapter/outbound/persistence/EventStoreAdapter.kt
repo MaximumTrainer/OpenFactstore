@@ -13,6 +13,7 @@ interface EventLogEntryJpa : JpaRepository<EventLogEntry, Long> {
     fun findByAggregateTypeOrderBySequenceNumber(aggregateType: String): List<EventLogEntry>
     fun findAllByOrderBySequenceNumber(): List<EventLogEntry>
     fun findBySequenceNumberGreaterThanOrderBySequenceNumber(sequenceNumber: Long): List<EventLogEntry>
+    fun findBySequenceNumberInOrderBySequenceNumber(sequenceNumbers: Collection<Long>): List<EventLogEntry>
 }
 
 @Component
@@ -30,4 +31,7 @@ class EventStoreAdapter(private val jpa: EventLogEntryJpa) : IEventStore {
 
     override fun findAfterSequence(afterSequence: Long): List<EventLogEntry> =
         jpa.findBySequenceNumberGreaterThanOrderBySequenceNumber(afterSequence)
+
+    override fun findBySequenceNumbers(sequenceNumbers: Collection<Long>): List<EventLogEntry> =
+        if (sequenceNumbers.isEmpty()) emptyList() else jpa.findBySequenceNumberInOrderBySequenceNumber(sequenceNumbers)
 }
