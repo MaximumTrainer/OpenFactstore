@@ -51,7 +51,7 @@ class VaultEvidenceController(
         return ResponseEntity.status(201).body(response)
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('evidence:read')")
     @GetMapping("/{entityType}/{entityId}")
     @Operation(summary = "Retrieve evidence metadata", description = "Returns evidence metadata stored in Vault for the given entity")
     fun retrieveEvidence(
@@ -61,7 +61,7 @@ class VaultEvidenceController(
     ): ResponseEntity<VaultEvidenceResponse> =
         ResponseEntity.ok(vaultEvidenceService.retrieveEvidence(entityType, entityId, evidenceType))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('evidence:read')")
     @GetMapping("/{entityType}/{entityId}/list")
     @Operation(summary = "List evidence types for an entity", description = "Returns all evidence types stored in Vault for the given entity")
     fun listEvidence(
@@ -70,7 +70,7 @@ class VaultEvidenceController(
     ): ResponseEntity<VaultEvidenceListResponse> =
         ResponseEntity.ok(vaultEvidenceService.listEvidence(entityType, entityId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('evidence:read')")
     @GetMapping("/{entityType}/{entityId}/download")
     @Operation(summary = "Download evidence artifact", description = "Returns the raw evidence key-value payload from Vault")
     fun downloadEvidence(

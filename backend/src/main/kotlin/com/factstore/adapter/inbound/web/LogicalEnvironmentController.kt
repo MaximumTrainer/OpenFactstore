@@ -24,13 +24,13 @@ class LogicalEnvironmentController(private val logicalEnvironmentService: ILogic
     fun createLogicalEnvironment(@RequestBody request: CreateLogicalEnvironmentRequest): ResponseEntity<LogicalEnvironmentResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(logicalEnvironmentService.createLogicalEnvironment(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping
     @Operation(summary = "List all logical environments")
     fun listLogicalEnvironments(): ResponseEntity<List<LogicalEnvironmentResponse>> =
         ResponseEntity.ok(logicalEnvironmentService.listLogicalEnvironments())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}")
     @Operation(summary = "Get logical environment by ID")
     fun getLogicalEnvironment(@PathVariable id: UUID): ResponseEntity<LogicalEnvironmentResponse> =
@@ -73,7 +73,7 @@ class LogicalEnvironmentController(private val logicalEnvironmentService: ILogic
         return ResponseEntity.noContent().build()
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/snapshots/latest")
     @Operation(summary = "Get the latest merged snapshot for a logical environment")
     fun getMergedSnapshot(@PathVariable id: UUID): ResponseEntity<MergedSnapshotResponse> =

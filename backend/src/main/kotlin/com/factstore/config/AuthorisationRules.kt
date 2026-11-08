@@ -23,8 +23,7 @@ import org.springframework.stereotype.Component
  * - **Warn mode** (`security.warn-mode`): a refusal is logged with the scope it lacked, and the
  *   request is allowed, so operators can find every caller that would break before switching.
  *
- * The `admin` scope already expands to every permission when a credential is authenticated, so
- * it needs no special case here.
+ * The `admin` scope satisfies every rule, as it grants every permission.
  */
 @Component("authz")
 class AuthorisationRules(
@@ -68,6 +67,7 @@ class AuthorisationRules(
         return enforced || (auth == null && !enforceAuth)
     }
 
+    /** `admin` means every permission, whether or not the credential's authorities were expanded. */
     private fun Authentication.holds(scope: String): Boolean =
-        authorities.any { it.authority == "${Permission.AUTHORITY_PREFIX}$scope" }
+        authorities.any { it.authority == "${Permission.AUTHORITY_PREFIX}$scope" || it.authority == Permission.ADMIN.authority }
 }

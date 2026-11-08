@@ -32,13 +32,13 @@ class OrganisationController(
     fun createOrganisation(@RequestBody request: CreateOrganisationRequest): ResponseEntity<OrganisationResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(organisationService.createOrganisation(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping
     @Operation(summary = "List all organisations")
     fun listOrganisations(): ResponseEntity<List<OrganisationResponse>> =
         ResponseEntity.ok(organisationService.listOrganisations())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{slug}")
     @Operation(summary = "Get organisation by slug")
     fun getOrganisationBySlug(@PathVariable slug: String): ResponseEntity<OrganisationResponse> =
@@ -61,7 +61,7 @@ class OrganisationController(
         return ResponseEntity.noContent().build()
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{slug}/flows")
     @Operation(summary = "List flows in an organisation")
     fun listFlowsByOrg(@PathVariable slug: String): ResponseEntity<List<FlowResponse>> =
@@ -76,7 +76,7 @@ class OrganisationController(
     ): ResponseEntity<ScmIntegrationResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(scmIntegrationService.createIntegration(slug, request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping("/{slug}/scm-integrations")
     @Operation(summary = "List SCM integrations for an organisation")
     fun listScmIntegrations(@PathVariable slug: String): ResponseEntity<List<ScmIntegrationResponse>> =

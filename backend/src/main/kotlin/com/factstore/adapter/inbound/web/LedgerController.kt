@@ -29,7 +29,7 @@ class LedgerController(
     private val ledgerService: ILedgerService
 ) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/entries")
     @Operation(summary = "List ledger entries (paginated)")
     fun listEntries(
@@ -38,25 +38,25 @@ class LedgerController(
     ): ResponseEntity<PagedLedgerEntriesResponse> =
         ResponseEntity.ok(ledgerService.listEntries(page, size))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/entries/{recordId}")
     @Operation(summary = "Get ledger entry for a specific record")
     fun getEntry(@PathVariable recordId: UUID): ResponseEntity<LedgerEntryResponse> =
         ResponseEntity.ok(ledgerService.getEntry(recordId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @PostMapping("/verify/{recordId}")
     @Operation(summary = "Verify the integrity of a specific record")
     fun verifyFact(@PathVariable recordId: UUID): ResponseEntity<VerificationResponse> =
         ResponseEntity.ok(ledgerService.verifyFact(recordId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @PostMapping("/verify-chain")
     @Operation(summary = "Verify chain integrity for a date range")
     fun verifyChain(@RequestBody request: VerifyChainRequest): ResponseEntity<ChainVerificationResponse> =
         ResponseEntity.ok(ledgerService.verifyChain(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/status")
     @Operation(summary = "Ledger health and sync status")
     fun getStatus(): ResponseEntity<LedgerStatusResponse> =

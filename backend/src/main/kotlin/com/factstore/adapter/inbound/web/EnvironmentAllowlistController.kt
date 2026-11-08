@@ -25,7 +25,7 @@ class EnvironmentAllowlistController(private val allowlistService: IEnvironmentA
     ): ResponseEntity<AllowlistEntryResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(allowlistService.addEntry(id, request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/{id}/allowlist")
     @Operation(summary = "List allow-list entries")
     fun listEntries(@PathVariable id: UUID): ResponseEntity<List<AllowlistEntryResponse>> =

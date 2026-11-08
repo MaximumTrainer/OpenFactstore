@@ -54,19 +54,19 @@ class ArtifactController(
         return ResponseEntity.status(HttpStatus.CREATED).body(artifactService.reportArtifact(trailId, request))
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/trails/{trailId}/artifacts")
     @Operation(summary = "List artifacts for a trail")
     fun listArtifacts(@PathVariable trailId: UUID): ResponseEntity<List<ArtifactResponse>> =
         ResponseEntity.ok(artifactService.listArtifactsForTrail(trailId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/artifacts")
     @Operation(summary = "Find artifacts by SHA256 digest")
     fun findBySha256(@RequestParam sha256: String): ResponseEntity<List<ArtifactResponse>> =
         ResponseEntity.ok(artifactService.findBySha256(sha256))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/artifacts/search")
     @Operation(summary = "Search artifacts by git commit SHA")
     fun searchByCommitSha(@RequestParam commitSha: String): ResponseEntity<List<ArtifactResponse>> =
@@ -83,7 +83,7 @@ class ArtifactController(
         ResponseEntity.status(HttpStatus.CREATED)
             .body(buildProvenanceService.recordProvenance(trailId, artifactId, request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance")
     @Operation(summary = "Retrieve build provenance for an artifact")
     fun getProvenance(
@@ -92,7 +92,7 @@ class ArtifactController(
     ): ResponseEntity<BuildProvenanceResponse> =
         ResponseEntity.ok(buildProvenanceService.getProvenance(trailId, artifactId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/artifacts/{sha256}/provenance")
     @Operation(summary = "Get provenance by artifact SHA256 digest")
     fun getProvenanceBySha256(@PathVariable sha256: String): ResponseEntity<BuildProvenanceResponse> =

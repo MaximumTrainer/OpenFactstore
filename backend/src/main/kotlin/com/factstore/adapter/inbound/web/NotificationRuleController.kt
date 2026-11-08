@@ -24,13 +24,13 @@ class NotificationRuleController(private val notificationRuleService: INotificat
     fun createRule(@RequestBody request: CreateNotificationRuleRequest): ResponseEntity<NotificationRuleResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(notificationRuleService.createRule(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping
     @Operation(summary = "List all notification rules")
     fun listRules(): ResponseEntity<List<NotificationRuleResponse>> =
         ResponseEntity.ok(notificationRuleService.listRules())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping("/{id}")
     @Operation(summary = "Get a notification rule by ID")
     fun getRule(@PathVariable id: UUID): ResponseEntity<NotificationRuleResponse> =
@@ -61,7 +61,7 @@ class NotificationRuleController(private val notificationRuleService: INotificat
         return ResponseEntity.accepted().build()
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping("/{id}/deliveries")
     @Operation(summary = "Get delivery history for a notification rule")
     fun getRuleDeliveries(@PathVariable id: UUID): ResponseEntity<List<NotificationDeliveryResponse>> =

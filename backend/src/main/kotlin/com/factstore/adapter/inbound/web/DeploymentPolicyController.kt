@@ -21,12 +21,12 @@ class DeploymentPolicyController(private val policyService: IDeploymentPolicySer
     fun createPolicy(@RequestBody req: CreateDeploymentPolicyRequest): ResponseEntity<DeploymentPolicyResponse> =
         ResponseEntity.ok(policyService.createPolicy(req))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/api/v1/deployment-policies")
     fun listPolicies(): ResponseEntity<List<DeploymentPolicyResponse>> =
         ResponseEntity.ok(policyService.listPolicies())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/api/v1/deployment-policies/{id}")
     fun getPolicy(@PathVariable id: UUID): ResponseEntity<DeploymentPolicyResponse> =
         ResponseEntity.ok(policyService.getPolicy(id))
@@ -51,7 +51,7 @@ class DeploymentPolicyController(private val policyService: IDeploymentPolicySer
     fun evaluateGate(@RequestBody req: GateEvaluateRequest): ResponseEntity<GateEvaluateResponse> =
         ResponseEntity.ok(policyService.evaluateGate(req))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/gate/results")
     fun listGateResults(): ResponseEntity<List<GateEvaluateResponse>> =
         ResponseEntity.ok(policyService.listGateResults())

@@ -25,13 +25,13 @@ class PolicyController(private val policyService: IPolicyService) {
     fun createPolicy(@Valid @RequestBody request: CreatePolicyRequest): ResponseEntity<PolicyResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(policyService.createPolicy(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping
     @Operation(summary = "List all policies")
     fun listPolicies(): ResponseEntity<List<PolicyResponse>> =
         ResponseEntity.ok(policyService.listPolicies())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/{id}")
     @Operation(summary = "Get policy by ID")
     fun getPolicy(@PathVariable id: UUID): ResponseEntity<PolicyResponse> =
@@ -53,7 +53,7 @@ class PolicyController(private val policyService: IPolicyService) {
         return ResponseEntity.noContent().build()
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/{id}/versions")
     @Operation(summary = "List version history for a policy")
     fun listPolicyVersions(@PathVariable id: UUID): ResponseEntity<List<PolicyVersionResponse>> =

@@ -16,7 +16,7 @@ import java.util.UUID
 @Tag(name = "Reports", description = "Compliance reports and audit trail export")
 class ReportController(private val reportService: IReportService) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/compliance")
     @Operation(
         summary = "Per-flow compliance summary report",
@@ -29,7 +29,7 @@ class ReportController(private val reportService: IReportService) {
     ): ResponseEntity<FlowComplianceReport> =
         ResponseEntity.ok(reportService.getComplianceReport(flowId, from, to))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/audit-trail/{trailId}")
     @Operation(
         summary = "Full audit trail export",

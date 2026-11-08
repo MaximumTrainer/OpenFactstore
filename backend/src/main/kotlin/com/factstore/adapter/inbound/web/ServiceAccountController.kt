@@ -32,13 +32,13 @@ class ServiceAccountController(private val serviceAccountService: IServiceAccoun
     ): ResponseEntity<ServiceAccountResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(serviceAccountService.createServiceAccount(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping
     @Operation(summary = "List all service accounts")
     fun listServiceAccounts(): ResponseEntity<List<ServiceAccountResponse>> =
         ResponseEntity.ok(serviceAccountService.listServiceAccounts())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping("/{id}")
     @Operation(summary = "Get service account details")
     fun getServiceAccount(@PathVariable id: UUID): ResponseEntity<ServiceAccountResponse> =
@@ -79,7 +79,7 @@ class ServiceAccountController(private val serviceAccountService: IServiceAccoun
         ResponseEntity.status(HttpStatus.CREATED)
             .body(serviceAccountService.createApiKey(id, request.label, request.ttlDays))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping("/{id}/api-keys")
     @Operation(
         summary = "List API keys for a service account",

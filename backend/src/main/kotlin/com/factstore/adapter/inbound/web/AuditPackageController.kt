@@ -14,13 +14,13 @@ import java.util.UUID
 @Tag(name = "Audit Package", description = "Downloadable tamper-evident audit bundles")
 class AuditPackageController(private val auditPackageService: IAuditPackageService) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('evidence:read')")
     @GetMapping("/api/v1/trails/{trailId}/audit-package")
     @Operation(summary = "Download a tar.gz audit package for a trail")
     fun downloadForTrail(@PathVariable trailId: UUID): ResponseEntity<ByteArray> =
         archiveResponse("trail-$trailId-audit-package.tar.gz", auditPackageService.buildForTrail(trailId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('evidence:read')")
     @GetMapping("/api/v1/trails/{trailId}/audit-package/zip")
     @Operation(summary = "Download a ZIP audit package for a trail")
     fun downloadZipForTrail(@PathVariable trailId: UUID): ResponseEntity<ByteArray> {
@@ -31,13 +31,13 @@ class AuditPackageController(private val auditPackageService: IAuditPackageServi
             .body(bytes)
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('evidence:read')")
     @GetMapping("/api/v1/artifacts/{artifactId}/audit-package")
     @Operation(summary = "Download a tar.gz audit package for an artifact")
     fun downloadForArtifact(@PathVariable artifactId: UUID): ResponseEntity<ByteArray> =
         archiveResponse("artifact-$artifactId-audit-package.tar.gz", auditPackageService.buildForArtifact(artifactId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('evidence:read')")
     @GetMapping("/api/v1/attestations/{attestationId}/audit-package")
     @Operation(summary = "Download a tar.gz audit package for an attestation")
     fun downloadForAttestation(@PathVariable attestationId: UUID): ResponseEntity<ByteArray> =

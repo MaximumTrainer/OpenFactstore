@@ -18,25 +18,25 @@ class TrailQueryController(
     private val auditService: IAuditService
 ) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v2/trails")
     @Operation(summary = "List trails, optionally filter by flowId")
     fun listTrails(@RequestParam(required = false) flowId: UUID?): ResponseEntity<List<TrailView>> =
         ResponseEntity.ok(queryHandler.listTrails(flowId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v2/trails/{id}")
     @Operation(summary = "Get trail by ID")
     fun getTrail(@PathVariable id: UUID): ResponseEntity<TrailView> =
         ResponseEntity.ok(queryHandler.getTrail(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v2/flows/{flowId}/trails")
     @Operation(summary = "List trails for a flow")
     fun listTrailsForFlow(@PathVariable flowId: UUID): ResponseEntity<List<TrailView>> =
         ResponseEntity.ok(queryHandler.listTrailsForFlow(flowId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v2/trails/{id}/audit")
     @Operation(summary = "Get audit events for a specific trail")
     fun getTrailAuditEvents(@PathVariable id: UUID): ResponseEntity<List<AuditEventResponse>> =

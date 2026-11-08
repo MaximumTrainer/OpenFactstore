@@ -17,7 +17,7 @@ import java.util.UUID
 @Tag(name = "Organisation Members", description = "Organisation membership and role management")
 class OrganisationMemberController(private val memberService: IOrganisationMemberService) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping
     @Operation(summary = "List all members of an organisation")
     fun listMembers(@PathVariable slug: String): ResponseEntity<List<MemberResponse>> =
@@ -32,7 +32,7 @@ class OrganisationMemberController(private val memberService: IOrganisationMembe
     ): ResponseEntity<MemberResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(memberService.inviteMember(slug, request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{userId}")
     @Operation(summary = "Get a specific member of an organisation")
     fun getMember(

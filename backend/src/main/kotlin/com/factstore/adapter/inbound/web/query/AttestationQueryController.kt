@@ -14,7 +14,7 @@ import java.util.UUID
 @Tag(name = "Attestations – Queries", description = "Attestation read operations (CQRS query path)")
 class AttestationQueryController(private val queryHandler: IAttestationQueryHandler) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping
     @Operation(summary = "List attestations for a trail")
     fun listAttestations(@PathVariable trailId: UUID): ResponseEntity<List<AttestationView>> =

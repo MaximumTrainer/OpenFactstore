@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*
 @Tag(name = "Compliance", description = "Compliance and chain of custody")
 class ComplianceController(private val complianceService: IComplianceService) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/artifact/{sha256Digest}")
     @Operation(summary = "Get chain of custody for an artifact")
     fun getChainOfCustody(@PathVariable sha256Digest: String): ResponseEntity<ChainOfCustodyResponse> =
