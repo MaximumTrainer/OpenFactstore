@@ -30,7 +30,8 @@ class LedgerServiceTest {
     fun setUp() {
         properties = LedgerProperties(enabled = true, type = "local")
         ledger = LocalHashChainLedger(properties)
-        service = LedgerService(ledger, properties)
+        service = LedgerService(ledger, properties,
+            com.factstore.application.observability.FailureMetrics(io.micrometer.core.instrument.simple.SimpleMeterRegistry(), "all"))
     }
 
     @Test

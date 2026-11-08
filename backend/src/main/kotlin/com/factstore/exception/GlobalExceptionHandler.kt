@@ -2,6 +2,10 @@ package com.factstore.exception
 
 import com.factstore.application.observability.FailureMetrics
 import com.factstore.config.CorrelationIdFilter
+import com.factstore.core.domain.NotificationSeverity
+import com.factstore.core.domain.TriggerEvent
+import com.factstore.core.port.inbound.INotificationService
+import com.factstore.dto.NotificationEvent
 import com.factstore.dto.ErrorResponse
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
@@ -14,7 +18,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 
 @RestControllerAdvice
 class GlobalExceptionHandler(
-    private val failureMetrics: FailureMetrics
+    private val failureMetrics: FailureMetrics,
+    private val notificationService: INotificationService
 ) {
 
     private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
@@ -29,6 +34,30 @@ class GlobalExceptionHandler(
         MDC.put(CorrelationIdFilter.MDC_STATUS, status.value().toString())
         return ResponseEntity.status(status)
             .body(ErrorResponse(status.value(), error, message, correlationId = CorrelationIdFilter.current()))
+    }
+
+    /**
+     * Raises an operational notification (#185), so an operator can route system failures to
+     * Slack or a webhook through the ordinary notification rules. The message names the
+     * correlation id and route, never the exception text. A failure to notify must not turn into a
+     * second error on top of the first.
+     */
+    private fun notifyOperators(trigger: TriggerEvent, title: String) {
+        val correlationId = CorrelationIdFilter.current() ?: "unknown"
+        val route = "${MDC.get(CorrelationIdFilter.MDC_METHOD) ?: "?"} ${MDC.get(CorrelationIdFilter.MDC_PATH) ?: "?"}"
+        try {
+            notificationService.publishEvent(
+                NotificationEvent(
+                    triggerEvent = trigger,
+                    title = title,
+                    message = "$title on $route (correlationId=$correlationId, service=${failureMetrics.service})",
+                    severity = NotificationSeverity.CRITICAL,
+                    extraPayload = mapOf("correlationId" to correlationId, "service" to failureMetrics.service)
+                )
+            )
+        } catch (e: Exception) {
+            log.warn("Could not raise {} notification [correlationId={}]: {}", trigger, correlationId, e.message)
+        }
     }
 
     @ExceptionHandler(NotFoundException::class)
@@ -77,6 +106,7 @@ class GlobalExceptionHandler(
         // out of the response, where it would tell a caller exactly what was tampered with.
         log.error("Integrity error [correlationId={}]: {}", CorrelationIdFilter.current(), ex.message, ex)
         failureMetrics.integrityFailure(FailureMetrics.IntegritySource.API)
+        notifyOperators(TriggerEvent.INTEGRITY_FAILURE, "Integrity check failed")
         return respond(ex, HttpStatus.INTERNAL_SERVER_ERROR, "Integrity Error",
             "A data integrity check failed. Quote the correlation id to an operator.")
     }
@@ -110,6 +140,7 @@ class GlobalExceptionHandler(
         // ex.message used to go straight into the body, so SQL, class names and internal state
         // reached the client. It now stays in the log, under the correlation id.
         log.error("Unexpected error [correlationId={}]: {}", CorrelationIdFilter.current(), ex.message, ex)
+        notifyOperators(TriggerEvent.SYSTEM_ERROR, "Unexpected server error")
         return respond(ex, HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
             "An unexpected error occurred. Quote the correlation id to an operator.")
     }
