@@ -90,7 +90,7 @@ narrower reading is one API call from being irrelevant.
 
 | Preset | Scopes |
 |---|---|
-| `CI_PIPELINE` | `trails:write`, `attestations:write`, `artifacts:write`, `evidence:write`, `assert:execute` |
+| `CI_PIPELINE` | `trails:write`, `attestations:write`, `artifacts:write`, `evidence:write`, `assert:execute`, `flows:read`, `trails:read` |
 | `READ_ONLY` | `flows:read`, `trails:read` |
 
 **A key created without scopes gets `READ_ONLY`, not full access.** That is the whole point:

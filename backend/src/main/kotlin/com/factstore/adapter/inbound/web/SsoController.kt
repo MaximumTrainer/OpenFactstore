@@ -31,7 +31,7 @@ class SsoController(private val ssoService: ISsoConfigService) {
     ): ResponseEntity<SsoConfigResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(ssoService.createSsoConfig(slug, request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping
     @Operation(summary = "Get SSO configuration for an organisation")
     fun getSsoConfig(@PathVariable slug: String): ResponseEntity<SsoConfigResponse> =

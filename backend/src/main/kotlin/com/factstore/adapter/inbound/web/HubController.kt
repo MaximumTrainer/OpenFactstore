@@ -24,7 +24,7 @@ class HubController(
     private val orgTemplateService: OrgTemplateService
 ) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/templates")
     @Operation(
         summary = "List flow templates",
@@ -37,7 +37,7 @@ class HubController(
     ): ResponseEntity<List<HubTemplate>> =
         ResponseEntity.ok(hubService.listTemplates(category, orgSlug))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/templates/{id}")
     @Operation(summary = "Get a flow template by ID")
     fun getTemplate(
@@ -46,7 +46,7 @@ class HubController(
     ): ResponseEntity<HubTemplate> =
         ResponseEntity.ok(hubService.getTemplate(id, orgSlug))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @PostMapping("/templates/compose")
     @Operation(
         summary = "Combine several templates into one",
@@ -58,7 +58,7 @@ class HubController(
 
     // --- Organisation templates ------------------------------------------
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/templates/custom")
     @Operation(summary = "List the templates this organisation has published")
     fun listOrgTemplates(

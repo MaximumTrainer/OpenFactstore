@@ -52,7 +52,7 @@ class FlowController(private val flowService: IFlowService) {
         return ResponseEntity.status(HttpStatus.CREATED).body(flowService.createFlow(request))
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping
     @Operation(summary = "List all flows")
     fun listFlows(
@@ -60,7 +60,7 @@ class FlowController(private val flowService: IFlowService) {
     ): ResponseEntity<List<FlowResponse>> =
         ResponseEntity.ok(flowService.listFlows(includeArchived))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}")
     @Operation(summary = "Get flow by ID")
     fun getFlow(@PathVariable id: UUID): ResponseEntity<FlowResponse> =
@@ -87,7 +87,7 @@ class FlowController(private val flowService: IFlowService) {
         return ResponseEntity.noContent().build()
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/impact")
     @Operation(
         summary = "How much existing evidence a change to this flow would affect",
@@ -97,7 +97,7 @@ class FlowController(private val flowService: IFlowService) {
     fun getFlowImpact(@PathVariable id: UUID): ResponseEntity<FlowImpactResponse> =
         ResponseEntity.ok(flowService.getFlowImpact(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/template-drift")
     @Operation(
         summary = "Whether this flow still matches the template it was created from",
@@ -107,7 +107,7 @@ class FlowController(private val flowService: IFlowService) {
     fun getTemplateDrift(@PathVariable id: UUID): ResponseEntity<TemplateDriftResponse> =
         ResponseEntity.ok(flowService.getTemplateDrift(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/template")
     @Operation(summary = "Get flow template")
     fun getFlowTemplate(@PathVariable id: UUID): ResponseEntity<FlowTemplateResponse> =

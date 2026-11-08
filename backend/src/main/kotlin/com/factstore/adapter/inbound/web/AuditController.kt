@@ -19,7 +19,7 @@ import java.util.UUID
 @Tag(name = "Audit Log", description = "Immutable audit event log")
 class AuditController(private val auditService: IAuditService) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping
     @Operation(summary = "Query audit events with optional filters and pagination")
     fun queryEvents(
@@ -37,7 +37,7 @@ class AuditController(private val auditService: IAuditService) {
         return ResponseEntity.ok(auditService.queryEvents(eventType, trailId, actor, from, to, page, size, sortDesc))
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/{id}")
     @Operation(summary = "Get a specific audit event by ID")
     fun getEvent(@PathVariable id: UUID): ResponseEntity<AuditEventResponse> =

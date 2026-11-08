@@ -22,13 +22,13 @@ class PolicyAttachmentController(private val policyAttachmentService: IPolicyAtt
     fun createAttachment(@RequestBody request: CreatePolicyAttachmentRequest): ResponseEntity<PolicyAttachmentResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(policyAttachmentService.createAttachment(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping
     @Operation(summary = "List all policy attachments")
     fun listAttachments(): ResponseEntity<List<PolicyAttachmentResponse>> =
         ResponseEntity.ok(policyAttachmentService.listAttachments())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/{id}")
     @Operation(summary = "Get policy attachment by ID")
     fun getAttachment(@PathVariable id: UUID): ResponseEntity<PolicyAttachmentResponse> =

@@ -73,7 +73,7 @@ class AttestationController(
         return ResponseEntity.status(HttpStatus.CREATED).body(attestationService.recordAttestation(trailId, request))
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping
     @Operation(summary = "List attestations for a trail")
     fun listAttestations(
@@ -122,7 +122,7 @@ class ArtifactAttestationController(private val attestationService: IAttestation
     ): ResponseEntity<AttestationResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(attestationService.recordArtifactAttestation(artifactId, request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/artifacts/{artifactId}/attestations")
     @Operation(summary = "List attestations for an artifact")
     fun listArtifactAttestations(

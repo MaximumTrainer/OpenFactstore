@@ -24,12 +24,12 @@ class ApprovalController(private val approvalService: IApprovalService) {
     ): ResponseEntity<ApprovalResponse> =
         ResponseEntity.ok(approvalService.requestApproval(request.copy(trailId = trailId)))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/trails/{trailId}/approvals")
     fun listApprovalsByTrail(@PathVariable trailId: UUID): ResponseEntity<List<ApprovalResponse>> =
         ResponseEntity.ok(approvalService.listApprovalsByTrail(trailId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/approvals/{approvalId}")
     fun getApproval(@PathVariable approvalId: UUID): ResponseEntity<ApprovalResponse> =
         ResponseEntity.ok(approvalService.getApproval(approvalId))
@@ -50,7 +50,7 @@ class ApprovalController(private val approvalService: IApprovalService) {
     ): ResponseEntity<ApprovalResponse> =
         ResponseEntity.ok(approvalService.reject(approvalId, request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/approvals")
     fun listApprovals(@RequestParam(required = false) status: ApprovalStatus?): ResponseEntity<List<ApprovalResponse>> =
         ResponseEntity.ok(

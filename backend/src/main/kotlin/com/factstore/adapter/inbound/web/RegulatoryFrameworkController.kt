@@ -24,13 +24,13 @@ class RegulatoryFrameworkController(private val complianceService: IRegulatoryCo
     fun createFramework(@RequestBody request: CreateFrameworkRequest): ResponseEntity<FrameworkResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(complianceService.createFramework(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping
     @Operation(summary = "List all regulatory frameworks")
     fun listFrameworks(): ResponseEntity<List<FrameworkResponse>> =
         ResponseEntity.ok(complianceService.listFrameworks())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/{id}")
     @Operation(summary = "Get a framework with its controls")
     fun getFramework(@PathVariable id: UUID): ResponseEntity<FrameworkResponse> =

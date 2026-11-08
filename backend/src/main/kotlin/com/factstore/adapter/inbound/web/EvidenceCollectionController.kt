@@ -31,7 +31,7 @@ class EvidenceCollectionController(
     ): ResponseEntity<CoverageReportResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(evidenceCollectionService.reportCoverage(trailId, request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/trails/{trailId}/coverage")
     @Operation(summary = "Get test coverage reports for a trail")
     fun getCoverageReports(@PathVariable trailId: UUID): ResponseEntity<List<CoverageReportResponse>> =
@@ -43,13 +43,13 @@ class EvidenceCollectionController(
     fun collectBulkEvidence(@RequestBody request: BulkEvidenceRequest): ResponseEntity<BulkEvidenceResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(evidenceCollectionService.collectBulkEvidence(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('evidence:read')")
     @GetMapping("/trails/{trailId}/evidence-summary")
     @Operation(summary = "Get evidence summary for a trail")
     fun getEvidenceSummary(@PathVariable trailId: UUID): ResponseEntity<EvidenceSummaryResponse> =
         ResponseEntity.ok(evidenceCollectionService.getEvidenceSummary(trailId))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('evidence:read')")
     @GetMapping("/evidence/gaps")
     @Operation(summary = "Identify trails with missing required evidence")
     fun getEvidenceGaps(): ResponseEntity<EvidenceGapsResponse> =

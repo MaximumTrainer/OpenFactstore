@@ -63,7 +63,7 @@ class EnvironmentController(
         return ResponseEntity.status(HttpStatus.CREATED).body(environmentService.createEnvironment(request))
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping
     @Operation(summary = "List all environments")
     fun listEnvironments(
@@ -72,13 +72,13 @@ class EnvironmentController(
     ): ResponseEntity<PageResponse<EnvironmentResponse>> =
         ResponseEntity.ok(environmentService.listEnvironments(page, size))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/live-artifacts")
     @Operation(summary = "Get live artifacts grouped by image name across all environments")
     fun getLiveArtifactsByRepo(): ResponseEntity<List<LiveArtifactByRepoResponse>> =
         ResponseEntity.ok(environmentService.getLiveArtifactsByRepo())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}")
     @Operation(summary = "Get environment by ID")
     fun getEnvironment(@PathVariable id: UUID): ResponseEntity<EnvironmentResponse> =
@@ -130,19 +130,19 @@ class EnvironmentController(
         return ResponseEntity.status(HttpStatus.CREATED).body(environmentService.recordSnapshot(id, request))
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/snapshots")
     @Operation(summary = "List all snapshots for an environment")
     fun listSnapshots(@PathVariable id: UUID): ResponseEntity<List<EnvironmentSnapshotResponse>> =
         ResponseEntity.ok(environmentService.listSnapshots(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/snapshots/latest")
     @Operation(summary = "Get the most recent snapshot for an environment")
     fun getLatestSnapshot(@PathVariable id: UUID): ResponseEntity<EnvironmentSnapshotResponse> =
         ResponseEntity.ok(environmentService.getLatestSnapshot(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/snapshots/{snapshotIndex}")
     @Operation(summary = "Get a specific snapshot by index")
     fun getSnapshot(
@@ -151,7 +151,7 @@ class EnvironmentController(
     ): ResponseEntity<EnvironmentSnapshotResponse> =
         ResponseEntity.ok(environmentService.getSnapshot(id, snapshotIndex))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/diff")
     @Operation(summary = "Diff two snapshots of an environment")
     fun diffSnapshots(
@@ -170,25 +170,25 @@ class EnvironmentController(
     ): ResponseEntity<BaselineResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(environmentService.createBaseline(id, request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/baselines/current")
     @Operation(summary = "Get the current active baseline for an environment")
     fun getCurrentBaseline(@PathVariable id: UUID): ResponseEntity<BaselineResponse> =
         ResponseEntity.ok(environmentService.getCurrentBaseline(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/drift")
     @Operation(summary = "Check drift between current snapshot and baseline")
     fun checkDrift(@PathVariable id: UUID): ResponseEntity<DriftReportResponse> =
         ResponseEntity.ok(environmentService.checkDrift(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/drift/history")
     @Operation(summary = "List all drift reports for an environment")
     fun listDriftHistory(@PathVariable id: UUID): ResponseEntity<List<DriftReportResponse>> =
         ResponseEntity.ok(environmentService.listDriftHistory(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}/audit-log/csv")
     @Operation(summary = "Export the audit log for an environment as a CSV file")
     fun exportAuditLogCsv(@PathVariable id: UUID): ResponseEntity<String> {

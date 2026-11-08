@@ -24,13 +24,13 @@ class CustomAttestationTypeController(
     fun create(@RequestBody request: CreateCustomAttestationTypeRequest): ResponseEntity<CustomAttestationTypeResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(service.createType(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping
     @Operation(summary = "List custom attestation types")
     fun list(@RequestParam(defaultValue = "false") includeArchived: Boolean): ResponseEntity<List<CustomAttestationTypeResponse>> =
         ResponseEntity.ok(service.listTypes(includeArchived))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}")
     @Operation(summary = "Get custom attestation type by ID")
     fun get(@PathVariable id: UUID): ResponseEntity<CustomAttestationTypeResponse> =

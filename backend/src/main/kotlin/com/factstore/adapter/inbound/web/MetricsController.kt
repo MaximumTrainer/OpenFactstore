@@ -22,7 +22,7 @@ class MetricsController(
     private val deliveryMetricsService: DeliveryMetricsService
 ) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/delivery")
     @Operation(
         summary = "Delivery metrics: DORA where the data supports it, gates throughout",
@@ -34,12 +34,12 @@ class MetricsController(
     ): ResponseEntity<DeliveryMetricsResponse> =
         ResponseEntity.ok(deliveryMetricsService.getDeliveryMetrics(days))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/compliance")
     fun getComplianceMetrics(): ResponseEntity<ComplianceMetricsSummary> =
         ResponseEntity.ok(complianceMetricsService.getComplianceMetrics())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/security")
     fun getSecurityMetrics(): ResponseEntity<SecurityMetricsSummary> =
         ResponseEntity.ok(complianceMetricsService.getSecurityMetrics())

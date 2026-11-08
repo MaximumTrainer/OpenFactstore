@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*
 @Tag(name = "Dashboard", description = "Aggregate dashboard statistics")
 class DashboardController(private val dashboardService: IDashboardService) {
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/stats")
     @Operation(summary = "Get aggregate dashboard statistics")
     fun getStats(): ResponseEntity<DashboardStatsResponse> =

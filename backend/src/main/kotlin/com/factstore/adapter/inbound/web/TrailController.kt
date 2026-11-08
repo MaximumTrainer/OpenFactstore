@@ -73,7 +73,7 @@ class TrailController(
         return ResponseEntity.status(status).body(result.trail)
     }
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/trails/lookup")
     @Operation(
         summary = "Resolve a trail without knowing its UUID",
@@ -89,7 +89,7 @@ class TrailController(
     ): ResponseEntity<TrailResponse> =
         ResponseEntity.ok(trailService.lookupTrail(flowId, externalId, name, gitCommitSha))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/trails")
     @Operation(summary = "List trails, optionally filter by flowId; archived trails are hidden by default")
     fun listTrails(
@@ -98,13 +98,13 @@ class TrailController(
     ): ResponseEntity<List<TrailResponse>> =
         ResponseEntity.ok(trailService.listTrails(flowId, includeArchived))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/trails/{id}")
     @Operation(summary = "Get trail by ID")
     fun getTrail(@PathVariable id: UUID): ResponseEntity<TrailResponse> =
         ResponseEntity.ok(trailService.getTrail(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/flows/{flowId}/trails")
     @Operation(summary = "List trails for a flow; archived trails are hidden by default")
     fun listTrailsForFlow(
@@ -131,7 +131,7 @@ class TrailController(
     fun unarchiveTrail(@PathVariable id: UUID): ResponseEntity<TrailResponse> =
         ResponseEntity.ok(trailCleanupService.unarchiveTrail(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/trails/{id}/cascade")
     @Operation(summary = "What deleting this trail would remove")
     fun getTrailCascade(@PathVariable id: UUID): ResponseEntity<TrailCascadeCounts> =
@@ -158,7 +158,7 @@ class TrailController(
     fun cleanupTrails(@RequestBody request: TrailCleanupRequest): ResponseEntity<TrailCleanupResponse> =
         ResponseEntity.ok(trailCleanupService.cleanup(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/trails/{id}/audit")
     @Operation(summary = "Get audit events for a specific trail")
     fun getTrailAuditEvents(@PathVariable id: UUID): ResponseEntity<List<AuditEventResponse>> =

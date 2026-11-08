@@ -65,7 +65,10 @@ enum class Permission(val scope: String) {
          * expertise (#155 FR-3.5).
          */
         val CI_PIPELINE_PRESET: Set<Permission> = setOf(
-            TRAILS_WRITE, ATTESTATIONS_WRITE, ARTIFACTS_WRITE, EVIDENCE_WRITE, ASSERT_EXECUTE
+            TRAILS_WRITE, ATTESTATIONS_WRITE, ARTIFACTS_WRITE, EVIDENCE_WRITE, ASSERT_EXECUTE,
+            // A pipeline reads as well as writes: the CLI and setup-factstore look up flows by
+            // name, trails by commit, gate results and environments (#206).
+            FLOWS_READ, TRAILS_READ
         )
 
         /** What a credential gets when none is requested: read-only, never full access. */

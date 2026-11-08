@@ -17,17 +17,17 @@ class SecurityScanController(private val securityScanService: ISecurityScanServi
     fun recordScan(@PathVariable trailId: UUID, @RequestBody request: RecordSecurityScanRequest): SecurityScanResponse =
         securityScanService.recordScan(trailId, request)
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/trails/{trailId}/security-scans")
     fun listScans(@PathVariable trailId: UUID): List<SecurityScanResponse> =
         securityScanService.listScans(trailId)
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/security-scans/{id}")
     fun getScan(@PathVariable id: UUID): SecurityScanResponse =
         securityScanService.getScan(id)
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/security-scans/summary")
     fun getSummary(): SecurityScanSummaryResponse =
         securityScanService.getSummary()
@@ -38,7 +38,7 @@ class SecurityScanController(private val securityScanService: ISecurityScanServi
     fun setThresholds(@PathVariable flowId: UUID, @RequestBody request: SetSecurityThresholdRequest): SecurityThresholdResponse =
         securityScanService.setThresholds(flowId, request)
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/flows/{flowId}/security-thresholds")
     fun getThresholds(@PathVariable flowId: UUID): SecurityThresholdResponse =
         securityScanService.getThresholds(flowId)

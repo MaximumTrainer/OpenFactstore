@@ -20,7 +20,7 @@ class RegulatoryComplianceController(private val complianceService: IRegulatoryC
     fun createMapping(@RequestBody request: CreateMappingRequest): ResponseEntity<MappingResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(complianceService.createMapping(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/api/v1/compliance/mappings")
     @Operation(summary = "List all compliance mappings")
     fun listMappings(): ResponseEntity<List<MappingResponse>> =
@@ -32,19 +32,19 @@ class RegulatoryComplianceController(private val complianceService: IRegulatoryC
     fun assessTrail(@RequestBody request: AssessTrailRequest): ResponseEntity<AssessmentResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(complianceService.assessTrail(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/compliance/assessments")
     @Operation(summary = "List all compliance assessments")
     fun listAssessments(): ResponseEntity<List<AssessmentResponse>> =
         ResponseEntity.ok(complianceService.listAssessments())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/compliance/assessments/{id}")
     @Operation(summary = "Get a compliance assessment by ID")
     fun getAssessment(@PathVariable id: UUID): ResponseEntity<AssessmentResponse> =
         ResponseEntity.ok(complianceService.getAssessment(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/reports/regulatory/{frameworkId}")
     @Operation(summary = "Generate a regulatory report for a framework")
     fun generateReport(@PathVariable frameworkId: UUID): ResponseEntity<RegulatoryReportResponse> =

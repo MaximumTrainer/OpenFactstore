@@ -30,13 +30,13 @@ class OpaPolicyController(private val opaService: IOpaService) {
     fun uploadBundle(@RequestBody request: UploadBundleRequest): ResponseEntity<BundleResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(opaService.uploadBundle(request))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/bundles")
     @Operation(summary = "List all policy bundles")
     fun listBundles(): ResponseEntity<List<BundleResponse>> =
         ResponseEntity.ok(opaService.listBundles())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/bundles/{id}")
     @Operation(summary = "Get policy bundle by ID")
     fun getBundle(@PathVariable id: UUID): ResponseEntity<BundleResponse> =
@@ -48,13 +48,13 @@ class OpaPolicyController(private val opaService: IOpaService) {
     fun activateBundle(@PathVariable id: UUID): ResponseEntity<BundleResponse> =
         ResponseEntity.ok(opaService.activateBundle(id))
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/decisions")
     @Operation(summary = "List recent policy decisions (audit trail)")
     fun listDecisions(): ResponseEntity<List<PolicyDecisionResponse>> =
         ResponseEntity.ok(opaService.listDecisions())
 
-    @PreAuthorize("@authz.authenticated()")
+    @PreAuthorize("@authz.has('policies:read')")
     @GetMapping("/decisions/{id}")
     @Operation(summary = "Get policy decision details")
     fun getDecision(@PathVariable id: UUID): ResponseEntity<PolicyDecisionResponse> =
