@@ -68,6 +68,15 @@ export const revokeSession = (sessionId: string) => client.delete<void>(`/auth/s
 export const switchOrganisation = (orgSlug: string) =>
   client.post<AuthenticatedPrincipal>('/auth/organisation', { orgSlug })
 
+/**
+ * Dev sign-in (#156 FR-8.4): local development only. The server answers 404 unless
+ * `security.dev-login.enabled=true`, so the login page offers it only when this succeeds.
+ */
+export const getDevLoginAvailability = () => client.get<{ enabled: boolean }>('/auth/dev-login')
+
+export const devSignIn = (request: { email: string; role?: MemberRole; orgSlug?: string }) =>
+  client.post<{ email: string; orgSlug: string; role: MemberRole; expiresAt: string }>('/auth/dev-login', request)
+
 /** Starts an organisation's OIDC flow; the browser is redirected to the returned URL. */
 export const getSsoLoginUrl = (orgSlug: string, redirectUri: string) =>
   client.get<{ loginUrl: string; state: string }>(
