@@ -22,4 +22,7 @@ interface IEventStore {
 
     /** Stream events whose sequence number is greater than [afterSequence] (for incremental replay). */
     fun findAfterSequence(afterSequence: Long): List<EventLogEntry>
+
+    /** Retrieve the events with the given sequence numbers, ordered by sequence number. */
+    fun findBySequenceNumbers(sequenceNumbers: Collection<Long>): List<EventLogEntry>
 }

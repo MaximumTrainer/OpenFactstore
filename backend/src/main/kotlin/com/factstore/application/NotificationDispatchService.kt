@@ -1,5 +1,6 @@
 package com.factstore.application
 
+import com.factstore.application.observability.FailureMetrics
 import com.factstore.core.domain.NotificationDelivery
 import com.factstore.core.domain.NotificationDeliveryStatus
 import com.factstore.core.domain.NotificationRule
@@ -20,6 +21,7 @@ class NotificationDispatchService(
     private val notificationDeliveryRepository: INotificationDeliveryRepository,
     private val channels: List<INotificationChannel>,
     private val objectMapper: ObjectMapper,
+    private val failureMetrics: FailureMetrics,
     private val baseBackoffSeconds: Long = BASE_BACKOFF_SECONDS
 ) {
 
@@ -69,6 +71,7 @@ class NotificationDispatchService(
 
         log.error("All $maxAttempts attempts failed for rule=${rule.id}. Dead-lettering delivery.")
         saveDelivery(rule, event, NotificationDeliveryStatus.FAILED, maxAttempts, lastError)
+        failureMetrics.notificationDeadLetter(rule.channelType.name)
     }
 
     fun saveDelivery(

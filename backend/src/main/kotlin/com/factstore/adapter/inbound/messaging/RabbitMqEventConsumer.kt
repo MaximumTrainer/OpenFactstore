@@ -1,6 +1,7 @@
 package com.factstore.adapter.inbound.messaging
 
 import com.factstore.application.ReadModelProjector
+import com.factstore.application.observability.ProjectionFailureRecorder
 import com.factstore.config.RabbitMqConfig
 import com.factstore.core.domain.EventLogEntry
 import org.slf4j.LoggerFactory
@@ -21,23 +22,29 @@ import org.springframework.stereotype.Component
 @Component
 @ConditionalOnProperty(name = ["factstore.cqrs.role"], havingValue = "query")
 class RabbitMqEventConsumer(
-    private val projector: ReadModelProjector
+    private val projector: ReadModelProjector,
+    private val failureRecorder: ProjectionFailureRecorder
 ) {
 
     private val log = LoggerFactory.getLogger(RabbitMqEventConsumer::class.java)
 
+    /**
+     * A message the projector cannot apply is not acknowledged as success (#185): it is recorded
+     * in `projection_failures`, with its payload, and counted, and only then acknowledged. A
+     * poison message is therefore neither lost nor redelivered forever. If recording itself fails,
+     * the exception propagates and the broker redelivers.
+     */
     @RabbitListener(queues = [RabbitMqConfig.PROJECTION_QUEUE_NAME])
     fun onEvent(entry: EventLogEntry) {
-        try {
-            log.info("Received domain event from RabbitMQ: type={} seq={}", entry.eventType, entry.sequenceNumber)
-            val projected = projector.project(entry.eventType, entry.payload)
-            if (!projected) {
-                log.error("Failed to project event type={} seq={} — message acknowledged but data may be stale. " +
-                        "Replay from the event store to recover.", entry.eventType, entry.sequenceNumber)
-            }
+        log.info("Received domain event from RabbitMQ: type={} seq={}", entry.eventType, entry.sequenceNumber)
+        val projected = try {
+            projector.project(entry.eventType, entry.payload)
         } catch (e: Exception) {
-            log.error("Unexpected error processing domain event: {}", e.message, e)
-            throw e
+            failureRecorder.record(entry, "projector threw ${e::class.simpleName}: ${e.message}")
+            return
+        }
+        if (!projected) {
+            failureRecorder.record(entry, "projector could not apply the event (unknown type or unreadable payload)")
         }
     }
 }

@@ -35,6 +35,22 @@ Interactive documentation is also available at **[http://localhost:8080/swagger-
 | `422 Unprocessable Entity` | Business rule violation |
 | `500 Internal Server Error` | Unexpected server error |
 
+### Error body and correlation id
+
+Every response carries an `X-Request-Id` header. Send your own (letters, digits, `.`, `_`, `:`, `-`, up to 128 characters), for example a CI run id, and it is used as-is; otherwise one is generated. Error responses repeat it in the body:
+
+```json
+{
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "An unexpected error occurred. Quote the correlation id to an operator.",
+  "timestamp": "2026-11-08T12:00:00Z",
+  "correlationId": "3f1c2a9e-5b7d-4c1e-9a2f-8d6e4b0c1a77"
+}
+```
+
+A `5xx` body never contains the exception's own text, class names or SQL; those are in the server log under the same correlation id. Quote the id when reporting a failure.
+
 ---
 
 ## Endpoints by Resource

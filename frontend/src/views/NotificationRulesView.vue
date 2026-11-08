@@ -124,6 +124,13 @@
           <h2 class="text-lg font-semibold text-gray-900">Delivery History — {{ selectedRule?.name }}</h2>
           <button @click="showDeliveriesModal = false" class="text-gray-400 hover:text-gray-600 text-xl font-bold">×</button>
         </div>
+        <p
+          v-if="failedDeliveryCount > 0"
+          data-testid="failed-delivery-count"
+          class="mb-3 px-3 py-2 rounded-md bg-red-50 border border-red-200 text-sm text-red-700"
+        >
+          {{ failedDeliveryCount }} failed {{ failedDeliveryCount === 1 ? 'delivery' : 'deliveries' }}: retries were exhausted and the notification was not delivered.
+        </p>
         <div v-if="deliveries.length === 0" class="text-center py-6 text-gray-400 text-sm">No deliveries yet.</div>
         <div v-else class="overflow-y-auto max-h-96">
           <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -172,6 +179,8 @@ const showCreateModal = ref(false)
 const showDeliveriesModal = ref(false)
 const selectedRule = ref<NotificationRule | null>(null)
 const deliveries = ref<NotificationDelivery[]>([])
+// Dead-lettered deliveries (#185), surfaced rather than left for someone to spot in the table.
+const failedDeliveryCount = computed(() => deliveries.value.filter(d => d.status === 'FAILED').length)
 const webhookUrl = ref('')
 const statusMessage = ref('')
 const statusError = ref(false)
@@ -188,7 +197,10 @@ const triggerEvents: TriggerEvent[] = [
   'DRIFT_DETECTED',
   'APPROVAL_REQUIRED',
   'TRAIL_NON_COMPLIANT',
-  'APPROVAL_REJECTED'
+  'APPROVAL_REJECTED',
+  // Operational triggers (#185): route system failures through the same rules.
+  'INTEGRITY_FAILURE',
+  'SYSTEM_ERROR'
 ]
 
 const form = ref<{

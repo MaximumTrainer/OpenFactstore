@@ -38,6 +38,9 @@ class InMemoryEventStore : IEventStore {
     override fun findAfterSequence(afterSequence: Long): List<EventLogEntry> =
         log.filter { it.sequenceNumber > afterSequence }.sortedBy { it.sequenceNumber }
 
+    override fun findBySequenceNumbers(sequenceNumbers: Collection<Long>): List<EventLogEntry> =
+        log.filter { it.sequenceNumber in sequenceNumbers }.sortedBy { it.sequenceNumber }
+
     /** Helper for tests to inspect events. */
     fun events(): List<EventLogEntry> = log.toList()
 

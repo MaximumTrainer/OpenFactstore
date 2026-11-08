@@ -661,6 +661,9 @@ export type TriggerEvent =
   | 'APPROVAL_REQUIRED'
   | 'TRAIL_NON_COMPLIANT'
   | 'APPROVAL_REJECTED'
+  // Operational triggers (#185)
+  | 'INTEGRITY_FAILURE'
+  | 'SYSTEM_ERROR'
 
 export type ChannelType = 'SLACK' | 'WEBHOOK' | 'IN_APP'
 

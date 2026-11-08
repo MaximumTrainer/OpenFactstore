@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging for Factstore (#185).
+
+  Every environment logs one JSON object per line (FactstoreJsonLogFormatter), carrying the
+  correlation id and the service role, unless factstore.logging.format is set to "plain". The
+  local and dev profiles, and the test suite, choose plain text for readability.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="FACTSTORE_LOG_FORMAT" source="factstore.logging.format" defaultValue="json"/>
+
+    <appender name="CONSOLE_json" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>com.factstore.config.logging.FactstoreJsonLogFormatter</format>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="CONSOLE_plain" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>${CONSOLE_LOG_CHARSET}</charset>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE_${FACTSTORE_LOG_FORMAT}"/>
+    </root>
+</configuration>

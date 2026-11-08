@@ -1,7 +1,14 @@
 package com.factstore.exception
 
+import com.factstore.application.observability.FailureMetrics
+import com.factstore.config.CorrelationIdFilter
+import com.factstore.core.domain.NotificationSeverity
+import com.factstore.core.domain.TriggerEvent
+import com.factstore.core.port.inbound.INotificationService
+import com.factstore.dto.NotificationEvent
 import com.factstore.dto.ErrorResponse
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -10,29 +17,65 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
 @RestControllerAdvice
-class GlobalExceptionHandler {
+class GlobalExceptionHandler(
+    private val failureMetrics: FailureMetrics,
+    private val notificationService: INotificationService
+) {
 
     private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
+
+    /**
+     * Every error response carries the correlation id, and every handled error is counted (#185).
+     * A 5xx body never carries the exception's own text: that stays in the log line, which the
+     * same correlation id finds.
+     */
+    private fun respond(ex: Throwable, status: HttpStatus, error: String, message: String): ResponseEntity<ErrorResponse> {
+        failureMetrics.error(ex, status.value())
+        MDC.put(CorrelationIdFilter.MDC_STATUS, status.value().toString())
+        return ResponseEntity.status(status)
+            .body(ErrorResponse(status.value(), error, message, correlationId = CorrelationIdFilter.current()))
+    }
+
+    /**
+     * Raises an operational notification (#185), so an operator can route system failures to
+     * Slack or a webhook through the ordinary notification rules. The message names the
+     * correlation id and route, never the exception text. A failure to notify must not turn into a
+     * second error on top of the first.
+     */
+    private fun notifyOperators(trigger: TriggerEvent, title: String) {
+        val correlationId = CorrelationIdFilter.current() ?: "unknown"
+        val route = "${MDC.get(CorrelationIdFilter.MDC_METHOD) ?: "?"} ${MDC.get(CorrelationIdFilter.MDC_PATH) ?: "?"}"
+        try {
+            notificationService.publishEvent(
+                NotificationEvent(
+                    triggerEvent = trigger,
+                    title = title,
+                    message = "$title on $route (correlationId=$correlationId, service=${failureMetrics.service})",
+                    severity = NotificationSeverity.CRITICAL,
+                    extraPayload = mapOf("correlationId" to correlationId, "service" to failureMetrics.service)
+                )
+            )
+        } catch (e: Exception) {
+            log.warn("Could not raise {} notification [correlationId={}]: {}", trigger, correlationId, e.message)
+        }
+    }
 
     @ExceptionHandler(NotFoundException::class)
     fun handleNotFound(ex: NotFoundException): ResponseEntity<ErrorResponse> {
         log.warn("Not found: ${ex.message}")
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(ErrorResponse(404, "Not Found", ex.message ?: "Resource not found"))
+        return respond(ex, HttpStatus.NOT_FOUND, "Not Found", ex.message ?: "Resource not found")
     }
 
     @ExceptionHandler(ConflictException::class)
     fun handleConflict(ex: ConflictException): ResponseEntity<ErrorResponse> {
         log.warn("Conflict: ${ex.message}")
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-            .body(ErrorResponse(409, "Conflict", ex.message ?: "Conflict"))
+        return respond(ex, HttpStatus.CONFLICT, "Conflict", ex.message ?: "Conflict")
     }
 
     @ExceptionHandler(ForbiddenException::class)
     fun handleForbidden(ex: ForbiddenException): ResponseEntity<ErrorResponse> {
         log.warn("Forbidden: ${ex.message}")
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-            .body(ErrorResponse(403, "Forbidden", ex.message ?: "Not permitted"))
+        return respond(ex, HttpStatus.FORBIDDEN, "Forbidden", ex.message ?: "Not permitted")
     }
 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException::class)
@@ -42,36 +85,36 @@ class GlobalExceptionHandler {
         // Raised by @PreAuthorize. Reported as 403 rather than 500, and without echoing the
         // expression that failed.
         log.warn("Access denied: ${ex.message}")
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-            .body(ErrorResponse(403, "Forbidden", "You do not have permission to perform this action"))
+        return respond(ex, HttpStatus.FORBIDDEN, "Forbidden", "You do not have permission to perform this action")
     }
 
     @ExceptionHandler(HttpMessageNotReadableException::class)
     fun handleMessageNotReadable(ex: HttpMessageNotReadableException): ResponseEntity<ErrorResponse> {
         log.warn("Malformed request body: ${ex.message}")
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(ErrorResponse(400, "Bad Request", "Malformed or unreadable request body"))
+        return respond(ex, HttpStatus.BAD_REQUEST, "Bad Request", "Malformed or unreadable request body")
     }
 
     @ExceptionHandler(BadRequestException::class)
     fun handleBadRequest(ex: BadRequestException): ResponseEntity<ErrorResponse> {
         log.warn("Bad request: ${ex.message}")
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(ErrorResponse(400, "Bad Request", ex.message ?: "Bad request"))
+        return respond(ex, HttpStatus.BAD_REQUEST, "Bad Request", ex.message ?: "Bad request")
     }
 
     @ExceptionHandler(IntegrityException::class)
     fun handleIntegrity(ex: IntegrityException): ResponseEntity<ErrorResponse> {
-        log.error("Integrity error: ${ex.message}")
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ErrorResponse(500, "Integrity Error", ex.message ?: "Data integrity error"))
+        // The most serious signal this product produces: counted so it pages, and its detail kept
+        // out of the response, where it would tell a caller exactly what was tampered with.
+        log.error("Integrity error [correlationId={}]: {}", CorrelationIdFilter.current(), ex.message, ex)
+        failureMetrics.integrityFailure(FailureMetrics.IntegritySource.API)
+        notifyOperators(TriggerEvent.INTEGRITY_FAILURE, "Integrity check failed")
+        return respond(ex, HttpStatus.INTERNAL_SERVER_ERROR, "Integrity Error",
+            "A data integrity check failed. Quote the correlation id to an operator.")
     }
 
     @ExceptionHandler(PullRequestNotFoundException::class)
     fun handlePrNotFound(ex: PullRequestNotFoundException): ResponseEntity<ErrorResponse> {
         log.warn("Pull request not found: ${ex.message}")
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-            .body(ErrorResponse(422, "Unprocessable Entity", ex.message ?: "No pull request found for commit"))
+        return respond(ex, HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable Entity", ex.message ?: "No pull request found for commit")
     }
 
     /**
@@ -89,14 +132,24 @@ class GlobalExceptionHandler {
             "${it.field}: ${it.defaultMessage ?: "is invalid"}"
         }.ifBlank { "Request validation failed" }
         log.warn("Validation failed: $details")
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-            .body(ErrorResponse(400, "Bad Request", details))
+        return respond(ex, HttpStatus.BAD_REQUEST, "Bad Request", details)
     }
 
     @ExceptionHandler(Exception::class)
     fun handleGeneral(ex: Exception): ResponseEntity<ErrorResponse> {
-        log.error("Unexpected error", ex)
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ErrorResponse(500, "Internal Server Error", ex.message ?: "An unexpected error occurred"))
+        // Spring MVC's own client errors (unknown route, wrong method, missing parameter, wrong
+        // media type) carry their status. Without this they fell into the 500 branch below, so
+        // a scanner probing for paths would page on-call and fire SYSTEM_ERROR (#185).
+        if (ex is org.springframework.web.ErrorResponse && ex.statusCode.is4xxClientError) {
+            val status = HttpStatus.valueOf(ex.statusCode.value())
+            log.warn("Client error {} on request: {}", status.value(), ex.message)
+            return respond(ex, status, status.reasonPhrase, ex.body.detail ?: status.reasonPhrase)
+        }
+        // ex.message used to go straight into the body, so SQL, class names and internal state
+        // reached the client. It now stays in the log, under the correlation id.
+        log.error("Unexpected error [correlationId={}]: {}", CorrelationIdFilter.current(), ex.message, ex)
+        notifyOperators(TriggerEvent.SYSTEM_ERROR, "Unexpected server error")
+        return respond(ex, HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
+            "An unexpected error occurred. Quote the correlation id to an operator.")
     }
 }
