@@ -59,6 +59,8 @@ Reads are deliberately `@authz.authenticated()` for now rather than per-resource
 | `GET` | `/api/v1/audit` | `@authz.authenticated()` |
 | `GET` | `/api/v1/audit/{id}` | `@authz.authenticated()` |
 | `GET` | `/api/v1/auth/config` | `public: a client must learn whether sign-in is required before it has a credential` |
+| `GET` | `/api/v1/auth/dev-login` | `public: development sign-in; off unless enabled, loopback only, refused under prod` |
+| `POST` | `/api/v1/auth/dev-login` | `public: development sign-in; off unless enabled, loopback only, refused under prod` |
 | `POST` | `/api/v1/auth/logout` | `public: must clear the cookie even for an expired or revoked session` |
 | `GET` | `/api/v1/auth/me` | `@authz.authenticated()` |
 | `POST` | `/api/v1/auth/organisation` | `@authz.authenticated()` |
