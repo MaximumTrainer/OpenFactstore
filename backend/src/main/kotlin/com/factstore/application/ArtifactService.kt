@@ -22,10 +22,16 @@ class ArtifactService(
     private val artifactRepository: IArtifactRepository,
     private val trailRepository: ITrailRepository,
     private val auditService: IAuditService,
-    private val buildProvenanceRepository: IBuildProvenanceRepository
+    private val buildProvenanceRepository: IBuildProvenanceRepository,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
+    private val ownership: OrgOwnership? = null
 ) : IArtifactService {
 
     private val log = LoggerFactory.getLogger(ArtifactService::class.java)
+
+    // An artifact belongs to its own organisation, or its trail's (#207).
+    private fun visible(artifact: com.factstore.core.domain.Artifact): Boolean =
+        tenantScope.visible(artifact.orgSlug ?: ownership?.ofTrail(artifact.trailId))
 
     override fun reportArtifact(trailId: UUID, request: CreateArtifactRequest): ArtifactResponse {
         if (!trailRepository.existsById(trailId)) throw NotFoundException("Trail not found: $trailId")
@@ -72,7 +78,7 @@ class ArtifactService(
 
     @Transactional(readOnly = true)
     override fun findBySha256(sha256Digest: String): List<ArtifactResponse> {
-        val artifacts = artifactRepository.findBySha256Digest(sha256Digest)
+        val artifacts = artifactRepository.findBySha256Digest(sha256Digest).filter(::visible)
         val provenanceByArtifactId = buildProvenanceRepository
             .findByArtifactIdIn(artifacts.map { it.id })
             .associateBy { it.artifactId }
@@ -85,7 +91,7 @@ class ArtifactService(
     override fun searchByCommitSha(commitSha: String): List<ArtifactResponse> {
         val trails = trailRepository.findByGitCommitSha(commitSha)
         if (trails.isEmpty()) return emptyList()
-        val artifacts = artifactRepository.findByTrailIdIn(trails.map { it.id })
+        val artifacts = artifactRepository.findByTrailIdIn(trails.map { it.id }).filter(::visible)
         val provenanceByArtifactId = buildProvenanceRepository
             .findByArtifactIdIn(artifacts.map { it.id })
             .associateBy { it.artifactId }

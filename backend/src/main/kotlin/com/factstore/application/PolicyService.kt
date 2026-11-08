@@ -21,10 +21,15 @@ import java.util.UUID
 @Transactional
 class PolicyService(
     private val policyRepository: IPolicyRepository,
-    private val policyVersionRepository: IPolicyVersionRepository
+    private val policyVersionRepository: IPolicyVersionRepository,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : IPolicyService {
 
     private val log = LoggerFactory.getLogger(PolicyService::class.java)
+
+    /** Another organisation's policy is "not found" (#207). */
+    private fun requireVisiblePolicy(id: UUID): Policy =
+        tenantScope.require(policyRepository.findById(id), { it.orgSlug }) { "Policy not found: $id" }
 
     override fun createPolicy(request: CreatePolicyRequest): PolicyResponse {
         if (policyRepository.existsByName(request.name)) {
@@ -47,14 +52,14 @@ class PolicyService(
 
     @Transactional(readOnly = true)
     override fun listPolicies(): List<PolicyResponse> =
-        policyRepository.findAll().map { it.toResponse() }
+        policyRepository.findAll().filter { tenantScope.visible(it.orgSlug) }.map { it.toResponse() }
 
     @Transactional(readOnly = true)
     override fun getPolicy(id: UUID): PolicyResponse =
-        (policyRepository.findById(id) ?: throw NotFoundException("Policy not found: $id")).toResponse()
+        requireVisiblePolicy(id).toResponse()
 
     override fun updatePolicy(id: UUID, request: UpdatePolicyRequest): PolicyResponse {
-        val policy = policyRepository.findById(id) ?: throw NotFoundException("Policy not found: $id")
+        val policy = requireVisiblePolicy(id)
         request.policyYaml?.let { PolicyYamlValidator.validate(it) }
 
         // Snapshot current state before updating
@@ -97,7 +102,7 @@ class PolicyService(
 
     @Transactional(readOnly = true)
     override fun listPolicyVersions(policyId: UUID): List<PolicyVersionResponse> {
-        if (!policyRepository.existsById(policyId)) throw NotFoundException("Policy not found: $policyId")
+        requireVisiblePolicy(policyId)
         return policyVersionRepository.findAllByPolicyId(policyId).map { it.toVersionResponse() }
     }
 }

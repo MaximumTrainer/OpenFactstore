@@ -44,7 +44,9 @@ class DeploymentPolicyService(
     private val allowlistService: IEnvironmentAllowlistService,
     private val meterRegistry: MeterRegistry,
     private val eventPublisher: IEventPublisher,
-    private val signatureVerifier: ISignatureVerifier
+    private val signatureVerifier: ISignatureVerifier,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
+    private val ownership: OrgOwnership? = null
 ) : IDeploymentPolicyService {
 
     private val log = LoggerFactory.getLogger(DeploymentPolicyService::class.java)
@@ -221,7 +223,10 @@ class DeploymentPolicyService(
     }
 
     override fun listGateResults(): List<GateEvaluateResponse> =
-        gateResultRepository.findAll().map { it.toResponse(0) }
+        // A gate result belongs to its environment's organisation (#207).
+        gateResultRepository.findAll()
+            .filter { tenantScope.visible(ownership?.ofEnvironment(it.environmentId)) }
+            .map { it.toResponse(0) }
 
     private fun DeploymentPolicy.toResponse() = DeploymentPolicyResponse(
         id = id,

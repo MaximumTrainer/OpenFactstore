@@ -92,6 +92,7 @@ class FlowService(
             return PageResponse(items = items, page = page, size = size, totalItems = visible.size.toLong(), totalPages = totalPages)
         }
         val pageResult = flowRepository.findAll(PageRequest.of(page, size))
+        tenantScope.observe(pageResult.content.map { it.orgSlug })
         return PageResponse(
             items = pageResult.content.map { it.toResponse() },
             page = pageResult.number,

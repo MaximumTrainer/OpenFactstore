@@ -21,10 +21,19 @@ import java.util.UUID
 class AuditEventService(
     private val auditEventRepository: IAuditEventRepository,
     private val environmentRepository: IEnvironmentRepository,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
+    private val ownership: OrgOwnership? = null
 ) : IAuditService {
 
     private val log = LoggerFactory.getLogger(AuditEventService::class.java)
+
+    /**
+     * An audit event belongs to its trail's organisation, else its environment's. One tied to
+     * neither (a key created, a failed sign-in) is visible only to unbound callers (#207).
+     */
+    private fun orgOf(event: com.factstore.core.domain.AuditEvent): String? =
+        ownership?.ofTrail(event.trailId) ?: ownership?.ofEnvironment(event.environmentId)
 
     override fun record(
         eventType: AuditEventType,
@@ -50,7 +59,7 @@ class AuditEventService(
 
     @Transactional(readOnly = true)
     override fun getEvent(id: UUID): AuditEventResponse =
-        (auditEventRepository.findById(id) ?: throw NotFoundException("AuditEvent not found: $id")).toResponse()
+        tenantScope.require(auditEventRepository.findById(id), ::orgOf) { "AuditEvent not found: $id" }.toResponse()
 
     @Transactional(readOnly = true)
     override fun queryEvents(
@@ -63,7 +72,22 @@ class AuditEventService(
         size: Int,
         sortDesc: Boolean
     ): AuditEventPage {
+        if (tenantScope.orgSlug() != null) {
+            // Filtered before paging so a bound caller's page counts are its own. Bounded window.
+            val visible = auditEventRepository
+                .findWithFilters(eventType, trailId, actor, from, to, 0, SCOPED_WINDOW, sortDesc)
+                .filter { tenantScope.visible(orgOf(it)) }
+            val totalPages = if (size > 0) (visible.size + size - 1) / size else 0
+            return AuditEventPage(
+                events = visible.drop(page * size).take(size).map { it.toResponse() },
+                page = page,
+                size = size,
+                totalElements = visible.size.toLong(),
+                totalPages = totalPages
+            )
+        }
         val events = auditEventRepository.findWithFilters(eventType, trailId, actor, from, to, page, size, sortDesc)
+        tenantScope.observe(events.map(::orgOf))
         val total = auditEventRepository.countWithFilters(eventType, trailId, actor, from, to)
         val totalPages = if (size > 0) ((total + size - 1) / size).toInt() else 0
         return AuditEventPage(
@@ -77,12 +101,13 @@ class AuditEventService(
 
     @Transactional(readOnly = true)
     override fun getEventsForTrail(trailId: UUID): List<AuditEventResponse> =
-        auditEventRepository.findByTrailId(trailId).map { it.toResponse() }
+        auditEventRepository.findByTrailId(trailId).filter { tenantScope.visible(orgOf(it)) }.map { it.toResponse() }
 
     @Transactional(readOnly = true)
     override fun exportEnvironmentAuditLogCsv(environmentId: UUID): String {
-        environmentRepository.findById(environmentId)
-            ?: throw NotFoundException("Environment not found: $environmentId")
+        tenantScope.require(environmentRepository.findById(environmentId), { it.orgSlug }) {
+            "Environment not found: $environmentId"
+        }
         val events = auditEventRepository.findByEnvironmentId(environmentId)
         val sb = StringBuilder()
         sb.appendLine("timestamp,eventType,actor,details,environmentId,resourceId")
@@ -101,6 +126,11 @@ class AuditEventService(
     private fun escapeCsvField(value: String): String {
         val needsQuoting = value.contains(',') || value.contains('"') || value.contains('\n')
         return if (needsQuoting) "\"${value.replace("\"", "\"\"")}\"" else value
+    }
+
+    private companion object {
+        /** How many matching events a bound caller's query considers. */
+        const val SCOPED_WINDOW = 10_000
     }
 }
 

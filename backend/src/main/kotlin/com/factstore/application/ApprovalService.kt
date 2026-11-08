@@ -31,10 +31,16 @@ class ApprovalService(
     private val approvalDecisionRepository: IApprovalDecisionRepository,
     private val trailRepository: ITrailRepository,
     private val flowRepository: IFlowRepository,
-    private val auditService: IAuditService
+    private val auditService: IAuditService,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
+    private val ownership: OrgOwnership? = null
 ) : IApprovalService {
 
     private val log = LoggerFactory.getLogger(ApprovalService::class.java)
+
+    // An approval belongs to its trail's organisation (#207).
+    private fun visible(approval: com.factstore.core.domain.Approval): Boolean =
+        tenantScope.visible(ownership?.ofTrail(approval.trailId))
 
     override fun requestApproval(request: CreateApprovalRequest): ApprovalResponse {
         val trail = trailRepository.findById(request.trailId)
@@ -54,27 +60,28 @@ class ApprovalService(
 
     @Transactional(readOnly = true)
     override fun getApproval(approvalId: UUID): ApprovalResponse {
-        val approval = approvalRepository.findById(approvalId)
-            ?: throw NotFoundException("Approval not found: $approvalId")
+        val approval = tenantScope.require(approvalRepository.findById(approvalId), { ownership?.ofTrail(it.trailId) }) {
+            "Approval not found: $approvalId"
+        }
         val decisions = approvalDecisionRepository.findByApprovalId(approvalId)
         return approval.toResponse(decisions)
     }
 
     @Transactional(readOnly = true)
     override fun listApprovalsByTrail(trailId: UUID): List<ApprovalResponse> =
-        approvalRepository.findByTrailId(trailId).map { approval ->
+        approvalRepository.findByTrailId(trailId).filter(::visible).map { approval ->
             approval.toResponse(approvalDecisionRepository.findByApprovalId(approval.id))
         }
 
     @Transactional(readOnly = true)
     override fun listApprovalsByStatus(status: ApprovalStatus): List<ApprovalResponse> =
-        approvalRepository.findByStatus(status).map { approval ->
+        approvalRepository.findByStatus(status).filter(::visible).map { approval ->
             approval.toResponse(approvalDecisionRepository.findByApprovalId(approval.id))
         }
 
     @Transactional(readOnly = true)
     override fun listAll(): List<ApprovalResponse> =
-        approvalRepository.findAll().map { approval ->
+        approvalRepository.findAll().filter(::visible).map { approval ->
             approval.toResponse(approvalDecisionRepository.findByApprovalId(approval.id))
         }
 

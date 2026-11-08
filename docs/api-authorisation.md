@@ -68,6 +68,7 @@ A key carries `resource:action` scopes, and its authorities are derived from the
 | `assert:execute` | Run compliance assertions |
 | `policies:read` / `policies:write` | Read / upload and delete policies |
 | `approvals:write` | Grant approvals |
+| `operator` | Read across organisations from a credential bound to none; each such read is audited as `CROSS_TENANT_READ` |
 | `metrics:read` | Scrape `/actuator/prometheus`, and nothing else. What the Prometheus scrape key carries |
 | `admin` | Everything, including key management, service accounts, organisation and SSO configuration |
 
@@ -211,6 +212,9 @@ This is enforced (`TenantScope`) for a caller bound to an organisation, whether 
 | `GET /api/v1/flows`, `/api/v1/trails`, `/api/v2/flows`, `/api/v2/trails`, and a trail list for another organisation's flow | only the caller's organisation |
 | `GET /api/v1/search`, `POST /api/v1/search` | only the caller's organisation, whatever `orgSlug` the request names |
 | `GET /api/v1/dashboard/stats` | counts only the caller's organisation |
+| Environments (and their snapshots, baselines, drift, audit CSV), policies and their versions, approvals, compliance assessments | another organisation's is `404`; lists show only the caller's (#207) |
+| `GET /api/v1/artifacts?sha256=`, `/api/v1/artifacts/search`, `GET /api/v1/gate/results` | only the caller's organisation (#207) |
+| `GET /api/v1/audit`, `/api/v1/audit/{id}`, a trail's audit events | only events tied to the caller's organisation's trails or environments (#207) |
 
 The same lookups back attestation recording and flow edits and deletes, so a bound key cannot
 write to another organisation's trail either: it gets the same `404`.
@@ -220,8 +224,24 @@ attestation's, then its trail's. A resource with no organisation at all is visib
 **unbound** callers. An unbound credential (no `orgSlug`, such as the bootstrap admin key) sees
 every organisation, which is how every deployment behaved before tenant binding.
 
-Not yet scoped: environments, policies, reports, the audit log and the remaining list endpoints.
-They are tracked on #155.
+An approval, gate result or audit event takes the organisation of its trail or environment. An
+audit event tied to neither (a key created, a failed sign-in) is visible only to unbound callers.
+
+### Cross-organisation reads (FR-5.4)
+
+When a caller that presented a credential but is bound to no organisation reads another
+organisation's resources, the request is audited once as `CROSS_TENANT_READ`, naming the
+organisations, method, path and status. Anonymous callers on an unenforced instance are not
+audited.
+
+`security.tenancy.unbound-requires-operator` (default `false`) decides whether such reads need
+the `operator` scope. With `true`, an unbound credential without `operator` sees only resources
+that belong to no organisation, and one with it reads across organisations, audited. `admin`
+includes `operator`, so the bootstrap admin key keeps working. #209 turns this on with the
+enforcement flip.
+
+Not yet scoped: OPA decisions, deployment policies, the regulatory report generator and the
+remaining reports.
 
 ---
 

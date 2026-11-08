@@ -32,6 +32,12 @@ enum class Permission(val scope: String) {
      */
     METRICS_READ("metrics:read"),
     /**
+     * Read across organisations (#207, #155 FR-5.4). Only meaningful on a credential bound to no
+     * organisation; every such read is audited as `CROSS_TENANT_READ`. Required for it once
+     * `security.tenancy.unbound-requires-operator=true`.
+     */
+    OPERATOR("operator"),
+    /**
      * Full access, including key management, service accounts, organisation and SSO
      * configuration. It is not a narrower privilege than the rest: a holder may mint a key
      * carrying any scope, so it expands to every permission — see
@@ -107,6 +113,7 @@ object RoleModel {
         Permission.FLOWS_WRITE,
         Permission.POLICIES_WRITE,
         Permission.METRICS_READ,
+        Permission.OPERATOR,
         Permission.ADMIN
     )
 

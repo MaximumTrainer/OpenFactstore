@@ -32,6 +32,8 @@ enum class AuditEventType {
     USER_ROLE_CHANGED,
     // Authorisation outcomes (#155 FR-8.1).
     AUTH_FAILED,
+    // An unbound credential read another organisation's resources (#207, #155 FR-5.4).
+    CROSS_TENANT_READ,
     AUTH_DENIED,
     // Credential lifecycle (#155 FR-8.2).
     API_KEY_CREATED,

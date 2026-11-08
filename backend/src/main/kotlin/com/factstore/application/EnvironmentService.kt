@@ -62,10 +62,15 @@ class EnvironmentService(
     private val artifactRepository: IArtifactRepository,
     private val attestationRepository: IAttestationRepository,
     private val flowRepository: IFlowRepository,
-    private val trailRepository: ITrailRepository
+    private val trailRepository: ITrailRepository,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : IEnvironmentService {
 
     private val log = LoggerFactory.getLogger(EnvironmentService::class.java)
+
+    /** Another organisation's environment is "not found" (#207, #155 FR-5.2). */
+    private fun requireVisibleEnvironment(id: UUID): com.factstore.core.domain.Environment =
+        tenantScope.require(environmentRepository.findById(id), { it.orgSlug }) { "Environment not found: $id" }
 
     override fun createEnvironment(request: CreateEnvironmentRequest): EnvironmentResponse {
         if (environmentRepository.existsByName(request.name)) {
@@ -87,11 +92,17 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun listEnvironments(): List<EnvironmentResponse> =
-        environmentRepository.findAll().map { it.toResponse() }
+        environmentRepository.findAll().filter { tenantScope.visible(it.orgSlug) }.map { it.toResponse() }
 
     @Transactional(readOnly = true)
     override fun listEnvironments(page: Int, size: Int): PageResponse<EnvironmentResponse> {
+        if (tenantScope.orgSlug() != null) {
+            val visible = environmentRepository.findAll().filter { tenantScope.visible(it.orgSlug) }
+            val totalPages = if (size <= 0) 0 else (visible.size + size - 1) / size
+            return PageResponse(visible.drop(page * size).take(size).map { it.toResponse() }, page, size, visible.size.toLong(), totalPages)
+        }
         val pageResult = environmentRepository.findAll(PageRequest.of(page, size))
+        tenantScope.observe(pageResult.content.map { it.orgSlug })
         return PageResponse(
             items = pageResult.content.map { it.toResponse() },
             page = pageResult.number,
@@ -103,10 +114,10 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun getEnvironment(id: UUID): EnvironmentResponse =
-        (environmentRepository.findById(id) ?: throw NotFoundException("Environment not found: $id")).toResponse()
+        (requireVisibleEnvironment(id)).toResponse()
 
     override fun updateEnvironment(id: UUID, request: UpdateEnvironmentRequest): EnvironmentResponse {
-        val environment = environmentRepository.findById(id) ?: throw NotFoundException("Environment not found: $id")
+        val environment = requireVisibleEnvironment(id)
         request.name?.let {
             if (it != environment.name && environmentRepository.existsByName(it)) {
                 throw ConflictException("Environment with name '$it' already exists")
@@ -123,7 +134,7 @@ class EnvironmentService(
     }
 
     override fun deleteEnvironment(id: UUID) {
-        if (!environmentRepository.existsById(id)) throw NotFoundException("Environment not found: $id")
+        requireVisibleEnvironment(id)
         environmentRepository.deleteById(id)
         log.info("Deleted environment: $id")
     }
@@ -183,9 +194,7 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun listSnapshots(environmentId: UUID): List<EnvironmentSnapshotResponse> {
-        if (!environmentRepository.existsById(environmentId)) {
-            throw NotFoundException("Environment not found: $environmentId")
-        }
+        requireVisibleEnvironment(environmentId)
         val snapshots = snapshotRepository.findAllByEnvironmentId(environmentId)
         val snapshotIds = snapshots.map { it.id }
         val artifactsBySnapshot = snapshotArtifactRepository.findAllBySnapshotIdIn(snapshotIds)
@@ -197,9 +206,7 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun getLatestSnapshot(environmentId: UUID): EnvironmentSnapshotResponse {
-        if (!environmentRepository.existsById(environmentId)) {
-            throw NotFoundException("Environment not found: $environmentId")
-        }
+        requireVisibleEnvironment(environmentId)
         val snapshot = snapshotRepository.findLatestByEnvironmentId(environmentId)
             ?: throw NotFoundException("No snapshots found for environment: $environmentId")
         return snapshot.toResponse(snapshotArtifactRepository.findAllBySnapshotId(snapshot.id))
@@ -207,9 +214,7 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun getSnapshot(environmentId: UUID, snapshotIndex: Long): EnvironmentSnapshotResponse {
-        if (!environmentRepository.existsById(environmentId)) {
-            throw NotFoundException("Environment not found: $environmentId")
-        }
+        requireVisibleEnvironment(environmentId)
         val snapshot = snapshotRepository.findByEnvironmentIdAndSnapshotIndex(environmentId, snapshotIndex)
             ?: throw NotFoundException("Snapshot #$snapshotIndex not found for environment: $environmentId")
         return snapshot.toResponse(snapshotArtifactRepository.findAllBySnapshotId(snapshot.id))
@@ -217,6 +222,7 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun diffSnapshots(environmentId: UUID, fromIndex: Long, toIndex: Long): SnapshotDiffResponse {
+        requireVisibleEnvironment(environmentId)
         val fromSnapshot = snapshotRepository.findByEnvironmentIdAndSnapshotIndex(environmentId, fromIndex)
             ?: throw NotFoundException("Snapshot #$fromIndex not found for environment: $environmentId")
         val toSnapshot = snapshotRepository.findByEnvironmentIdAndSnapshotIndex(environmentId, toIndex)
@@ -245,9 +251,7 @@ class EnvironmentService(
     }
 
     override fun createBaseline(environmentId: UUID, request: CreateBaselineRequest): BaselineResponse {
-        if (!environmentRepository.existsById(environmentId)) {
-            throw NotFoundException("Environment not found: $environmentId")
-        }
+        requireVisibleEnvironment(environmentId)
         baselineRepository.findActiveByEnvironmentId(environmentId)?.let {
             it.isActive = false
             baselineRepository.save(it)
@@ -264,17 +268,13 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun getCurrentBaseline(environmentId: UUID): BaselineResponse {
-        if (!environmentRepository.existsById(environmentId)) {
-            throw NotFoundException("Environment not found: $environmentId")
-        }
+        requireVisibleEnvironment(environmentId)
         return (baselineRepository.findActiveByEnvironmentId(environmentId)
             ?: throw NotFoundException("No active baseline for environment: $environmentId")).toResponse()
     }
 
     override fun checkDrift(environmentId: UUID): DriftReportResponse {
-        if (!environmentRepository.existsById(environmentId)) {
-            throw NotFoundException("Environment not found: $environmentId")
-        }
+        requireVisibleEnvironment(environmentId)
         val baseline = baselineRepository.findActiveByEnvironmentId(environmentId)
             ?: throw NotFoundException("No active baseline for environment: $environmentId")
         val baselineSnapshotId = baseline.snapshotId
@@ -316,9 +316,7 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun listDriftHistory(environmentId: UUID): List<DriftReportResponse> {
-        if (!environmentRepository.existsById(environmentId)) {
-            throw NotFoundException("Environment not found: $environmentId")
-        }
+        requireVisibleEnvironment(environmentId)
         return driftReportRepository.findAllByEnvironmentId(environmentId).map { report ->
             report.toResponse(
                 parseRawArtifacts(report.addedArtifactsRaw, isAdded = true),
@@ -330,9 +328,7 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun listDeployments(environmentId: UUID): List<DeploymentResponse> {
-        if (!environmentRepository.existsById(environmentId)) {
-            throw NotFoundException("Environment not found: $environmentId")
-        }
+        requireVisibleEnvironment(environmentId)
         return deploymentRepository.findByEnvironmentId(environmentId).map { it.toResponse() }
     }
 
@@ -399,7 +395,7 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun getLiveArtifactsByRepo(): List<LiveArtifactByRepoResponse> {
-        val environments = environmentRepository.findAll()
+        val environments = environmentRepository.findAll().filter { tenantScope.visible(it.orgSlug) }
         val deploymentsByImageName = mutableMapOf<String, MutableList<LiveArtifactDeployment>>()
         for (environment in environments) {
             val latestSnapshot = snapshotRepository.findLatestByEnvironmentId(environment.id) ?: continue

@@ -180,6 +180,12 @@ security:
     # the user signs in but has no organisation until an admin adds them.
     default-org: ${GITHUB_DEFAULT_ORG:}
 
+  tenancy:
+    # When true, an unbound credential needs the operator scope to read another organisation's
+    # resources (#207, #155 FR-5.4); without it, it sees only resources with no organisation.
+    # Every such read is audited as CROSS_TENANT_READ either way. #209 turns this on.
+    unbound-requires-operator: ${SECURITY_TENANCY_UNBOUND_REQUIRES_OPERATOR:false}
+
   bootstrap:
     # A fresh deployment with enforcement on must be administrable; see docs/api-authorisation.md.
     enabled: ${SECURITY_BOOTSTRAP_ENABLED:true}
