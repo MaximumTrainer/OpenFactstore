@@ -211,7 +211,7 @@ This is enforced (`TenantScope`) for a caller bound to an organisation, whether 
 | `GET /api/v1/search`, `POST /api/v1/search` | only the caller's organisation, whatever `orgSlug` the request names |
 | `GET /api/v1/dashboard/stats` | counts only the caller's organisation |
 
-The same lookups back attestation recording and flow and trail edits, so a bound key cannot
+The same lookups back attestation recording and flow edits and deletes, so a bound key cannot
 write to another organisation's trail either: it gets the same `404`.
 
 A trail without its own `orgSlug` belongs to its flow's organisation, and evidence to its

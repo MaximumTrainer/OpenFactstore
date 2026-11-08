@@ -49,8 +49,19 @@ class AttestationService(
     private val artifactRepository: IArtifactRepository,
     private val objectMapper: ObjectMapper,
     private val processors: List<AttestationTypeProcessor> = emptyList(),
-    private val actorResolver: ActorResolver
+    private val actorResolver: ActorResolver,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : IAttestationService {
+
+    /**
+     * The trail exists and belongs to the caller's organisation. Another organisation's trail is
+     * "not found", for writes as for reads (#155 FR-5.2).
+     */
+    private fun requireVisibleTrail(trailId: UUID) {
+        tenantScope.require(trailRepository.findById(trailId), { it.orgSlug ?: flowRepository.findById(it.flowId)?.orgSlug }) {
+            "Trail not found: $trailId"
+        }
+    }
 
     private val log = LoggerFactory.getLogger(AttestationService::class.java)
 
@@ -70,7 +81,7 @@ class AttestationService(
                 throw NotFoundException("Flow '$flowName' not found for organisation '$orgSlug'")
             }
         }
-        if (!trailRepository.existsById(trailId)) throw NotFoundException("Trail not found: $trailId")
+        requireVisibleTrail(trailId)
 
         val customType = customAttestationTypeRepository.findByName(request.type)
         if (customType?.schemaJson != null && request.attestationData != null) {
@@ -134,13 +145,13 @@ class AttestationService(
 
     @Transactional(readOnly = true)
     override fun listAttestations(trailId: UUID): List<AttestationResponse> {
-        if (!trailRepository.existsById(trailId)) throw NotFoundException("Trail not found: $trailId")
+        requireVisibleTrail(trailId)
         return attestationRepository.findByTrailId(trailId).map { it.toResponse() }
     }
 
     @Transactional(readOnly = true)
     override fun listAttestations(trailId: UUID, page: Int, size: Int): PageResponse<AttestationResponse> {
-        if (!trailRepository.existsById(trailId)) throw NotFoundException("Trail not found: $trailId")
+        requireVisibleTrail(trailId)
         val pageResult = attestationRepository.findByTrailId(trailId, PageRequest.of(page, size))
         return PageResponse(
             items = pageResult.content.map { it.toResponse() },

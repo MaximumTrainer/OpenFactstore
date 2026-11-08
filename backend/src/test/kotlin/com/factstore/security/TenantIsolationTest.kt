@@ -163,6 +163,25 @@ class TenantIsolationTest {
     }
 
     @Test
+    fun `a key bound to A cannot attest against B's trail`() {
+        val writer = asAdmin {
+            val owner = users.save(User(email = "writer-${System.nanoTime()}@example.com", name = "Writer"))
+            apiKeyService.createApiKey(
+                CreateApiKeyRequest(ownerId = owner.id, label = "w", ownerType = OwnerType.USER, orgSlug = orgA,
+                    scopes = listOf("attestations:write"))
+            ).plainTextKey
+        }
+        fun attest(trailId: UUID) = mockMvc.post("/api/v1/trails/$trailId/attestations") {
+            header("Authorization", "Bearer $writer")
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"type":"junit","status":"PASSED"}"""
+        }
+
+        attest(b.trailId).andExpect { status { isNotFound() } }
+        attest(a.trailId).andExpect { status { isCreated() } }
+    }
+
+    @Test
     fun `the v2 query API is scoped the same way`() {
         getAs(keyA, "/api/v2/flows/${b.flowId}").andExpect { status { isNotFound() } }
         getAs(keyA, "/api/v2/trails/${b.trailId}").andExpect { status { isNotFound() } }
