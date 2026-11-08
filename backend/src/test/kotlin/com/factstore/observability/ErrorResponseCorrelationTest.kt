@@ -116,6 +116,22 @@ class ErrorResponseCorrelationTest {
     }
 
     @Test
+    fun `a framework-level client error keeps its own status`() {
+        fun unexpected() = meterRegistry.find("factstore.errors").tags("type", "Unexpected", "status", "500").counter()?.count() ?: 0.0
+        val before = unexpected()
+
+        val notFound = mockMvc.get("/api/v1/no-such-route").andReturn()
+        val wrongMethod = mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/auth/config")
+        ).andReturn()
+
+        assertThat(notFound.response.status).isEqualTo(404)
+        assertThat(wrongMethod.response.status).isEqualTo(405)
+        assertThat(notFound.response.contentAsString).contains("correlationId")
+        assertThat(unexpected()).isEqualTo(before)
+    }
+
+    @Test
     fun `an integrity failure is counted as an integrity failure from the api`() {
         fun count() = meterRegistry.find("factstore.integrity.failures").tags("source", "api").counter()?.count() ?: 0.0
         val before = count()

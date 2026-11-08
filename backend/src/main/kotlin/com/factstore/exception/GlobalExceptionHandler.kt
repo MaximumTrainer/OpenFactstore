@@ -137,6 +137,14 @@ class GlobalExceptionHandler(
 
     @ExceptionHandler(Exception::class)
     fun handleGeneral(ex: Exception): ResponseEntity<ErrorResponse> {
+        // Spring MVC's own client errors (unknown route, wrong method, missing parameter, wrong
+        // media type) carry their status. Without this they fell into the 500 branch below, so
+        // a scanner probing for paths would page on-call and fire SYSTEM_ERROR (#185).
+        if (ex is org.springframework.web.ErrorResponse && ex.statusCode.is4xxClientError) {
+            val status = HttpStatus.valueOf(ex.statusCode.value())
+            log.warn("Client error {} on request: {}", status.value(), ex.message)
+            return respond(ex, status, status.reasonPhrase, ex.body.detail ?: status.reasonPhrase)
+        }
         // ex.message used to go straight into the body, so SQL, class names and internal state
         // reached the client. It now stays in the log, under the correlation id.
         log.error("Unexpected error [correlationId={}]: {}", CorrelationIdFilter.current(), ex.message, ex)

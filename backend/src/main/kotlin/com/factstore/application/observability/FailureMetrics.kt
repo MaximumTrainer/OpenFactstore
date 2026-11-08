@@ -39,6 +39,8 @@ class FailureMetrics(
             "IntegrityException"
         )
         const val UNEXPECTED = "Unexpected"
+        /** Spring MVC's own 4xx: unknown route, wrong method, missing parameter. */
+        const val FRAMEWORK_CLIENT_ERROR = "FrameworkClientError"
     }
 
     /** Where an integrity failure was detected. */
@@ -49,7 +51,11 @@ class FailureMetrics(
     }
 
     fun error(exception: Throwable, status: Int) {
-        val type = exception::class.simpleName?.takeIf { it in KNOWN_ERROR_TYPES } ?: UNEXPECTED
+        val type = when {
+            exception::class.simpleName in KNOWN_ERROR_TYPES -> exception::class.simpleName!!
+            exception is org.springframework.web.ErrorResponse && status in 400..499 -> FRAMEWORK_CLIENT_ERROR
+            else -> UNEXPECTED
+        }
         Counter.builder("factstore.errors")
             .description("Errors returned by the API, by bounded exception type")
             .tag("type", type)
