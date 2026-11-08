@@ -42,7 +42,13 @@ Two providers:
 
 - **Organisation OIDC SSO** — enter the organisation slug; the browser is redirected to that
   organisation's identity provider.
-- **GitHub OAuth** — available when the deployment has `GITHUB_CLIENT_ID` configured.
+- **GitHub OAuth** — available when the deployment has a GitHub OAuth app registered. A
+  first-time GitHub user joins `security.github.default-org` as a `VIEWER`. Setup:
+  [integrations/github-oauth.md](./integrations/github-oauth.md).
+- **Development sign-in** — local development only; see [Local development](#local-development).
+
+Organisation SSO setup, including the redirect URI to register with the IdP:
+[integrations/oidc-sso.md](./integrations/oidc-sso.md).
 
 ### The OIDC flow
 
@@ -160,6 +166,26 @@ That is deliberately low-friction and **not a production configuration**: with
 `SECURITY_ENFORCE_AUTH=false` the API accepts unauthenticated requests. See
 [security-hardening.md](./security-hardening.md) for the production posture.
 
+To work **with** enforcement on, and to see the UI as a particular role, use **development
+sign-in**. It needs no identity provider:
+
+```bash
+SPRING_PROFILES_ACTIVE=local SECURITY_ENFORCE_AUTH=true SSO_JWT_SECRET=$(openssl rand -base64 48) ./gradlew bootRun
+```
+
+The `local` and `dev` profiles switch it on (`security.dev-login.enabled=true`). `/login` then
+shows a **Development sign-in** form: enter any email and pick a role (default `ADMIN`, in
+organisation `dev`). It calls `POST /api/v1/auth/dev-login`, which issues an ordinary session
+marked provider `DEV`, so everything after sign-in behaves exactly as in production.
+
+Safeguards:
+
+- Off by default. When off, `/api/v1/auth/dev-login` answers `404`.
+- The application **refuses to start** with it on under the `prod` profile, and logs a warning
+  whenever it is on.
+- It answers only requests from the machine the backend runs on, unless
+  `security.dev-login.loopback-only=false` (for a local Docker network).
+
 ---
 
 ## Attribution
@@ -192,4 +218,7 @@ to `system` as they were before.
 | `security.session.absolute-lifetime-seconds` | — | `43200` | Ceiling refresh cannot pass |
 | `security.session.idle-timeout-seconds` | — | `1800` | Idle timeout |
 | `security.session.allow-unconfigured-secret` | — | `false` | Start anyway with an unusable secret. Not for production |
-| `spring.security.oauth2.client.registration.github.client-id` | `GITHUB_CLIENT_ID` | *(none)* | Enables the GitHub sign-in option |
+| `spring.security.oauth2.client.registration.github.client-id` | `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GITHUB_CLIENT_ID` | *(none)* | Enables the GitHub sign-in option |
+| `security.github.default-org` | `GITHUB_DEFAULT_ORG` | *(none)* | Organisation a first-time GitHub user joins, as `VIEWER` |
+| `security.dev-login.enabled` | `SECURITY_DEV_LOGIN_ENABLED` | `false` (`true` in `local`/`dev`) | Development sign-in. Refused under `prod` |
+| `security.dev-login.loopback-only` | `SECURITY_DEV_LOGIN_LOOPBACK_ONLY` | `true` | Development sign-in only from this machine |

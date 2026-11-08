@@ -29,6 +29,7 @@ A comprehensive guide for developers and DevSecOps engineers using OpenFactstore
    - [Attestation Type Processors](#417-attestation-type-processors)
    - [Terraform Infrastructure as Code](#418-terraform-infrastructure-as-code)
 5. [Security & Data Privacy](#5-security--data-privacy)
+   - [Signing In and Roles](#signing-in-and-roles)
 6. [CI/CD Integration Reference](#6-cicd-integration-reference)
 7. [Monitoring](#7-monitoring)
 8. [Lifecycle Management](#8-lifecycle-management)
@@ -1091,6 +1092,26 @@ After bootstrapping, use `terraform output` to feed resource IDs into your CI pi
 ---
 
 ## 5. Security & Data Privacy
+
+### Signing In and Roles
+
+People sign in to the web UI on `/login`, with one of:
+
+- **Organisation SSO** — enter your organisation's slug and you are sent to its identity provider (Entra ID or Okta). Setup: [docs/integrations/oidc-sso.md](docs/integrations/oidc-sso.md).
+- **GitHub** — when the deployment has a GitHub OAuth app. Setup: [docs/integrations/github-oauth.md](docs/integrations/github-oauth.md).
+- **Development sign-in** — local development only, no identity provider needed. See [docs/authentication.md](docs/authentication.md#local-development).
+
+Your **role in the organisation you are acting in** decides what you can do:
+
+| Role | Can |
+|---|---|
+| `VIEWER` | Read flows, trails, attestations, evidence, reports and the audit log |
+| `MEMBER` | Everything a viewer can, plus create trails, attestations and artifacts, run assertions, upload evidence, approve |
+| `ADMIN` | Everything a member can, plus create, edit and delete flows and policies, and manage members, API keys, service accounts and SSO |
+
+A first sign-in never grants write access by itself: a new user is a `VIEWER` until an admin raises their role, or until their IdP group maps to a higher one. Role changes apply on your next request, without signing in again. If you belong to several organisations, switch between them from the user menu; you see only the active organisation's data.
+
+The user menu shows who you are signed in as, your role and organisation, and **Sign out**, which ends the session on the server immediately. A session lasts an hour, can be refreshed (`POST /api/v1/auth/refresh`) up to 12 hours in total, and ends after 30 minutes idle; then you sign in again. The full reference is [docs/authentication.md](docs/authentication.md).
 
 ### API Authentication
 

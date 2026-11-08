@@ -58,16 +58,79 @@
       <p class="mt-2 text-xs text-gray-500">
         Available when this deployment has GitHub OAuth configured.
       </p>
+
+      <!-- Local development only: the server offers this route only when
+           security.dev-login.enabled=true, and never under the prod profile. -->
+      <form
+        v-if="devLoginAvailable"
+        data-test="dev-login"
+        class="mt-6 p-4 rounded-md border border-dashed border-amber-400 bg-amber-50"
+        @submit.prevent="startDevSignIn"
+      >
+        <p class="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-2">Development sign-in</p>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="dev-email">Email</label>
+        <input
+          id="dev-email"
+          v-model="devEmail"
+          data-test="dev-email"
+          type="email"
+          placeholder="you@localhost"
+          class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+        />
+        <label class="block text-sm font-medium text-gray-700 mt-3 mb-1" for="dev-role">Role</label>
+        <select id="dev-role" v-model="devRole" data-test="dev-role" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+          <option value="ADMIN">Admin</option>
+          <option value="MEMBER">Member</option>
+          <option value="VIEWER">Viewer</option>
+        </select>
+        <button
+          type="submit"
+          :disabled="busy || !devEmail.trim()"
+          class="mt-4 w-full bg-amber-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+        >
+          Sign in (development)
+        </button>
+        <p class="mt-2 text-xs text-amber-800">Not available in production.</p>
+      </form>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { getSsoLoginUrl } from '../api/auth'
+import { useRoute, useRouter } from 'vue-router'
+import { devSignIn, getDevLoginAvailability, getSsoLoginUrl, type MemberRole } from '../api/auth'
+import { loadPrincipal } from '../composables/useAuth'
 
 const route = useRoute()
+const router = useRouter()
+const devLoginAvailable = ref(false)
+const devEmail = ref('')
+const devRole = ref<MemberRole>('ADMIN')
+
+/** Only same-site paths: `//host` and absolute URLs would turn sign-in into an open redirect. */
+function safeRedirect(): string {
+  const target = route.query.redirect
+  if (typeof target !== 'string') return '/'
+  // Browsers treat `/\host` like `//host`, so both are refused.
+  return target.startsWith('/') && !target.startsWith('//') && !target.startsWith('/\\') ? target : '/'
+}
+
+async function startDevSignIn() {
+  const email = devEmail.value.trim()
+  if (!email) return
+  busy.value = true
+  message.value = ''
+  try {
+    await devSignIn({ email, role: devRole.value })
+    await loadPrincipal(true)
+    await router.push(safeRedirect())
+  } catch {
+    message.value = 'Development sign-in failed.'
+  } finally {
+    busy.value = false
+  }
+}
 
 const orgSlug = ref('')
 const busy = ref(false)
@@ -104,5 +167,8 @@ onMounted(() => {
   if (typeof reason === 'string' && REASONS[reason]) message.value = REASONS[reason]
   const remembered = route.query.org
   if (typeof remembered === 'string') orgSlug.value = remembered
+  getDevLoginAvailability()
+    .then(({ data }) => { devLoginAvailable.value = data.enabled })
+    .catch(() => { devLoginAvailable.value = false })
 })
 </script>
