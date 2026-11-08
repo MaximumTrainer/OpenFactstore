@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web.query
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.query.IAttestationQueryHandler
 import com.factstore.dto.query.AttestationView
 import io.swagger.v3.oas.annotations.Operation
@@ -13,6 +14,7 @@ import java.util.UUID
 @Tag(name = "Attestations – Queries", description = "Attestation read operations (CQRS query path)")
 class AttestationQueryController(private val queryHandler: IAttestationQueryHandler) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "List attestations for a trail")
     fun listAttestations(@PathVariable trailId: UUID): ResponseEntity<List<AttestationView>> =

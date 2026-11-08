@@ -129,6 +129,13 @@ and starts silently covering a new one.
 > Policy deletion previously required `hasAnyRole('ADMIN', 'MEMBER', 'API_USER')` — which let a
 > `MEMBER` and *any* API key delete a policy. The check found it.
 
+**Every endpoint**, not only those on the matrixed controllers, now states its rule.
+`EveryEndpointIsAuthorisedTest` fails the build on any handler with neither `@PreAuthorize` nor an
+explicit `@PublicEndpoint(reason)`, and the complete, generated endpoint-to-rule table is
+[api-authorisation-matrix.md](api-authorisation-matrix.md). The rules added for that use
+`@authz.has('<scope>')`, which keeps an unenforced instance working for anonymous callers while
+holding any presented credential to its scopes. See the matrix page for how each rule reads.
+
 ---
 
 ## Managing keys
@@ -255,7 +262,8 @@ security:
 ```
 
 Authenticate and authorise as normal, but on failure **log what would have been rejected and
-allow the request**. This is how you find every unauthenticated caller before switching over,
+allow the request**. Endpoint rules written as `@authz...` log `WARN-MODE: would refuse <caller>
+lacking <scope>; allowing`. This is how you find every unauthenticated caller before switching over,
 instead of discovering them as an outage.
 
 ### Then

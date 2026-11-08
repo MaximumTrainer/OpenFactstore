@@ -57,6 +57,8 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Lets EveryEndpointIsAuthorisedTest regenerate docs/api-authorisation-matrix.md (#155).
+    systemProperty("factstore.update-matrix", System.getProperty("factstore.update-matrix") ?: "false")
 }
 
 tasks.named<Test>("test") {

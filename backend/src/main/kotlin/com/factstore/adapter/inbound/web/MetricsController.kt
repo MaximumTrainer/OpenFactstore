@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.ComplianceMetricsService
 import com.factstore.application.DeliveryMetricsService
 import com.factstore.dto.ComplianceMetricsSummary
@@ -21,6 +22,7 @@ class MetricsController(
     private val deliveryMetricsService: DeliveryMetricsService
 ) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/delivery")
     @Operation(
         summary = "Delivery metrics: DORA where the data supports it, gates throughout",
@@ -32,10 +34,12 @@ class MetricsController(
     ): ResponseEntity<DeliveryMetricsResponse> =
         ResponseEntity.ok(deliveryMetricsService.getDeliveryMetrics(days))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/compliance")
     fun getComplianceMetrics(): ResponseEntity<ComplianceMetricsSummary> =
         ResponseEntity.ok(complianceMetricsService.getComplianceMetrics())
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/security")
     fun getSecurityMetrics(): ResponseEntity<SecurityMetricsSummary> =
         ResponseEntity.ok(complianceMetricsService.getSecurityMetrics())

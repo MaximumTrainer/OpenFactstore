@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.domain.NotificationSeverity
 import com.factstore.core.port.inbound.INotificationService
 import com.factstore.dto.NotificationResponse
@@ -14,6 +15,7 @@ import java.util.UUID
 @Tag(name = "Notifications", description = "In-app notification centre")
 class NotificationController(private val notificationService: INotificationService) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "List in-app notifications")
     fun listNotifications(
@@ -22,16 +24,19 @@ class NotificationController(private val notificationService: INotificationServi
     ): ResponseEntity<List<NotificationResponse>> =
         ResponseEntity.ok(notificationService.listNotifications(isRead, severity))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/unread-count")
     @Operation(summary = "Get count of unread notifications")
     fun countUnread(): ResponseEntity<Map<String, Long>> =
         ResponseEntity.ok(mapOf("count" to notificationService.countUnread()))
 
+    @PreAuthorize("@authz.authenticated()")
     @PostMapping("/{id}/read")
     @Operation(summary = "Mark a notification as read")
     fun markAsRead(@PathVariable id: UUID): ResponseEntity<NotificationResponse> =
         ResponseEntity.ok(notificationService.markAsRead(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @PostMapping("/read-all")
     @Operation(summary = "Mark all notifications as read")
     fun markAllAsRead(): ResponseEntity<Void> {

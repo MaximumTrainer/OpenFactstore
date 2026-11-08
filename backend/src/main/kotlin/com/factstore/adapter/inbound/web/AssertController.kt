@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.DryRunContext
 import com.factstore.core.port.inbound.IAssertService
 import com.factstore.dto.AssertRequest
@@ -17,6 +18,7 @@ import java.util.UUID
 @Tag(name = "Assert", description = "Compliance assertion")
 class AssertController(private val assertService: IAssertService) {
 
+    @PreAuthorize("@authz.has('assert:execute')")
     @PostMapping("/api/v1/assert")
     @Operation(
         summary = "Assert compliance for an artifact against a flow",
@@ -34,6 +36,7 @@ class AssertController(private val assertService: IAssertService) {
         return ResponseEntity.ok(response)
     }
 
+    @PreAuthorize("@authz.has('assert:execute')")
     @PostMapping("/api/v1/trails/{trailId}/assert")
     @Operation(
         summary = "Assert compliance for a specific pipeline execution",

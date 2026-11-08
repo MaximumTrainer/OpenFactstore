@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IComplianceService
 import com.factstore.dto.ChainOfCustodyResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*
 @Tag(name = "Compliance", description = "Compliance and chain of custody")
 class ComplianceController(private val complianceService: IComplianceService) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/artifact/{sha256Digest}")
     @Operation(summary = "Get chain of custody for an artifact")
     fun getChainOfCustody(@PathVariable sha256Digest: String): ResponseEntity<ChainOfCustodyResponse> =

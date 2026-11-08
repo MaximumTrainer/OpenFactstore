@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web.command
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.DryRunContext
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.port.inbound.command.IAttestationCommandHandler
@@ -30,6 +31,7 @@ class AttestationCommandController(
     private val pullRequestAttestationService: IPullRequestAttestationService
 ) {
 
+    @PreAuthorize("@authz.has('attestations:write')")
     @PostMapping
     @Operation(summary = "Record an attestation for a trail")
     fun recordAttestation(
@@ -70,6 +72,7 @@ class AttestationCommandController(
             .body(commandHandler.recordAttestation(command))
     }
 
+    @PreAuthorize("@authz.has('evidence:write')")
     @PostMapping("/{attestationId}/evidence", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @Operation(summary = "Upload evidence file for an attestation")
     fun uploadEvidence(
@@ -92,6 +95,7 @@ class AttestationCommandController(
         )
     }
 
+    @PreAuthorize("@authz.has('attestations:write')")
     @PostMapping("/pull-request")
     @Operation(summary = "Record a pull request attestation by querying the SCM provider")
     fun attestPullRequest(

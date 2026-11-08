@@ -26,21 +26,25 @@ class OrganisationController(
     private val scmIntegrationService: IScmIntegrationService
 ) {
 
+    @PreAuthorize("@authz.has('admin')")
     @PostMapping
     @Operation(summary = "Create a new organisation")
     fun createOrganisation(@RequestBody request: CreateOrganisationRequest): ResponseEntity<OrganisationResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(organisationService.createOrganisation(request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "List all organisations")
     fun listOrganisations(): ResponseEntity<List<OrganisationResponse>> =
         ResponseEntity.ok(organisationService.listOrganisations())
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{slug}")
     @Operation(summary = "Get organisation by slug")
     fun getOrganisationBySlug(@PathVariable slug: String): ResponseEntity<OrganisationResponse> =
         ResponseEntity.ok(organisationService.getOrganisationBySlug(slug))
 
+    @PreAuthorize("@authz.has('admin')")
     @PutMapping("/{slug}")
     @Operation(summary = "Update an organisation")
     fun updateOrganisationBySlug(
@@ -57,11 +61,13 @@ class OrganisationController(
         return ResponseEntity.noContent().build()
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{slug}/flows")
     @Operation(summary = "List flows in an organisation")
     fun listFlowsByOrg(@PathVariable slug: String): ResponseEntity<List<FlowResponse>> =
         ResponseEntity.ok(flowService.listFlowsByOrg(slug))
 
+    @PreAuthorize("@authz.has('admin')")
     @PostMapping("/{slug}/scm-integrations")
     @Operation(summary = "Register an SCM integration for an organisation")
     fun createScmIntegration(
@@ -70,11 +76,13 @@ class OrganisationController(
     ): ResponseEntity<ScmIntegrationResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(scmIntegrationService.createIntegration(slug, request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{slug}/scm-integrations")
     @Operation(summary = "List SCM integrations for an organisation")
     fun listScmIntegrations(@PathVariable slug: String): ResponseEntity<List<ScmIntegrationResponse>> =
         ResponseEntity.ok(scmIntegrationService.listIntegrations(slug))
 
+    @PreAuthorize("@authz.has('admin')")
     @DeleteMapping("/{slug}/scm-integrations/{provider}")
     @Operation(summary = "Delete an SCM integration for an organisation")
     fun deleteScmIntegration(

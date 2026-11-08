@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*
 @Tag(name = "Webhooks", description = "Inbound webhook endpoints for CI/CD pipeline events")
 class WebhookController(private val webhookService: IWebhookService) {
 
+    @PublicEndpoint("inbound SCM webhook, authenticated by its HMAC signature")
     @PostMapping("/{source}")
     @Operation(summary = "Receive incoming webhook from CI/CD system")
     fun receiveWebhook(

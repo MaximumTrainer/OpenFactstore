@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IOpaService
 import com.factstore.dto.BundleResponse
 import com.factstore.dto.EvaluatePolicyRequest
@@ -17,36 +18,43 @@ import java.util.UUID
 @Tag(name = "OPA Policies", description = "OPA policy bundle management and evaluation")
 class OpaPolicyController(private val opaService: IOpaService) {
 
+    @PreAuthorize("@authz.has('assert:execute')")
     @PostMapping("/evaluate")
     @Operation(summary = "Evaluate artifact against active OPA policy bundle")
     fun evaluatePolicy(@RequestBody request: EvaluatePolicyRequest): ResponseEntity<PolicyDecisionResponse> =
         ResponseEntity.ok(opaService.evaluatePolicy(request))
 
+    @PreAuthorize("@authz.has('policies:write')")
     @PostMapping("/bundles")
     @Operation(summary = "Upload a Rego policy bundle")
     fun uploadBundle(@RequestBody request: UploadBundleRequest): ResponseEntity<BundleResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(opaService.uploadBundle(request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/bundles")
     @Operation(summary = "List all policy bundles")
     fun listBundles(): ResponseEntity<List<BundleResponse>> =
         ResponseEntity.ok(opaService.listBundles())
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/bundles/{id}")
     @Operation(summary = "Get policy bundle by ID")
     fun getBundle(@PathVariable id: UUID): ResponseEntity<BundleResponse> =
         ResponseEntity.ok(opaService.getBundle(id))
 
+    @PreAuthorize("@authz.has('policies:write')")
     @PutMapping("/bundles/{id}/activate")
     @Operation(summary = "Activate a policy bundle")
     fun activateBundle(@PathVariable id: UUID): ResponseEntity<BundleResponse> =
         ResponseEntity.ok(opaService.activateBundle(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/decisions")
     @Operation(summary = "List recent policy decisions (audit trail)")
     fun listDecisions(): ResponseEntity<List<PolicyDecisionResponse>> =
         ResponseEntity.ok(opaService.listDecisions())
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/decisions/{id}")
     @Operation(summary = "Get policy decision details")
     fun getDecision(@PathVariable id: UUID): ResponseEntity<PolicyDecisionResponse> =

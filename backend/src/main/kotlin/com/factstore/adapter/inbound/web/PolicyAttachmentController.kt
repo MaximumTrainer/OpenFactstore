@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IPolicyAttachmentService
 import com.factstore.dto.CreatePolicyAttachmentRequest
 import com.factstore.dto.PolicyAttachmentResponse
@@ -15,21 +16,25 @@ import java.util.UUID
 @Tag(name = "Policy Attachments", description = "Policy attachment management")
 class PolicyAttachmentController(private val policyAttachmentService: IPolicyAttachmentService) {
 
+    @PreAuthorize("@authz.has('policies:write')")
     @PostMapping
     @Operation(summary = "Attach a policy to an environment")
     fun createAttachment(@RequestBody request: CreatePolicyAttachmentRequest): ResponseEntity<PolicyAttachmentResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(policyAttachmentService.createAttachment(request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "List all policy attachments")
     fun listAttachments(): ResponseEntity<List<PolicyAttachmentResponse>> =
         ResponseEntity.ok(policyAttachmentService.listAttachments())
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}")
     @Operation(summary = "Get policy attachment by ID")
     fun getAttachment(@PathVariable id: UUID): ResponseEntity<PolicyAttachmentResponse> =
         ResponseEntity.ok(policyAttachmentService.getAttachment(id))
 
+    @PreAuthorize("@authz.has('policies:write')")
     @DeleteMapping("/{id}")
     @Operation(summary = "Remove a policy attachment")
     fun deleteAttachment(@PathVariable id: UUID): ResponseEntity<Void> {

@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IDashboardService
 import com.factstore.dto.DashboardStatsResponse
 import io.swagger.v3.oas.annotations.Operation
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*
 @Tag(name = "Dashboard", description = "Aggregate dashboard statistics")
 class DashboardController(private val dashboardService: IDashboardService) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/stats")
     @Operation(summary = "Get aggregate dashboard statistics")
     fun getStats(): ResponseEntity<DashboardStatsResponse> =

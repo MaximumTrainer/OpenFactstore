@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.outbound.ISecretStore
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -14,6 +15,7 @@ data class SecretResponse(val path: String, val value: String?)
 @Tag(name = "Secrets", description = "Secret store management (requires vault.enabled=true for persistence)")
 class SecretStoreController(private val secretStore: ISecretStore) {
 
+    @PreAuthorize("@authz.has('admin')")
     @GetMapping("/{path}")
     @Operation(summary = "Retrieve a secret by path")
     fun get(@PathVariable path: String): ResponseEntity<SecretResponse> {
@@ -21,6 +23,7 @@ class SecretStoreController(private val secretStore: ISecretStore) {
         return ResponseEntity.ok(SecretResponse(path = path, value = value))
     }
 
+    @PreAuthorize("@authz.has('admin')")
     @PutMapping("/{path}")
     @Operation(summary = "Store a secret at path")
     fun put(@PathVariable path: String, @RequestBody request: SecretRequest): ResponseEntity<Void> {
@@ -28,6 +31,7 @@ class SecretStoreController(private val secretStore: ISecretStore) {
         return ResponseEntity.noContent().build()
     }
 
+    @PreAuthorize("@authz.has('admin')")
     @DeleteMapping("/{path}")
     @Operation(summary = "Delete a secret at path")
     fun delete(@PathVariable path: String): ResponseEntity<Void> {

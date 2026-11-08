@@ -50,6 +50,7 @@ class DevSignInController(
     @Value("\${security.dev-login.loopback-only:true}") private val loopbackOnly: Boolean
 ) {
 
+    @PublicEndpoint("development sign-in; off unless enabled, loopback only, refused under prod")
     @GetMapping
     @Operation(summary = "Whether dev sign-in is available (development only; 404 when off)")
     fun availability(): ResponseEntity<Map<String, Boolean>> {
@@ -57,6 +58,7 @@ class DevSignInController(
         return ResponseEntity.ok(mapOf("enabled" to true))
     }
 
+    @PublicEndpoint("development sign-in; off unless enabled, loopback only, refused under prod")
     @PostMapping
     @Operation(summary = "Sign in as any email and role without an identity provider (development only)")
     fun signIn(

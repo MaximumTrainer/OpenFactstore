@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.HubService
 import com.factstore.application.OrgTemplateService
 import com.factstore.core.domain.HubTemplate
@@ -23,6 +24,7 @@ class HubController(
     private val orgTemplateService: OrgTemplateService
 ) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/templates")
     @Operation(
         summary = "List flow templates",
@@ -35,6 +37,7 @@ class HubController(
     ): ResponseEntity<List<HubTemplate>> =
         ResponseEntity.ok(hubService.listTemplates(category, orgSlug))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/templates/{id}")
     @Operation(summary = "Get a flow template by ID")
     fun getTemplate(
@@ -43,6 +46,7 @@ class HubController(
     ): ResponseEntity<HubTemplate> =
         ResponseEntity.ok(hubService.getTemplate(id, orgSlug))
 
+    @PreAuthorize("@authz.authenticated()")
     @PostMapping("/templates/compose")
     @Operation(
         summary = "Combine several templates into one",
@@ -54,6 +58,7 @@ class HubController(
 
     // --- Organisation templates ------------------------------------------
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/templates/custom")
     @Operation(summary = "List the templates this organisation has published")
     fun listOrgTemplates(
@@ -61,6 +66,7 @@ class HubController(
     ): ResponseEntity<List<OrgTemplateResponse>> =
         ResponseEntity.ok(orgTemplateService.list(orgSlug))
 
+    @PreAuthorize("@authz.has('flows:write')")
     @PostMapping("/templates/custom")
     @Operation(
         summary = "Publish an organisation template",
@@ -72,6 +78,7 @@ class HubController(
     ): ResponseEntity<OrgTemplateResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(orgTemplateService.create(request))
 
+    @PreAuthorize("@authz.has('flows:write')")
     @PutMapping("/templates/custom/{id}")
     @Operation(summary = "Update an organisation template")
     fun updateOrgTemplate(
@@ -80,6 +87,7 @@ class HubController(
     ): ResponseEntity<OrgTemplateResponse> =
         ResponseEntity.ok(orgTemplateService.update(id, request))
 
+    @PreAuthorize("@authz.has('flows:write')")
     @DeleteMapping("/templates/custom/{id}")
     @Operation(summary = "Withdraw an organisation template")
     fun deleteOrgTemplate(@PathVariable id: UUID): ResponseEntity<Void> {

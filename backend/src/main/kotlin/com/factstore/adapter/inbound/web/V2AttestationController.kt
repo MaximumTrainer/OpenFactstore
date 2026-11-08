@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.IAttestationService
 import com.factstore.dto.AttestationResponse
 import com.factstore.dto.CreateAttestationRequest
@@ -19,6 +20,7 @@ import java.util.UUID
 @Tag(name = "V2 Attestations", description = "V2 attestation API")
 class V2AttestationController(private val attestationService: IAttestationService) {
 
+    @PreAuthorize("@authz.has('attestations:write')")
     @PostMapping("/{org}/{flow}/{trail}/{artifactFingerprint}")
     @Operation(summary = "Record an attestation (v2 format)")
     fun recordAttestation(

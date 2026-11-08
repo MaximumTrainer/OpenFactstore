@@ -2,10 +2,12 @@ package com.factstore.config
 
 import com.factstore.adapter.inbound.web.ApiKeyAuthFilter
 import com.factstore.adapter.inbound.web.GitHubSignInSuccessHandler
+import com.factstore.adapter.inbound.web.BearerAuthenticationEntryPoint
 import com.factstore.adapter.inbound.web.SessionAuthFilter
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy
 import org.springframework.web.cors.CorsConfiguration
@@ -41,6 +43,7 @@ class SecurityConfig(
     private val apiKeyAuthFilter: ApiKeyAuthFilter,
     private val sessionAuthFilter: SessionAuthFilter,
     private val gitHubSignInSuccessHandler: GitHubSignInSuccessHandler,
+    private val bearerAuthenticationEntryPoint: BearerAuthenticationEntryPoint,
     @Value("\${spring.security.oauth2.client.registration.github.client-id:}")
     private val githubClientId: String,
     @Value("\${security.enforce-auth:false}")
@@ -71,6 +74,9 @@ class SecurityConfig(
                 }
             }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED) }
+            // An unauthenticated request is a 401 with a Bearer challenge, not Spring's default
+            // bare 403 (#155 FR-2.4). An authenticated caller lacking a scope still gets 403.
+            .exceptionHandling { it.authenticationEntryPoint(bearerAuthenticationEntryPoint) }
             .authorizeHttpRequests { auth ->
                 auth
                 if (!enforceAuth) {
@@ -99,6 +105,12 @@ class SecurityConfig(
                     // Dev sign-in answers 404 unless switched on, refuses non-loopback callers,
                     // and cannot be switched on under the prod profile (#156 FR-8.4).
                     .requestMatchers("/api/v1/auth/dev-login").permitAll()
+                    // Inbound hooks from GitHub/GitLab and Slack cannot present a Factstore
+                    // credential. They are authenticated by the signature over the payload,
+                    // which their handlers verify (#155 FR-4.1: marked @PublicEndpoint).
+                    .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/*").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/organisations/*/slack/commands",
+                        "/api/v1/organisations/*/slack/actions").permitAll()
                     // Remaining endpoints: enforce authentication when the flag is enabled.
                     // Set SECURITY_ENFORCE_AUTH=true in production to require authentication.
                 if (enforceAuth) {

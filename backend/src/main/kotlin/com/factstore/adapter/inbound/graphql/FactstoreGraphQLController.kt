@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.graphql
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.port.inbound.IArtifactService
 import com.factstore.core.port.inbound.IAttestationService
@@ -56,6 +57,9 @@ class FactstoreGraphQLController(
     fun environments(@Argument orgSlug: String): List<EnvironmentResponse> =
         environmentService.listEnvironments().filter { it.orgSlug == orgSlug }
 
+    // GraphQL is not a RequestMapping handler, so EveryEndpointIsAuthorisedTest cannot see it;
+    // the mutation names its scope here for the same reason the REST endpoints do (#155).
+    @PreAuthorize("@authz.has('attestations:write')")
     @MutationMapping
     fun createAttestation(@Argument input: CreateAttestationInput): AttestationResponse =
         attestationService.recordAttestation(

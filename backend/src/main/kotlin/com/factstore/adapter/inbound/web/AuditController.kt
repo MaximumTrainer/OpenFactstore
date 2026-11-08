@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.domain.AuditEventType
 import com.factstore.core.port.inbound.IAuditService
 import com.factstore.dto.AuditEventPage
@@ -18,6 +19,7 @@ import java.util.UUID
 @Tag(name = "Audit Log", description = "Immutable audit event log")
 class AuditController(private val auditService: IAuditService) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "Query audit events with optional filters and pagination")
     fun queryEvents(
@@ -35,6 +37,7 @@ class AuditController(private val auditService: IAuditService) {
         return ResponseEntity.ok(auditService.queryEvents(eventType, trailId, actor, from, to, page, size, sortDesc))
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}")
     @Operation(summary = "Get a specific audit event by ID")
     fun getEvent(@PathVariable id: UUID): ResponseEntity<AuditEventResponse> =

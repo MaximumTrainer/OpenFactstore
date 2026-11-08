@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.DryRunContext
 import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.inbound.IEnvironmentService
@@ -37,6 +38,7 @@ class EnvironmentController(
     private val auditService: IAuditService
 ) {
 
+    @PreAuthorize("@authz.has('flows:write')")
     @PostMapping
     @Operation(summary = "Register a new environment")
     fun createEnvironment(
@@ -61,6 +63,7 @@ class EnvironmentController(
         return ResponseEntity.status(HttpStatus.CREATED).body(environmentService.createEnvironment(request))
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping
     @Operation(summary = "List all environments")
     fun listEnvironments(
@@ -69,16 +72,19 @@ class EnvironmentController(
     ): ResponseEntity<PageResponse<EnvironmentResponse>> =
         ResponseEntity.ok(environmentService.listEnvironments(page, size))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/live-artifacts")
     @Operation(summary = "Get live artifacts grouped by image name across all environments")
     fun getLiveArtifactsByRepo(): ResponseEntity<List<LiveArtifactByRepoResponse>> =
         ResponseEntity.ok(environmentService.getLiveArtifactsByRepo())
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}")
     @Operation(summary = "Get environment by ID")
     fun getEnvironment(@PathVariable id: UUID): ResponseEntity<EnvironmentResponse> =
         ResponseEntity.ok(environmentService.getEnvironment(id))
 
+    @PreAuthorize("@authz.has('flows:write')")
     @PutMapping("/{id}")
     @Operation(summary = "Update an environment")
     fun updateEnvironment(
@@ -87,6 +93,7 @@ class EnvironmentController(
     ): ResponseEntity<EnvironmentResponse> =
         ResponseEntity.ok(environmentService.updateEnvironment(id, request))
 
+    @PreAuthorize("@authz.has('admin')")
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete an environment")
     fun deleteEnvironment(@PathVariable id: UUID): ResponseEntity<Void> {
@@ -94,6 +101,7 @@ class EnvironmentController(
         return ResponseEntity.noContent().build()
     }
 
+    @PreAuthorize("@authz.has('artifacts:write')")
     @PostMapping("/{id}/snapshots")
     @Operation(summary = "Record a new snapshot for an environment")
     fun recordSnapshot(
@@ -122,16 +130,19 @@ class EnvironmentController(
         return ResponseEntity.status(HttpStatus.CREATED).body(environmentService.recordSnapshot(id, request))
     }
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/snapshots")
     @Operation(summary = "List all snapshots for an environment")
     fun listSnapshots(@PathVariable id: UUID): ResponseEntity<List<EnvironmentSnapshotResponse>> =
         ResponseEntity.ok(environmentService.listSnapshots(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/snapshots/latest")
     @Operation(summary = "Get the most recent snapshot for an environment")
     fun getLatestSnapshot(@PathVariable id: UUID): ResponseEntity<EnvironmentSnapshotResponse> =
         ResponseEntity.ok(environmentService.getLatestSnapshot(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/snapshots/{snapshotIndex}")
     @Operation(summary = "Get a specific snapshot by index")
     fun getSnapshot(
@@ -140,6 +151,7 @@ class EnvironmentController(
     ): ResponseEntity<EnvironmentSnapshotResponse> =
         ResponseEntity.ok(environmentService.getSnapshot(id, snapshotIndex))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/diff")
     @Operation(summary = "Diff two snapshots of an environment")
     fun diffSnapshots(
@@ -149,6 +161,7 @@ class EnvironmentController(
     ): ResponseEntity<SnapshotDiffResponse> =
         ResponseEntity.ok(environmentService.diffSnapshots(id, from, to))
 
+    @PreAuthorize("@authz.has('flows:write')")
     @PostMapping("/{id}/baselines")
     @Operation(summary = "Create a new baseline for an environment")
     fun createBaseline(
@@ -157,21 +170,25 @@ class EnvironmentController(
     ): ResponseEntity<BaselineResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(environmentService.createBaseline(id, request))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/baselines/current")
     @Operation(summary = "Get the current active baseline for an environment")
     fun getCurrentBaseline(@PathVariable id: UUID): ResponseEntity<BaselineResponse> =
         ResponseEntity.ok(environmentService.getCurrentBaseline(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/drift")
     @Operation(summary = "Check drift between current snapshot and baseline")
     fun checkDrift(@PathVariable id: UUID): ResponseEntity<DriftReportResponse> =
         ResponseEntity.ok(environmentService.checkDrift(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/drift/history")
     @Operation(summary = "List all drift reports for an environment")
     fun listDriftHistory(@PathVariable id: UUID): ResponseEntity<List<DriftReportResponse>> =
         ResponseEntity.ok(environmentService.listDriftHistory(id))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/{id}/audit-log/csv")
     @Operation(summary = "Export the audit log for an environment as a CSV file")
     fun exportAuditLogCsv(@PathVariable id: UUID): ResponseEntity<String> {

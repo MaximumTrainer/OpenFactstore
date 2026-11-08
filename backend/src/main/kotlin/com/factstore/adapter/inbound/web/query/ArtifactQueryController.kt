@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web.query
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.core.port.inbound.query.IArtifactQueryHandler
 import com.factstore.core.port.inbound.IBuildProvenanceService
 import com.factstore.dto.BuildProvenanceResponse
@@ -17,16 +18,19 @@ class ArtifactQueryController(
     private val buildProvenanceService: IBuildProvenanceService
 ) {
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v2/trails/{trailId}/artifacts")
     @Operation(summary = "List artifacts for a trail")
     fun listArtifacts(@PathVariable trailId: UUID): ResponseEntity<List<ArtifactView>> =
         ResponseEntity.ok(queryHandler.listArtifactsForTrail(trailId))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v2/artifacts")
     @Operation(summary = "Find artifacts by SHA256 digest")
     fun findBySha256(@RequestParam sha256: String): ResponseEntity<List<ArtifactView>> =
         ResponseEntity.ok(queryHandler.findBySha256(sha256))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance")
     @Operation(summary = "Retrieve build provenance for an artifact")
     fun getProvenance(
@@ -35,6 +39,7 @@ class ArtifactQueryController(
     ): ResponseEntity<BuildProvenanceResponse> =
         ResponseEntity.ok(buildProvenanceService.getProvenance(trailId, artifactId))
 
+    @PreAuthorize("@authz.authenticated()")
     @GetMapping("/api/v2/artifacts/{sha256}/provenance")
     @Operation(summary = "Get provenance by artifact SHA256 digest")
     fun getProvenanceBySha256(@PathVariable sha256: String): ResponseEntity<BuildProvenanceResponse> =

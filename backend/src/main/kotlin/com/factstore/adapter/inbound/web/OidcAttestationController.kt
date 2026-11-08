@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import org.springframework.security.access.prepost.PreAuthorize
 import com.factstore.application.OidcAttestationRequest
 import com.factstore.application.OidcAttestationService
 import com.factstore.dto.AttestationResponse
@@ -21,6 +22,7 @@ data class OidcAttestationApiRequest(
 @Tag(name = "OIDC Attestations", description = "OIDC token-based provenance attestation")
 class OidcAttestationController(private val oidcAttestationService: OidcAttestationService) {
 
+    @PreAuthorize("@authz.has('attestations:write')")
     @PostMapping
     @Operation(summary = "Record an OIDC token attestation (GitHub Actions / GitLab CI)")
     fun recordOidcAttestation(@RequestBody request: OidcAttestationApiRequest): ResponseEntity<AttestationResponse> {
