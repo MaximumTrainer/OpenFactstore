@@ -22,7 +22,9 @@ class RegulatoryComplianceService(
     private val mappingRepository: IComplianceMappingRepository,
     private val assessmentRepository: IComplianceAssessmentRepository,
     private val attestationRepository: IAttestationRepository,
-    private val trailRepository: ITrailRepository
+    private val trailRepository: ITrailRepository,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
+    private val ownership: OrgOwnership? = null
 ) : IRegulatoryComplianceService {
 
     private val log = LoggerFactory.getLogger(RegulatoryComplianceService::class.java)
@@ -209,14 +211,19 @@ class RegulatoryComplianceService(
 
     @Transactional(readOnly = true)
     override fun listAssessments(): List<AssessmentResponse> =
-        assessmentRepository.findAll().map { it.toResponse() }
+        assessmentRepository.findAll().filter { visibleAssessment(it) }.map { it.toResponse() }
 
     @Transactional(readOnly = true)
     override fun getAssessment(id: UUID): AssessmentResponse {
-        val assessment = assessmentRepository.findById(id)
-            ?: throw NotFoundException("Assessment not found: $id")
+        val assessment = tenantScope.require(assessmentRepository.findById(id), { it.orgSlug ?: ownership?.ofTrail(it.trailId) }) {
+            "Assessment not found: $id"
+        }
         return assessment.toResponse()
     }
+
+    // An assessment belongs to its own organisation, or its trail's (#207).
+    private fun visibleAssessment(assessment: com.factstore.core.domain.ComplianceAssessment): Boolean =
+        tenantScope.visible(assessment.orgSlug ?: ownership?.ofTrail(assessment.trailId))
 
     @Transactional(readOnly = true)
     override fun generateReport(frameworkId: UUID): RegulatoryReportResponse {

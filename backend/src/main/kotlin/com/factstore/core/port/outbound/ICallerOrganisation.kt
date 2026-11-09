@@ -9,4 +9,16 @@ package com.factstore.core.port.outbound
  */
 interface ICallerOrganisation {
     fun orgSlug(): String?
+
+    /** A real credential was presented: not an anonymous caller on an unenforced instance. */
+    fun isAuthenticated(): Boolean = false
+
+    /** The caller holds the `operator` scope (#207). */
+    fun isOperator(): Boolean = false
+
+    /**
+     * Note that an unbound caller read a resource belonging to [orgSlug] in this request, so the
+     * request is audited once as a cross-organisation read (#155 FR-5.4).
+     */
+    fun recordCrossTenantRead(orgSlug: String) {}
 }
