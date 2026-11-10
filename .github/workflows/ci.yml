@@ -68,6 +68,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
       - name: Build and test
         run: ./gradlew build
+      # #208: authentication overhead per request. Never fails the build; warns over budget.
+      - name: Auth overhead benchmark
+        run: |
+          ./gradlew authBenchmark
+          cat build/reports/auth-benchmark.json
+          if grep -q '"withinBudget": false' build/reports/auth-benchmark.json; then
+            echo "::warning title=Auth overhead over budget::See build/reports/auth-benchmark.json and docs/api-authorisation.md"
+          fi
       - name: Run Flyway migration tests
         run: ./gradlew migrationTest
         env:

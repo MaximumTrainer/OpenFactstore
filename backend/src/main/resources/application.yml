@@ -180,6 +180,12 @@ security:
     # the user signs in but has no organisation until an admin adds them.
     default-org: ${GITHUB_DEFAULT_ORG:}
 
+  transport:
+    # With enforcement on, refuse plaintext HTTP from other machines with 426 (#208). Behind a
+    # TLS-terminating proxy set server.forward-headers-strategy=framework instead of turning
+    # this off.
+    require-tls: ${SECURITY_TRANSPORT_REQUIRE_TLS:true}
+
   tenancy:
     # When true, an unbound credential needs the operator scope to read another organisation's
     # resources (#207, #155 FR-5.4); without it, it sees only resources with no organisation.
