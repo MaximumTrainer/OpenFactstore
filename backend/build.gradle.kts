@@ -64,6 +64,18 @@ tasks.withType<Test> {
 tasks.named<Test>("test") {
     exclude("**/pact/**")
     exclude("**/migration/**")
+    // Measurements, not assertions: run with ./gradlew authBenchmark (#208).
+    useJUnitPlatform { excludeTags("benchmark") }
+}
+
+tasks.register<Test>("authBenchmark") {
+    description = "Measures authentication overhead per request; writes build/reports/auth-benchmark.json (#208)"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform { includeTags("benchmark") }
+    systemProperty("factstore.benchmark.out", layout.buildDirectory.file("reports/auth-benchmark.json").get().asFile.path)
+    outputs.upToDateWhen { false }
 }
 
 tasks.register<Test>("contractTest") {

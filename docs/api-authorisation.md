@@ -52,6 +52,32 @@ counters, so a pipeline that fixes its credential is not left locked out.
 Counting both ways is deliberate: one misconfigured runner should not lock out a whole NAT, and
 one stolen prefix should not be rescued by rotating source addresses.
 
+### Cost per request
+
+Validation is cached on a SHA-256 of the credential, so BCrypt runs once per key per cache
+window, not per request. The budget for the added latency of authenticating a request is
+**1 ms at p50 and 5 ms at p99**.
+
+`./gradlew authBenchmark` measures it (`AuthOverheadBenchmark`). It makes 5,000 authenticated
+`GET /api/v1/flows/{id}` requests with a warm cache, interleaved with the same request made
+anonymously, and writes `build/reports/auth-benchmark.json`. CI runs it and warns when either
+figure is over budget. Measured on 2026-11-10 (Windows laptop, JDK 21, in-process MockMvc):
+
+| | Anonymous | Authenticated | Overhead |
+|---|---|---|---|
+| p50 | 0.92 ms | 1.44 ms | **0.52 ms** |
+| p99 | 2.41 ms | 3.73 ms | **1.32 ms** |
+
+### Plaintext HTTP is refused
+
+With enforcement on, a plaintext request from another machine is answered `426 Upgrade
+Required` before any credential is read (#208, FR-10.1). A redirect would not help: the client
+has already sent its key once. Loopback callers and health probes are allowed. Behind a proxy
+that terminates TLS, set `server.forward-headers-strategy=framework` so `X-Forwarded-Proto:
+https` marks the request secure. `security.transport.require-tls=false`
+(`SECURITY_TRANSPORT_REQUIRE_TLS`) turns the check off for a private network that carries plain
+HTTP between services, as the local Docker Compose stack does.
+
 ---
 
 ## Scopes
@@ -350,6 +376,7 @@ Which also:
 - restricts `/actuator/**` to health and info (metrics, env and loggers require a credential);
 - stops serving Swagger UI, `/api-docs` and the H2 console unauthenticated;
 - sets HSTS;
+- refuses plaintext HTTP from other machines with `426` (unless `security.transport.require-tls=false`);
 - refuses a wildcard CORS origin outright.
 
 Roll back with `SECURITY_ENFORCE_AUTH=false`.

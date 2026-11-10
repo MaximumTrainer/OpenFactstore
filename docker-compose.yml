@@ -96,6 +96,8 @@ services:
       # stack still starts, unauthenticated, and Prometheus cannot scrape.
       SECURITY_ENFORCE_AUTH: ${SECURITY_ENFORCE_AUTH:-false}
       SECURITY_WARN_MODE: ${SECURITY_WARN_MODE:-false}
+      # Services talk plain HTTP on the Compose network; TLS belongs in front of it (#208).
+      SECURITY_TRANSPORT_REQUIRE_TLS: "false"
       SSO_JWT_SECRET: ${SSO_JWT_SECRET:-}
       SECURITY_BOOTSTRAP_API_KEY: ${SECURITY_BOOTSTRAP_API_KEY:-}
       SECURITY_BOOTSTRAP_METRICS_API_KEY: ${SECURITY_BOOTSTRAP_METRICS_API_KEY:-}
@@ -132,6 +134,8 @@ services:
       # stack still starts, unauthenticated, and Prometheus cannot scrape.
       SECURITY_ENFORCE_AUTH: ${SECURITY_ENFORCE_AUTH:-false}
       SECURITY_WARN_MODE: ${SECURITY_WARN_MODE:-false}
+      # Services talk plain HTTP on the Compose network; TLS belongs in front of it (#208).
+      SECURITY_TRANSPORT_REQUIRE_TLS: "false"
       SSO_JWT_SECRET: ${SSO_JWT_SECRET:-}
       SECURITY_BOOTSTRAP_API_KEY: ${SECURITY_BOOTSTRAP_API_KEY:-}
       SECURITY_BOOTSTRAP_METRICS_API_KEY: ${SECURITY_BOOTSTRAP_METRICS_API_KEY:-}
