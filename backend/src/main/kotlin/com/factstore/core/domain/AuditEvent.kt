@@ -34,6 +34,8 @@ enum class AuditEventType {
     AUTH_FAILED,
     // An unbound credential read another organisation's resources (#207, #155 FR-5.4).
     CROSS_TENANT_READ,
+    // A fact schema version was published to the registry (#195).
+    SCHEMA_PUBLISHED,
     AUTH_DENIED,
     // Credential lifecycle (#155 FR-8.2).
     API_KEY_CREATED,

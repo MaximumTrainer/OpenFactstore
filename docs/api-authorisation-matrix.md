@@ -79,6 +79,7 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `DELETE` | `/api/v1/auth/sessions/{sessionId}` | `@authz.authenticated()` |
 | `DELETE` | `/api/v1/auth/users/{userId}/sessions` | `hasAuthority('SCOPE_admin')` |
 | `GET` | `/api/v1/auth/users/{userId}/sessions` | `hasAuthority('SCOPE_admin')` |
+| `PUT` | `/api/v1/commands/schemas/{name}/v{version}` | `@authz.has('admin')` |
 | `GET` | `/api/v1/compliance/artifact/{sha256Digest}` | `@authz.has('trails:read')` |
 | `POST` | `/api/v1/compliance/assess` | `@authz.has('assert:execute')` |
 | `GET` | `/api/v1/compliance/assessments` | `@authz.has('trails:read')` |
@@ -222,6 +223,8 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `POST` | `/api/v1/policy-attachments` | `@authz.has('policies:write')` |
 | `DELETE` | `/api/v1/policy-attachments/{id}` | `@authz.has('policies:write')` |
 | `GET` | `/api/v1/policy-attachments/{id}` | `@authz.has('policies:read')` |
+| `GET` | `/api/v1/queries/schemas/{name}` | `@authz.has('policies:read')` |
+| `GET` | `/api/v1/queries/schemas/{name}/v{version}` | `@authz.has('policies:read')` |
 | `GET` | `/api/v1/reports/audit-trail/{trailId}` | `@authz.has('trails:read')` |
 | `GET` | `/api/v1/reports/compliance` | `@authz.has('trails:read')` |
 | `GET` | `/api/v1/reports/regulatory/{frameworkId}` | `@authz.has('trails:read')` |
