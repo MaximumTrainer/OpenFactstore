@@ -76,6 +76,10 @@ class WorkloadIdentityTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var registry: SchemaRegistryService
+    @Autowired lateinit var signingKeys: com.factstore.application.signing.SigningKeyRegistryService
+
+    /** Facts are signed at the source (#187). */
+    private val signer = com.factstore.fact.TestSigner()
     @Autowired lateinit var facts: IFactRepository
 
     private val schemaName = "workload-${System.nanoTime()}"
@@ -84,6 +88,7 @@ class WorkloadIdentityTest {
     fun setUp() {
         SecurityContextHolder.clearContext()
         registry.publish(schemaName, 1, jacksonObjectMapper().readTree("""{"type":"object"}"""))
+        signingKeys.register(signer.keyId, signer.publicKeyPem)
         SecurityContextHolder.clearContext()
     }
 
@@ -114,7 +119,7 @@ class WorkloadIdentityTest {
     private fun ingest(bearer: String?, spiffeId: String? = null, body: String = fact()) =
         mockMvc.post("/api/v1/commands/facts") {
             contentType = MediaType.APPLICATION_JSON
-            content = body
+            signer.signed(this, body)
             bearer?.let { header("Authorization", "Bearer $it") }
             spiffeId?.let { header("X-Spiffe-ID", it) }
         }

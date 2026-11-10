@@ -4,7 +4,6 @@ import com.factstore.application.fact.FactIngestionResponse
 import com.factstore.application.fact.FactIngestionService
 import com.factstore.application.fact.FactView
 import com.factstore.exception.ForbiddenException
-import com.fasterxml.jackson.databind.JsonNode
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.beans.factory.annotation.Value
@@ -15,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
@@ -37,15 +37,21 @@ class FactIngestionController(
         summary = "Ingest a fact",
         description = "202 when the fact conforms and is accepted. 400 with error invalid_envelope, unknown_schema " +
             "or schema_nonconformant and a list of violations when it does not; nothing is stored. 409 when the " +
-            "fact_id was already ingested."
+            "fact_id was already ingested. 401 when X-Signature is missing or does not verify against the trusted " +
+            "signing-key registry (#187)."
     )
-    fun ingest(@RequestBody body: JsonNode): ResponseEntity<FactIngestionResponse> {
+    fun ingest(
+        // The raw text, not a parsed tree: the source signature is over these exact bytes (#187).
+        @RequestBody body: String,
+        @RequestHeader("X-Signature", required = false) signature: String?,
+        @RequestHeader("X-Signature-Key-Id", required = false) signatureKeyId: String?
+    ): ResponseEntity<FactIngestionResponse> {
         if (requireWorkloadIdentity && !callerIsWorkload()) {
             throw ForbiddenException(
                 "Fact ingestion requires a workload identity (an OIDC token or SPIFFE JWT-SVID); static credentials are not accepted"
             )
         }
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(service.ingest(body))
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(service.ingest(body, signature, signatureKeyId))
     }
 
     @GetMapping("/api/v1/queries/facts/{factId}")

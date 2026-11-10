@@ -125,6 +125,18 @@ class GlobalExceptionHandler(
         )
     }
 
+    /** #187: a fact whose source signature is missing or does not verify never reaches the ledger. */
+    @ExceptionHandler(SignatureRejectedException::class)
+    fun handleSignatureRejected(ex: SignatureRejectedException): ResponseEntity<Map<String, Any?>> {
+        log.warn("Fact signature refused ({}): {}", ex.error, ex.message)
+        failureMetrics.error(ex, HttpStatus.UNAUTHORIZED.value())
+        failureMetrics.ingestDenial(ex.error.uppercase())
+        MDC.put(CorrelationIdFilter.MDC_STATUS, HttpStatus.UNAUTHORIZED.value().toString())
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .header(org.springframework.http.HttpHeaders.WWW_AUTHENTICATE, "Signature realm=\"factstore\", algorithm=\"ed25519\"")
+            .body(mapOf("error" to ex.error, "message" to ex.message, "correlationId" to CorrelationIdFilter.current()))
+    }
+
     @ExceptionHandler(BadRequestException::class)
     fun handleBadRequest(ex: BadRequestException): ResponseEntity<ErrorResponse> {
         log.warn("Bad request: ${ex.message}")

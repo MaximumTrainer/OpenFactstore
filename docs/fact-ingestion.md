@@ -57,6 +57,49 @@ Each violation is `{ "path": <JSON Pointer into the request body>, "message": ..
 }
 ```
 
+## Source signatures
+
+Every fact must be signed by the CI runner that sends it (#187). The runner signs the **exact request body bytes** with an Ed25519 key, then sends:
+
+| Header | Value |
+|---|---|
+| `X-Signature` | the 64-byte Ed25519 signature, base64url (standard base64 is accepted too) |
+| `X-Signature-Key-Id` | the id the key was registered under |
+
+The signature is checked after validation and before anything is stored, against the trusted signing-key registry:
+
+| `401` `error` | Meaning |
+|---|---|
+| `signature_missing` | either header is absent |
+| `signature_malformed` | `X-Signature` is not a base64 Ed25519 signature |
+| `unknown_signing_key` | the key id is not registered |
+| `signing_key_revoked` | the key has been revoked |
+| `signature_invalid` | the signature does not verify over the body, for example because the body changed after signing |
+
+Refusals are counted in `factstore.ingest.denials{reason=<error>}`. An accepted fact keeps its key id, its signature and the exact body that was signed, both in the `facts` row and in its `FactIngested` event, so the signature can be checked again at any time.
+
+Signing a fact with OpenSSL:
+
+```bash
+openssl genpkey -algorithm ed25519 -out runner.pem
+openssl pkey -in runner.pem -pubout -out runner.pub.pem      # register this
+openssl pkeyutl -sign -inkey runner.pem -rawin -in fact.json | basenc --base64url -w0
+```
+
+### The signing-key registry
+
+Administrators manage it (all need `admin`):
+
+| Request | Does |
+|---|---|
+| `POST /api/v1/commands/signing-keys` `{"keyId", "publicKey": "<PEM>"}` | registers an Ed25519 key: `201`, `400` if it is not Ed25519, `409` if the id is taken |
+| `POST /api/v1/commands/signing-keys/{keyId}/revoke` | revokes it; facts signed with it are refused from then on |
+| `GET /api/v1/queries/signing-keys` | lists keys and their status |
+
+Registration and revocation are audited (`SIGNING_KEY_REGISTERED`, `SIGNING_KEY_REVOKED`). Keys are never deleted. **To rotate**, register the new key under a new id, move runners to it, then revoke the old one; both verify in between.
+
+`factstore.ingest.require-signature` (default `true`) can be set to `false` while runners are being moved to signing. Unsigned facts are then accepted, but a signature that is sent is still verified.
+
 ## Identity lineage
 
 Each fact is bound, by the server, to the identity verified when it arrived (#191). The request body cannot carry an identity: an `identity` field is an undefined envelope field and is refused with `invalid_envelope`.
@@ -74,6 +117,7 @@ The identity is stored with the fact and carried in its `FactIngested` event. No
 
 ## Not yet covered
 
-- Request signatures (`X-Signature`) and workload identity headers (`X-Spiffe-ID`) from the specification are not verified here yet; they belong to #190 and #191. When they are, validation stays first, so unvalidated data is never signature-checked or stored.
 - Facts are not yet scoped to an organisation; see #218.
-- The identity is stored and evented, but not yet signed or hash-chained; that comes with #184 and #188, which must include it in the bytes they protect.
+- Signing keys are not yet bound to a workload or service, so any registered key may sign any fact. Binding a key to the identity that may use it is a follow-up.
+- Masking (#198) must happen on the runner, before signing, so the stored body is the signed body.
+- The server-set identity (#191) is stored and evented but is not part of the signed bytes. Storage-side signing and hash chaining (#184, #188) must include it.

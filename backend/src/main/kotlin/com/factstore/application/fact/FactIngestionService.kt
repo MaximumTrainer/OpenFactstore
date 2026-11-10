@@ -6,6 +6,8 @@ import com.factstore.application.command.EventAppender
 import com.factstore.application.schema.Conformity
 import com.factstore.application.schema.SchemaRegistryService
 import com.factstore.application.schema.SchemaViolation
+import com.factstore.application.signing.SourceSignature
+import com.factstore.application.signing.SourceSignatureVerifier
 import com.factstore.core.domain.Fact
 import com.factstore.core.domain.FactIdentity
 import com.factstore.core.domain.SchemaUrn
@@ -23,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -65,16 +68,21 @@ class FactIngestionService(
     private val objectMapper: ObjectMapper,
     private val servicePolicy: WorkloadServicePolicy,
     private val auditService: IAuditService,
-    private val failureMetrics: FailureMetrics
+    private val failureMetrics: FailureMetrics,
+    private val signatureVerifier: SourceSignatureVerifier,
+    /** #187: every fact must be signed at the source. Off only for a deployment migrating its runners. */
+    @Value("\${factstore.ingest.require-signature:true}") private val requireSignature: Boolean
 ) {
 
     // A refused fact writes nothing, but its audit record must survive the refusal (#190).
     @Transactional(noRollbackFor = [CrossWorkloadInjectionException::class])
-    fun ingest(body: JsonNode): FactIngestionResponse {
+    fun ingest(rawBody: String, signatureHeader: String? = null, signatureKeyId: String? = null): FactIngestionResponse {
+        val body = runCatching { objectMapper.readTree(rawBody) }.getOrNull()
+            ?: throw FactRejectedException(
+                FactRejectedException.INVALID_ENVELOPE, null, listOf(SchemaViolation("", "the body is not valid JSON"))
+            )
         val envelope = Envelope.parse(body)
         val schemaRef = envelope.schemaRef
-        val identity = verifiedIdentity()
-        authorise(envelope, identity)
 
         when (val conformity = registry.validateConformity(schemaRef, envelope.tool)) {
             is Conformity.UnknownSchema -> throw FactRejectedException(
@@ -88,6 +96,12 @@ class FactIngestionService(
             Conformity.Conforms -> Unit
         }
 
+        // Validation first (#196), then the source signature over the exact bytes received (#187).
+        val signature = sourceSignature(rawBody, signatureHeader, signatureKeyId)
+
+        val identity = verifiedIdentity()
+        authorise(envelope, identity)
+
         if (facts.existsById(envelope.factId)) throw ConflictException("Fact ${envelope.factId} has already been ingested")
 
         val fact = facts.save(
@@ -98,7 +112,10 @@ class FactIngestionService(
                 subjectRepository = envelope.repository,
                 payloadJson = objectMapper.writeValueAsString(envelope.tool),
                 ingestedBy = actorResolver.current(),
-                identity = identity
+                identity = identity,
+                signatureKeyId = signature?.keyId,
+                signature = signature?.signature,
+                signedBody = signature?.let { rawBody }
             )
         )
         eventAppender.append(
@@ -110,10 +127,18 @@ class FactIngestionService(
                 subjectRepository = fact.subjectRepository,
                 payloadJson = fact.payloadJson,
                 ingestedBy = fact.ingestedBy,
-                identity = fact.identity
+                identity = fact.identity,
+                signatureKeyId = fact.signatureKeyId,
+                signature = fact.signature,
+                signedBody = fact.signedBody
             )
         )
         return FactIngestionResponse(fact.factId, fact.schemaRef, fact.ingestedAt)
+    }
+
+    private fun sourceSignature(rawBody: String, header: String?, keyId: String?): SourceSignature? {
+        if (!requireSignature && header.isNullOrBlank() && keyId.isNullOrBlank()) return null
+        return signatureVerifier.verify(rawBody.toByteArray(Charsets.UTF_8), header, keyId)
     }
 
     /** Strict ABAC (#190): a workload emits facts only for its own service. */

@@ -72,6 +72,10 @@ class CrossWorkloadInjectionTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var registry: SchemaRegistryService
+    @Autowired lateinit var signingKeys: com.factstore.application.signing.SigningKeyRegistryService
+
+    /** Facts are signed at the source (#187). */
+    private val signer = com.factstore.fact.TestSigner()
     @Autowired lateinit var facts: IFactRepository
     @Autowired lateinit var eventStore: IEventStore
     @Autowired lateinit var audit: IAuditService
@@ -83,6 +87,7 @@ class CrossWorkloadInjectionTest {
     fun setUp() {
         SecurityContextHolder.clearContext()
         registry.publish(schemaName, 1, jacksonObjectMapper().readTree("""{"type":"object"}"""))
+        signingKeys.register(signer.keyId, signer.publicKeyPem)
         SecurityContextHolder.clearContext()
     }
 
@@ -110,7 +115,7 @@ class CrossWorkloadInjectionTest {
             contentType = MediaType.APPLICATION_JSON
             val subject = repository?.let { """{"sha256":"${"f".repeat(64)}","repository":"$it"}""" }
                 ?: """{"sha256":"${"f".repeat(64)}"}"""
-            content = """{"fact_id":"$factId","subject":$subject,"governance":{"schema_ref":"urn:schema:$schemaName:v1"},"tool":{}}"""
+            signer.signed(this, """{"fact_id":"$factId","subject":$subject,"governance":{"schema_ref":"urn:schema:$schemaName:v1"},"tool":{}}""")
             bearer?.let { header("Authorization", "Bearer $it") }
             spiffeId?.let { header("X-Spiffe-ID", it) }
         }
