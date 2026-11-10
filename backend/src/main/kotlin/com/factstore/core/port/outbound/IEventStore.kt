@@ -24,5 +24,17 @@ interface IEventStore {
     fun findAfterSequence(afterSequence: Long): List<EventLogEntry>
 
     /** Retrieve the events with the given sequence numbers, ordered by sequence number. */
-    fun findBySequenceNumbers(sequenceNumbers: Collection<Long>): List<EventLogEntry>
+    fun findBySequenceNumbers(sequenceNumbers: Collection<Long>): List<EventLogEntry>
+
+    /** Persist the signature fields of an entry appended in the same transaction (#184). */
+    fun recordSignature(entry: EventLogEntry): EventLogEntry
+
+    /** Signed entries with sequence numbers in [from, to], in order (#184). */
+    fun findSignedInRange(from: Long, to: Long): List<EventLogEntry>
+
+    /** The newest signed entry before [sequenceNumber], if any (#184). */
+    fun findLastSignedBefore(sequenceNumber: Long): EventLogEntry?
+
+    /** How many unsigned entries have sequence numbers in [from, to] (#184). */
+    fun countUnsignedInRange(from: Long, to: Long): Long
 }

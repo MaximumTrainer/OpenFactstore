@@ -72,12 +72,24 @@ tasks.named<Test>("test") {
     useJUnitPlatform { excludeTags("benchmark") }
 }
 
+tasks.register<Test>("eventSigningBenchmark") {
+    description = "Measures the ingest latency added by signing stored events; writes build/reports/event-signing-benchmark.json (#184)"
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform { includeTags("benchmark") }
+    filter { includeTestsMatching("*EventSigningBenchmark") }
+    systemProperty("factstore.benchmark.out", layout.buildDirectory.file("reports/event-signing-benchmark.json").get().asFile.path)
+    outputs.upToDateWhen { false }
+}
+
 tasks.register<Test>("authBenchmark") {
     description = "Measures authentication overhead per request; writes build/reports/auth-benchmark.json (#208)"
     group = "verification"
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
     useJUnitPlatform { includeTags("benchmark") }
+    filter { includeTestsMatching("*AuthOverheadBenchmark") }
     systemProperty("factstore.benchmark.out", layout.buildDirectory.file("reports/auth-benchmark.json").get().asFile.path)
     outputs.upToDateWhen { false }
 }

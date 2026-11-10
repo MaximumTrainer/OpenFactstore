@@ -29,7 +29,10 @@ class EventAppenderTest {
         eventStore = InMemoryEventStore()
         objectMapper = jacksonObjectMapper().registerModule(JavaTimeModule())
         eventAppender = EventAppender(eventStore, objectMapper, noopBus, InMemoryEventOutbox(),
-            FailureMetrics(SimpleMeterRegistry(), "all"))
+            FailureMetrics(SimpleMeterRegistry(), "all"),
+            com.factstore.application.signing.EventRecordSealer(
+                eventStore, com.factstore.adapter.mock.InMemoryEventChainHead(), com.factstore.application.signing.FakeEventSigner()
+            ))
     }
 
     @Test

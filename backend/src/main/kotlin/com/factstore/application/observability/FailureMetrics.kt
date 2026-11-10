@@ -47,7 +47,9 @@ class FailureMetrics(
     enum class IntegritySource(val tag: String) {
         API("api"),
         LEDGER("ledger"),
-        PROJECTION("projection")
+        PROJECTION("projection"),
+        /** Signing a stored event failed, or a stored signature did not verify (#184). */
+        SIGNING("signing")
     }
 
     fun error(exception: Throwable, status: Int) {

@@ -137,6 +137,13 @@ factstore:
     evaluator: ${FACTSTORE_POLICY_EVALUATOR:opa}
   scm:
     encryption-key: ${SCM_ENCRYPTION_KEY:default-dev-key-32chars!!!!!!}
+  # Signing of stored event records (#184). `local` signs with an in-memory development key that
+  # is lost on restart and is refused under the prod profile; production uses `vault-transit`,
+  # where the private key never leaves Vault. See docs/runbooks/event-signing-keys.md.
+  event-signing:
+    provider: ${EVENT_SIGNING_PROVIDER:local}
+    vault:
+      key-name: ${EVENT_SIGNING_VAULT_KEY:factstore-events}
 
 cosign:
   enabled: ${COSIGN_ENABLED:false}

@@ -4,6 +4,9 @@ class NotFoundException(message: String) : RuntimeException(message)
 class ConflictException(message: String) : RuntimeException(message)
 class IntegrityException(message: String) : RuntimeException(message)
 class BadRequestException(message: String) : RuntimeException(message)
+
+/** A stored event could not be signed (#184): the write is rolled back and the command fails. */
+class EventSigningException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 class PullRequestNotFoundException(message: String) : RuntimeException(message)
 
 /**
