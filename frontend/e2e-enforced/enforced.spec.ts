@@ -55,11 +55,8 @@ test('signing out ends the session', async ({ page }) => {
   ])
   await expect(page).toHaveURL(/\/login/)
 
-  // The session cookie is gone and the server no longer recognises the caller.
-  const cookies = await page.context().cookies()
-  console.log('cookies after sign-out:', JSON.stringify(cookies.map(c => ({ name: c.name, value: c.value.slice(0, 8) }))))
+  // Nothing the browser still holds, including a JSESSIONID, authenticates any more (#209).
   const me = await page.request.get('/api/v1/auth/me')
-  console.log('GET /api/v1/auth/me after sign-out:', me.status())
   expect(me.status()).toBe(401)
 
   await page.goto('/flows')

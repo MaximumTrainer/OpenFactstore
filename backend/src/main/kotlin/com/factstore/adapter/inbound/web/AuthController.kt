@@ -100,11 +100,15 @@ class AuthController(
     )
     fun logout(
         authentication: Authentication?,
+        request: HttpServletRequest,
         response: HttpServletResponse
     ): ResponseEntity<Void> {
         (authentication?.principal as? AuthenticatedUser)?.let { user ->
             sessionService.revoke(user.sessionId, SessionRevocationReason.LOGOUT)
         }
+        // Nothing should be held in a servlet session, but end any that exists so no second
+        // store can outlive the sign-out (#209).
+        request.getSession(false)?.invalidate()
         // Clear the cookie whether or not a session was found, so a stale cookie cannot linger.
         response.addHeader(HttpHeaders.SET_COOKIE, clearedSessionCookie())
         return ResponseEntity.noContent().build()
