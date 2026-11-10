@@ -30,3 +30,6 @@ class FactRejectedException(
         const val SCHEMA_NONCONFORMANT = "schema_nonconformant"
     }
 }
+
+/** A workload tried to emit a fact for a service it does not belong to (#190). Rendered as `403`. */
+class CrossWorkloadInjectionException(message: String) : RuntimeException(message)

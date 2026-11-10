@@ -12,7 +12,11 @@ import com.factstore.core.domain.SchemaUrn
 import com.factstore.core.domain.Sha256Hash
 import com.factstore.core.domain.event.DomainEvent
 import com.factstore.core.port.outbound.IFactRepository
+import com.factstore.application.observability.FailureMetrics
+import com.factstore.core.domain.AuditEventType
+import com.factstore.core.port.inbound.IAuditService
 import com.factstore.exception.ConflictException
+import com.factstore.exception.CrossWorkloadInjectionException
 import com.factstore.exception.FactRejectedException
 import com.factstore.exception.NotFoundException
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -58,13 +62,19 @@ class FactIngestionService(
     private val facts: IFactRepository,
     private val eventAppender: EventAppender,
     private val actorResolver: ActorResolver,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val servicePolicy: WorkloadServicePolicy,
+    private val auditService: IAuditService,
+    private val failureMetrics: FailureMetrics
 ) {
 
-    @Transactional
+    // A refused fact writes nothing, but its audit record must survive the refusal (#190).
+    @Transactional(noRollbackFor = [CrossWorkloadInjectionException::class])
     fun ingest(body: JsonNode): FactIngestionResponse {
         val envelope = Envelope.parse(body)
         val schemaRef = envelope.schemaRef
+        val identity = verifiedIdentity()
+        authorise(envelope, identity)
 
         when (val conformity = registry.validateConformity(schemaRef, envelope.tool)) {
             is Conformity.UnknownSchema -> throw FactRejectedException(
@@ -88,7 +98,7 @@ class FactIngestionService(
                 subjectRepository = envelope.repository,
                 payloadJson = objectMapper.writeValueAsString(envelope.tool),
                 ingestedBy = actorResolver.current(),
-                identity = verifiedIdentity()
+                identity = identity
             )
         )
         eventAppender.append(
@@ -104,6 +114,25 @@ class FactIngestionService(
             )
         )
         return FactIngestionResponse(fact.factId, fact.schemaRef, fact.ingestedAt)
+    }
+
+    /** Strict ABAC (#190): a workload emits facts only for its own service. */
+    private fun authorise(envelope: Envelope, identity: FactIdentity) {
+        val reason = servicePolicy.denial(identity, envelope.repository) ?: return
+        failureMetrics.ingestDenial("CROSS_WORKLOAD")
+        auditService.record(
+            eventType = AuditEventType.AUTH_DENIED,
+            actor = actorResolver.current(),
+            payload = mapOf(
+                "reason" to "cross_workload_injection",
+                "detail" to reason,
+                "factId" to envelope.factId.toString(),
+                "subjectRepository" to envelope.repository,
+                "workloadService" to servicePolicy.serviceOf(identity),
+                "workloadSubject" to identity.subject
+            )
+        )
+        throw CrossWorkloadInjectionException("Cross-workload fact injection refused: $reason")
     }
 
     /**

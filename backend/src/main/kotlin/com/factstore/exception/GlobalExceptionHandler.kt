@@ -110,6 +110,21 @@ class GlobalExceptionHandler(
         )
     }
 
+    /** #190: a workload emitting facts for another service. */
+    @ExceptionHandler(CrossWorkloadInjectionException::class)
+    fun handleCrossWorkloadInjection(ex: CrossWorkloadInjectionException): ResponseEntity<Map<String, Any?>> {
+        log.warn("Cross-workload fact injection refused: {}", ex.message)
+        failureMetrics.error(ex, HttpStatus.FORBIDDEN.value())
+        MDC.put(CorrelationIdFilter.MDC_STATUS, HttpStatus.FORBIDDEN.value().toString())
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+            mapOf(
+                "error" to "cross_workload_injection",
+                "message" to ex.message,
+                "correlationId" to CorrelationIdFilter.current()
+            )
+        )
+    }
+
     @ExceptionHandler(BadRequestException::class)
     fun handleBadRequest(ex: BadRequestException): ResponseEntity<ErrorResponse> {
         log.warn("Bad request: ${ex.message}")

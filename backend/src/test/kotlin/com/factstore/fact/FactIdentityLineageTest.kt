@@ -101,7 +101,7 @@ class FactIdentityLineageTest {
     )
 
     private fun fact(factId: UUID, extra: String = "") = """
-        {"fact_id":"$factId","subject":{"sha256":"${"e".repeat(64)}"},
+        {"fact_id":"$factId","subject":{"sha256":"${"e".repeat(64)}","repository":"org/service"},
          "governance":{"schema_ref":"urn:schema:$schemaName:v1"},"tool":{}$extra}
     """.trimIndent()
 
