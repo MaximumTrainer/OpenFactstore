@@ -94,6 +94,22 @@ class GlobalExceptionHandler(
         return respond(ex, HttpStatus.BAD_REQUEST, "Bad Request", "Malformed or unreadable request body")
     }
 
+    /** #196: a refused fact says which rule it broke and where, so the producer can fix it. */
+    @ExceptionHandler(FactRejectedException::class)
+    fun handleFactRejected(ex: FactRejectedException): ResponseEntity<Map<String, Any?>> {
+        log.warn("Fact refused at ingress: {}", ex.message)
+        failureMetrics.error(ex, HttpStatus.BAD_REQUEST.value())
+        MDC.put(CorrelationIdFilter.MDC_STATUS, HttpStatus.BAD_REQUEST.value().toString())
+        return ResponseEntity.badRequest().body(
+            mapOf(
+                "error" to ex.error,
+                "schemaRef" to ex.schemaRef,
+                "violations" to ex.violations,
+                "correlationId" to CorrelationIdFilter.current()
+            )
+        )
+    }
+
     @ExceptionHandler(BadRequestException::class)
     fun handleBadRequest(ex: BadRequestException): ResponseEntity<ErrorResponse> {
         log.warn("Bad request: ${ex.message}")

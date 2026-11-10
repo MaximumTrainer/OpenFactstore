@@ -126,4 +126,18 @@ sealed class DomainEvent {
     ) : DomainEvent() {
         override val aggregateType: String = "Attestation"
     }
+
+    /** A fact passed strict ingress validation (#196) and was accepted. */
+    data class FactIngested(
+        override val eventId: UUID = UUID.randomUUID(),
+        override val aggregateId: UUID,
+        override val occurredAt: Instant = Instant.now(),
+        val schemaRef: String,
+        val subjectSha256: String,
+        val subjectRepository: String?,
+        val payloadJson: String,
+        val ingestedBy: String
+    ) : DomainEvent() {
+        override val aggregateType: String = "Fact"
+    }
 }

@@ -79,6 +79,7 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `DELETE` | `/api/v1/auth/sessions/{sessionId}` | `@authz.authenticated()` |
 | `DELETE` | `/api/v1/auth/users/{userId}/sessions` | `hasAuthority('SCOPE_admin')` |
 | `GET` | `/api/v1/auth/users/{userId}/sessions` | `hasAuthority('SCOPE_admin')` |
+| `POST` | `/api/v1/commands/facts` | `@authz.has('attestations:write')` |
 | `PUT` | `/api/v1/commands/schemas/{name}/v{version}` | `@authz.has('admin')` |
 | `GET` | `/api/v1/compliance/artifact/{sha256Digest}` | `@authz.has('trails:read')` |
 | `POST` | `/api/v1/compliance/assess` | `@authz.has('assert:execute')` |

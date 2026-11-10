@@ -19,6 +19,7 @@ object DomainEventRegistry {
         "TrailCreated" to DomainEvent.TrailCreated::class.java,
         "ArtifactReported" to DomainEvent.ArtifactReported::class.java,
         "AttestationRecorded" to DomainEvent.AttestationRecorded::class.java,
-        "EvidenceUploaded" to DomainEvent.EvidenceUploaded::class.java
+        "EvidenceUploaded" to DomainEvent.EvidenceUploaded::class.java,
+        "FactIngested" to DomainEvent.FactIngested::class.java
     )
 }
