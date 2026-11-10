@@ -224,6 +224,7 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `POST` | `/api/v1/policy-attachments` | `@authz.has('policies:write')` |
 | `DELETE` | `/api/v1/policy-attachments/{id}` | `@authz.has('policies:write')` |
 | `GET` | `/api/v1/policy-attachments/{id}` | `@authz.has('policies:read')` |
+| `GET` | `/api/v1/queries/facts/{factId}` | `@authz.has('trails:read')` |
 | `GET` | `/api/v1/queries/schemas/{name}` | `@authz.has('policies:read')` |
 | `GET` | `/api/v1/queries/schemas/{name}/v{version}` | `@authz.has('policies:read')` |
 | `GET` | `/api/v1/reports/audit-trail/{trailId}` | `@authz.has('trails:read')` |

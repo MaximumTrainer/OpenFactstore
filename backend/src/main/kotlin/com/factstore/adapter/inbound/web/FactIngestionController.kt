@@ -2,6 +2,7 @@ package com.factstore.adapter.inbound.web
 
 import com.factstore.application.fact.FactIngestionResponse
 import com.factstore.application.fact.FactIngestionService
+import com.factstore.application.fact.FactView
 import com.factstore.exception.ForbiddenException
 import com.fasterxml.jackson.databind.JsonNode
 import io.swagger.v3.oas.annotations.Operation
@@ -11,9 +12,12 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 
 @RestController
 @Tag(name = "Facts", description = "Fact ingestion with strict validation against the schema registry")
@@ -43,6 +47,15 @@ class FactIngestionController(
         }
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(service.ingest(body))
     }
+
+    @GetMapping("/api/v1/queries/facts/{factId}")
+    @PreAuthorize("@authz.has('trails:read')")
+    @Operation(
+        summary = "Read a fact",
+        description = "The fact as accepted, with the identity verified when it arrived (#191): for a CI workload, " +
+            "the issuer, subject, repository, run id and attempt, actor, workflow, ref and commit."
+    )
+    fun get(@PathVariable factId: UUID): ResponseEntity<FactView> = ResponseEntity.ok(service.get(factId))
 
     private fun callerIsWorkload(): Boolean =
         SecurityContextHolder.getContext().authentication?.authorities?.any { it.authority == "ROLE_WORKLOAD" } == true

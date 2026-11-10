@@ -1,6 +1,7 @@
 package com.factstore.core.domain
 
 import jakarta.persistence.Column
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
@@ -30,6 +31,11 @@ class Fact(
     /** The `tool` payload, exactly as validated. */
     @Column(name = "payload_json", nullable = false, columnDefinition = "TEXT")
     val payloadJson: String,
+
+    /** Who sent it, as verified at ingestion (#191). */
+    @Convert(converter = FactIdentityConverter::class)
+    @Column(name = "identity_json", nullable = false, columnDefinition = "TEXT")
+    val identity: FactIdentity = FactIdentity.credential("unrecorded"),
 
     @Column(name = "ingested_by", nullable = false)
     val ingestedBy: String,

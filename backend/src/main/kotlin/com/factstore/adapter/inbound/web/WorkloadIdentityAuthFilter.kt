@@ -1,5 +1,6 @@
 package com.factstore.adapter.inbound.web
 
+import com.factstore.application.auth.WorkloadPrincipalDetails
 import com.factstore.application.auth.WorkloadTokenVerifier
 import com.factstore.application.observability.FailureMetrics
 import com.factstore.core.domain.AuditEventType
@@ -76,11 +77,13 @@ class WorkloadIdentityAuthFilter(
             return
         }
 
-        val subject = try {
-            verifier.verify(token)["sub"] as? String
+        val claims = try {
+            verifier.verify(token)
         } catch (e: Exception) {
             return refuse(request, response, filterChain, "The workload token could not be verified")
-        } ?: return refuse(request, response, filterChain, "The workload token has no subject")
+        }
+        val subject = claims["sub"] as? String
+            ?: return refuse(request, response, filterChain, "The workload token has no subject")
 
         if (subjectPatterns.none { it.matches(subject) }) {
             return refuse(request, response, filterChain, "The workload is not trusted by this Factstore")
@@ -93,7 +96,11 @@ class WorkloadIdentityAuthFilter(
         }
 
         val auth = UsernamePasswordAuthenticationToken(subject, null, authorities)
-        auth.details = WorkloadPrincipalDetails(subject = subject, spiffeId = subject.takeIf { it.startsWith(SpiffeId.SCHEME) })
+        auth.details = WorkloadPrincipalDetails(
+            subject = subject,
+            spiffeId = subject.takeIf { it.startsWith(SpiffeId.SCHEME) },
+            claims = claims
+        )
         SecurityContextHolder.getContext().authentication = auth
         filterChain.doFilter(request, response)
     }
@@ -143,6 +150,3 @@ class WorkloadIdentityAuthFilter(
         private const val REASON = "WORKLOAD_IDENTITY"
     }
 }
-
-/** The verified workload behind a request (#189). */
-data class WorkloadPrincipalDetails(val subject: String, val spiffeId: String?)

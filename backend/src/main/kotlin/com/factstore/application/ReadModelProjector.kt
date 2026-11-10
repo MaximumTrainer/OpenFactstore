@@ -209,6 +209,7 @@ class ReadModelProjector(
                 subjectRepository = event.subjectRepository,
                 payloadJson = event.payloadJson,
                 ingestedBy = event.ingestedBy,
+                identity = event.identity ?: FactIdentity.credential(event.ingestedBy),
                 ingestedAt = event.occurredAt
             )
         )
