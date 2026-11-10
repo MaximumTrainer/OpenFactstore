@@ -205,6 +205,7 @@ jobs:
             --spring.datasource.password=factstore \
             --security.enforce-auth=true \
             --security.dev-login.enabled=true \
+            --security.cors.allowed-origins=http://localhost:5173 \
             --sso.jwt.secret="$(openssl rand -base64 48)" \
             --vault.enabled=false \
             > /tmp/factstore.log 2>&1 &
