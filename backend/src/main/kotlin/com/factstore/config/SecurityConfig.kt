@@ -4,6 +4,7 @@ import com.factstore.adapter.inbound.web.ApiKeyAuthFilter
 import com.factstore.adapter.inbound.web.GitHubSignInSuccessHandler
 import com.factstore.adapter.inbound.web.BearerAuthenticationEntryPoint
 import com.factstore.adapter.inbound.web.SessionAuthFilter
+import com.factstore.adapter.inbound.web.WorkloadIdentityAuthFilter
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -44,6 +45,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class SecurityConfig(
     private val apiKeyAuthFilter: ApiKeyAuthFilter,
     private val sessionAuthFilter: SessionAuthFilter,
+    private val workloadIdentityAuthFilter: WorkloadIdentityAuthFilter,
     private val gitHubSignInSuccessHandler: GitHubSignInSuccessHandler,
     private val bearerAuthenticationEntryPoint: BearerAuthenticationEntryPoint,
     @Value("\${spring.security.oauth2.client.registration.github.client-id:}")
@@ -142,6 +144,8 @@ class SecurityConfig(
             // API key filter tries to read their Bearer token as an API key.
             .addFilterBefore(sessionAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterAfter(apiKeyAuthFilter, SessionAuthFilter::class.java)
+            // CI workloads present a short-lived OIDC token or JWT-SVID instead of a key (#189).
+            .addFilterAfter(workloadIdentityAuthFilter, ApiKeyAuthFilter::class.java)
 
         // Enable GitHub OAuth2 login only when credentials are configured
         if (githubClientId.isNotBlank()) {

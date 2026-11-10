@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component
  *
  *  - a signed-in person → their email;
  *  - an API key → `api-key:<owner id>`, so the key's owner is on the record too;
+ *  - a CI workload identity (#189) → `workload:<token subject>`;
  *  - nothing → `system`, which is then genuinely true: an unauthenticated or internal action.
  */
 @Component
@@ -37,6 +38,10 @@ class ActorResolver {
         val name = authentication.name
         if (name.isNullOrBlank() || name == "anonymousUser") return null
 
+        if (authentication.authorities.any { it.authority == WORKLOAD_ROLE }) {
+            return ResolvedActor(actor = "$WORKLOAD_PREFIX$name", user = null)
+        }
+
         // ApiKeyAuthFilter puts the key owner's id on the context as the principal name.
         val isApiKey = authentication.authorities.any { it.authority == "ROLE_API_USER" || it.authority == "ROLE_SERVICE_ACCOUNT" }
         return ResolvedActor(actor = if (isApiKey) "$API_KEY_PREFIX$name" else name, user = null)
@@ -47,5 +52,7 @@ class ActorResolver {
     companion object {
         const val SYSTEM = "system"
         const val API_KEY_PREFIX = "api-key:"
+        const val WORKLOAD_PREFIX = "workload:"
+        private const val WORKLOAD_ROLE = "ROLE_WORKLOAD"
     }
 }
