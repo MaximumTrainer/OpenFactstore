@@ -60,6 +60,14 @@ class GlobalExceptionHandler(
         }
     }
 
+    /** #188: the fact exists, but no checkpoint covers it yet. */
+    @ExceptionHandler(com.factstore.application.ledger.ProofPendingException::class)
+    fun handleProofPending(ex: com.factstore.application.ledger.ProofPendingException): ResponseEntity<Map<String, Any?>> {
+        failureMetrics.error(ex, HttpStatus.NOT_FOUND.value())
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(mapOf("error" to "proof_pending", "message" to ex.message, "correlationId" to CorrelationIdFilter.current()))
+    }
+
     @ExceptionHandler(NotFoundException::class)
     fun handleNotFound(ex: NotFoundException): ResponseEntity<ErrorResponse> {
         log.warn("Not found: ${ex.message}")

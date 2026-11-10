@@ -42,6 +42,7 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | Method | Path | Rule |
 |---|---|---|
 | `POST` | `/api/v1/admin/events/verify` | `@authz.has('admin')` |
+| `POST` | `/api/v1/admin/ledger/checkpoints` | `@authz.has('admin')` |
 | `POST` | `/api/v1/api-keys` | `hasAuthority('SCOPE_admin')` |
 | `GET` | `/api/v1/api-keys/owners/{ownerId}` | `hasAuthority('SCOPE_admin') or @userAccessPolicy.isSelf(#ownerId)` |
 | `GET` | `/api/v1/api-keys/scopes` | `@authz.authenticated()` |
@@ -229,6 +230,8 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `GET` | `/api/v1/policy-attachments/{id}` | `@authz.has('policies:read')` |
 | `GET` | `/api/v1/queries/event-signing-keys` | `@authz.authenticated()` |
 | `GET` | `/api/v1/queries/facts/{factId}` | `@authz.has('trails:read')` |
+| `GET` | `/api/v1/queries/ledger/checkpoints` | `@authz.authenticated()` |
+| `GET` | `/api/v1/queries/ledger/proof/{factId}` | `@authz.has('trails:read')` |
 | `GET` | `/api/v1/queries/schemas/{name}` | `@authz.has('policies:read')` |
 | `GET` | `/api/v1/queries/schemas/{name}/v{version}` | `@authz.has('policies:read')` |
 | `GET` | `/api/v1/queries/signing-keys` | `@authz.has('admin')` |
