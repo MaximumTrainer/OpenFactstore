@@ -31,6 +31,10 @@ class FactIngestionTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var registry: SchemaRegistryService
+    @Autowired lateinit var signingKeys: com.factstore.application.signing.SigningKeyRegistryService
+
+    /** Facts are signed at the source (#187). */
+    private val signer = TestSigner()
     @Autowired lateinit var facts: IFactRepository
     @Autowired lateinit var eventStore: IEventStore
 
@@ -58,6 +62,7 @@ class FactIngestionTest {
                 """
             )
         )
+        signingKeys.register(signer.keyId, signer.publicKeyPem)
     }
 
     private fun fact(
@@ -76,7 +81,7 @@ class FactIngestionTest {
 
     private fun ingest(body: String) = mockMvc.post("/api/v1/commands/facts") {
         contentType = MediaType.APPLICATION_JSON
-        content = body
+        signer.signed(this, body)
     }
 
     @Test

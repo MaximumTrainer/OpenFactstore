@@ -66,6 +66,10 @@ class FactIdentityLineageTest {
 
     @Autowired lateinit var mockMvc: MockMvc
     @Autowired lateinit var registry: SchemaRegistryService
+    @Autowired lateinit var signingKeys: com.factstore.application.signing.SigningKeyRegistryService
+
+    /** Facts are signed at the source (#187). */
+    private val signer = com.factstore.fact.TestSigner()
     @Autowired lateinit var facts: IFactRepository
     @Autowired lateinit var eventStore: IEventStore
 
@@ -75,6 +79,7 @@ class FactIdentityLineageTest {
     fun setUp() {
         SecurityContextHolder.clearContext()
         registry.publish(schemaName, 1, jacksonObjectMapper().readTree("""{"type":"object"}"""))
+        signingKeys.register(signer.keyId, signer.publicKeyPem)
         SecurityContextHolder.clearContext()
     }
 
@@ -108,7 +113,7 @@ class FactIdentityLineageTest {
     private fun ingest(factId: UUID, bearer: String? = null, extra: String = "") =
         mockMvc.post("/api/v1/commands/facts") {
             contentType = MediaType.APPLICATION_JSON
-            content = fact(factId, extra)
+            signer.signed(this, fact(factId, extra))
             bearer?.let { header("Authorization", "Bearer $it") }
         }
 

@@ -138,7 +138,11 @@ sealed class DomainEvent {
         val payloadJson: String,
         val ingestedBy: String,
         /** Who sent it, verified at ingestion (#191). Absent only on events written before #191. */
-        val identity: com.factstore.core.domain.FactIdentity? = null
+        val identity: com.factstore.core.domain.FactIdentity? = null,
+        /** The source signature (#187): the registry key, the signature, and the exact bytes signed. */
+        val signatureKeyId: String? = null,
+        val signature: String? = null,
+        val signedBody: String? = null
     ) : DomainEvent() {
         override val aggregateType: String = "Fact"
     }

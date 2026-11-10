@@ -37,6 +37,18 @@ class Fact(
     @Column(name = "identity_json", nullable = false, columnDefinition = "TEXT")
     val identity: FactIdentity = FactIdentity.credential("unrecorded"),
 
+    /** The registry key that signed it at the source (#187). Null only for facts from before #187. */
+    @Column(name = "signature_key_id", length = 128)
+    val signatureKeyId: String? = null,
+
+    /** The source's Ed25519 signature over [signedBody], base64url. */
+    @Column(name = "signature", columnDefinition = "TEXT")
+    val signature: String? = null,
+
+    /** The request body exactly as signed, so the signature can be checked again later. */
+    @Column(name = "signed_body", columnDefinition = "TEXT")
+    val signedBody: String? = null,
+
     @Column(name = "ingested_by", nullable = false)
     val ingestedBy: String,
 

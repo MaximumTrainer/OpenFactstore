@@ -36,6 +36,9 @@ enum class AuditEventType {
     CROSS_TENANT_READ,
     // A fact schema version was published to the registry (#195).
     SCHEMA_PUBLISHED,
+    // The trusted registry of source signing keys (#187).
+    SIGNING_KEY_REGISTERED,
+    SIGNING_KEY_REVOKED,
     AUTH_DENIED,
     // Credential lifecycle (#155 FR-8.2).
     API_KEY_CREATED,

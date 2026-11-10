@@ -33,3 +33,14 @@ class FactRejectedException(
 
 /** A workload tried to emit a fact for a service it does not belong to (#190). Rendered as `403`. */
 class CrossWorkloadInjectionException(message: String) : RuntimeException(message)
+
+/** A fact's source signature is missing or does not verify (#187). Rendered as `401`. */
+class SignatureRejectedException(val error: String, message: String) : RuntimeException(message) {
+    companion object {
+        const val MISSING = "signature_missing"
+        const val MALFORMED = "signature_malformed"
+        const val UNKNOWN_KEY = "unknown_signing_key"
+        const val REVOKED_KEY = "signing_key_revoked"
+        const val INVALID = "signature_invalid"
+    }
+}
