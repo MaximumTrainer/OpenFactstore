@@ -44,6 +44,9 @@ spring:
 factstore:
   events:
     publisher: rabbitmq
+  # Stored event records are signed by an Ed25519 key in Vault Transit (#184); needs vault.enabled.
+  event-signing:
+    provider: ${EVENT_SIGNING_PROVIDER:vault-transit}
 
 # The broker carries the CQRS event feed in this profile, so a pod that cannot reach it is not
 # ready for traffic (#185). The base configuration disables the RabbitMQ health indicator for

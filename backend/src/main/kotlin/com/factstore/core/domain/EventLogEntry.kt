@@ -39,5 +39,37 @@ class EventLogEntry(
     val metadata: String? = null,
 
     @Column(name = "occurred_at", nullable = false)
-    val occurredAt: Instant = Instant.now()
-)
+    val occurredAt: Instant = Instant.now(),
+
+    // Record signature (#184). Set once, in the transaction that inserts the row.
+
+    @Column(name = "signature", columnDefinition = "TEXT")
+    var signature: String? = null,
+
+    @Column(name = "signature_algorithm", length = 32)
+    var signatureAlgorithm: String? = null,
+
+    @Column(name = "signing_key_id", length = 128)
+    var signingKeyId: String? = null,
+
+    @Column(name = "canonical_version")
+    var canonicalVersion: Int? = null,
+
+    /** The previous signed record's hash. */
+    @Column(name = "prev_hash", length = 64)
+    var prevHash: String? = null,
+
+    /** SHA-256 of this record's canonical bytes. */
+    @Column(name = "record_hash", length = 64)
+    var recordHash: String? = null,
+
+    /** `SIGNED`, or `UNSIGNED` for a record stored before #184. */
+    @org.hibernate.annotations.ColumnDefault("'UNSIGNED'")
+    @Column(name = "signature_status", nullable = false, length = 16)
+    var signatureStatus: String = UNSIGNED
+) {
+    companion object {
+        const val SIGNED = "SIGNED"
+        const val UNSIGNED = "UNSIGNED"
+    }
+}

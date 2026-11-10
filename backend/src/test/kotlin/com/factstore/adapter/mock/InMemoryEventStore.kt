@@ -47,5 +47,16 @@ class InMemoryEventStore : IEventStore {
     fun clear() {
         log.clear()
         seq.set(0)
-    }
+    }
+
+    override fun recordSignature(entry: EventLogEntry): EventLogEntry = entry
+
+    override fun findSignedInRange(from: Long, to: Long): List<EventLogEntry> =
+        log.filter { it.signatureStatus == EventLogEntry.SIGNED && it.sequenceNumber in from..to }
+
+    override fun findLastSignedBefore(sequenceNumber: Long): EventLogEntry? =
+        log.filter { it.signatureStatus == EventLogEntry.SIGNED && it.sequenceNumber < sequenceNumber }.maxByOrNull { it.sequenceNumber }
+
+    override fun countUnsignedInRange(from: Long, to: Long): Long =
+        log.count { it.signatureStatus == EventLogEntry.UNSIGNED && it.sequenceNumber in from..to }.toLong()
 }

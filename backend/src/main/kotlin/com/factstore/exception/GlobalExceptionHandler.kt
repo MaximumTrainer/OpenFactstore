@@ -143,6 +143,18 @@ class GlobalExceptionHandler(
         return respond(ex, HttpStatus.BAD_REQUEST, "Bad Request", ex.message ?: "Bad request")
     }
 
+    /**
+     * #184: an event could not be signed, so nothing was written. The key service is unreachable
+     * or refused; the caller can retry. Counted as an integrity failure so it pages.
+     */
+    @ExceptionHandler(EventSigningException::class)
+    fun handleEventSigning(ex: EventSigningException): ResponseEntity<ErrorResponse> {
+        log.error("Event signing failed [correlationId={}]: {}", CorrelationIdFilter.current(), ex.message, ex)
+        failureMetrics.integrityFailure(FailureMetrics.IntegritySource.SIGNING)
+        return respond(ex, HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable",
+            "The record could not be signed, so nothing was stored. Retry later.")
+    }
+
     @ExceptionHandler(IntegrityException::class)
     fun handleIntegrity(ex: IntegrityException): ResponseEntity<ErrorResponse> {
         // The most serious signal this product produces: counted so it pages, and its detail kept

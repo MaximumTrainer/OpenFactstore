@@ -66,6 +66,23 @@ services:
       retries: 5
       start_period: 5s
 
+  # Enables Vault Transit and creates the Ed25519 key that signs stored events (#184). In
+  # production an operator does this once; see docs/runbooks/event-signing-keys.md.
+  vault-init:
+    image: hashicorp/vault:1.17
+    depends_on:
+      vault:
+        condition: service_healthy
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-root-token
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        (vault secrets list | grep -q '^transit/' || vault secrets enable transit) &&
+        (vault read transit/keys/factstore-events > /dev/null 2>&1 ||
+        vault write -f transit/keys/factstore-events type=ed25519)
+
   # ── Command service (write side) ──────────────────────────────────────────
   backend-command:
     build: .
@@ -74,11 +91,12 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      vault:
-        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: prod
       FACTSTORE_CQRS_ROLE: command
+      EVENT_SIGNING_PROVIDER: vault-transit
       DB_HOST: postgres-command
       DB_PORT: 5432
       DB_NAME: factstore_command
@@ -112,11 +130,12 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      vault:
-        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: prod
       FACTSTORE_CQRS_ROLE: query
+      EVENT_SIGNING_PROVIDER: vault-transit
       DB_HOST: postgres-query
       DB_PORT: 5432
       DB_NAME: factstore_query

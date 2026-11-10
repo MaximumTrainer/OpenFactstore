@@ -1,6 +1,7 @@
 package com.factstore.application.command
 
 import com.factstore.application.observability.FailureMetrics
+import com.factstore.application.signing.EventRecordSealer
 import com.factstore.core.domain.EventLogEntry
 import com.factstore.core.domain.event.DomainEvent
 import com.factstore.core.port.outbound.IDomainEventBus
@@ -34,7 +35,8 @@ class EventAppender(
     private val objectMapper: ObjectMapper,
     private val domainEventBus: IDomainEventBus,
     private val outbox: IEventOutbox,
-    private val failureMetrics: FailureMetrics
+    private val failureMetrics: FailureMetrics,
+    private val sealer: EventRecordSealer
 ) {
     private val log = LoggerFactory.getLogger(EventAppender::class.java)
 
@@ -45,9 +47,12 @@ class EventAppender(
             aggregateType = event.aggregateType,
             eventType = event::class.simpleName ?: "Unknown",
             payload = objectMapper.writeValueAsString(event),
-            occurredAt = event.occurredAt
+            // Stored at the database's precision, so the signed timestamp (#184) is exactly the
+            // stored one: the database rounds sub-microsecond values, the signature must not depend on it.
+            occurredAt = event.occurredAt.truncatedTo(java.time.temporal.ChronoUnit.MICROS)
         )
-        val saved = eventStore.append(entry)
+        // Inserted and signed in this transaction (#184): a signing failure rolls the insert back.
+        val saved = sealer.appendSealed(entry)
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             outbox.enqueue(saved.sequenceNumber)
