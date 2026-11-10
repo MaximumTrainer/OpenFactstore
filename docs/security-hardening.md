@@ -9,7 +9,7 @@ Use this checklist during initial deployment, periodic security reviews, and bef
 ## 1. Authentication & Access Control
 
 - [ ] **Enable API authentication**  
-  Set `SECURITY_ENFORCE_AUTH=true` in production. Every API request must carry a valid bearer token.
+  On by default (`SECURITY_ENFORCE_AUTH=true`). Make sure nothing sets it to `false` in production: every API request must carry a valid bearer token.
 
 - [ ] **Use service accounts for CI/CD**  
   Never use personal API keys in automated pipelines. Create a dedicated service account per pipeline via `POST /api/v1/service-accounts`.

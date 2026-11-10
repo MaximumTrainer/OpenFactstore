@@ -159,11 +159,12 @@ not for production.
 ### Local development
 
 ```bash
-docker compose up          # no IdP, no enforcement, no sign-in required
+SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun    # no IdP, no enforcement, no sign-in required
 ```
 
-That is deliberately low-friction and **not a production configuration**: with
-`SECURITY_ENFORCE_AUTH=false` the API accepts unauthenticated requests. See
+The `dev` profile turns enforcement off. That is deliberately low-friction and **not a
+production configuration**: the API then accepts unauthenticated requests. Every other profile,
+and the Docker Compose stack, enforces authentication. See
 [security-hardening.md](./security-hardening.md) for the production posture.
 
 To work **with** enforcement on, and to see the UI as a particular role, use **development
@@ -213,7 +214,7 @@ to `system` as they were before.
 | `sso.jwt.secret` | `SSO_JWT_SECRET` | *(none)* | Session signing secret. No safe default |
 | `sso.jwt.issuer` | — | `openfactstore` | `iss` on issued session tokens |
 | `sso.jwt.clock-skew-seconds` | — | `60` | Tolerance on token time claims |
-| `security.enforce-auth` | `SECURITY_ENFORCE_AUTH` | `false` | Refuse unauthenticated requests |
+| `security.enforce-auth` | `SECURITY_ENFORCE_AUTH` | `true` (`false` in the `dev` profile) | Refuse unauthenticated requests |
 | `security.session.lifetime-seconds` | — | `3600` | Session token lifetime |
 | `security.session.absolute-lifetime-seconds` | — | `43200` | Ceiling refresh cannot pass |
 | `security.session.idle-timeout-seconds` | — | `1800` | Idle timeout |

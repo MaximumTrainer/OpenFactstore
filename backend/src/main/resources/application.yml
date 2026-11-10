@@ -141,9 +141,10 @@ factstore:
 cosign:
   enabled: ${COSIGN_ENABLED:false}
 
-# Set SECURITY_ENFORCE_AUTH=true in production to enforce authentication
+# Authentication is enforced by default (#209, #155 FR-1.1). SECURITY_ENFORCE_AUTH=false turns it
+# off for local development only, and logs a warning at startup. See docs/upgrading/enforce-auth.md.
 security:
-  enforce-auth: ${SECURITY_ENFORCE_AUTH:false}
+  enforce-auth: ${SECURITY_ENFORCE_AUTH:true}
   # Log what would have been rejected, without rejecting it. The way to find every
   # unauthenticated caller before turning enforcement on (#155 rollout step 2).
   warn-mode: ${SECURITY_WARN_MODE:false}
@@ -183,8 +184,8 @@ security:
   tenancy:
     # When true, an unbound credential needs the operator scope to read another organisation's
     # resources (#207, #155 FR-5.4); without it, it sees only resources with no organisation.
-    # Every such read is audited as CROSS_TENANT_READ either way. #209 turns this on.
-    unbound-requires-operator: ${SECURITY_TENANCY_UNBOUND_REQUIRES_OPERATOR:false}
+    # Every such read is audited as CROSS_TENANT_READ either way. On by default since #209.
+    unbound-requires-operator: ${SECURITY_TENANCY_UNBOUND_REQUIRES_OPERATOR:true}
 
   bootstrap:
     # A fresh deployment with enforcement on must be administrable; see docs/api-authorisation.md.

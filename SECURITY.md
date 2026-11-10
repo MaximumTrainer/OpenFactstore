@@ -35,38 +35,22 @@ If you prefer email, send details to the repository maintainers. You can find co
 
 ## Known Limitations
 
-### Authentication is not yet enforced *by default*
+### Authentication is enforced by default
 
-The API has a complete authentication and authorisation model — scoped API keys, per-organisation
-sessions, and a role model both resolve into — but `SECURITY_ENFORCE_AUTH` still defaults to
-`false`, so a default deployment accepts unauthenticated requests.
-
-This is the last step of a deliberate rollout, not an oversight: flipping the default is a
-breaking change for every existing deployment, so the model ships first and the default flips in
-a clearly marked release.
-
-**For production, turn it on:**
-
-```yaml
-security:
-  enforce-auth: true
-```
-
-Before you do, run in **warn mode** to find every unauthenticated caller without breaking them:
-
-```yaml
-security:
-  warn-mode: true
-```
-
-Warn mode authenticates and authorises as normal but logs what *would* have been rejected and
-allows the request through. That is how you discover a forgotten pipeline before it becomes an
-outage rather than after.
+Since #209, `SECURITY_ENFORCE_AUTH` defaults to `true`: a default deployment refuses unauthenticated
+requests. Upgrading from an earlier version is covered in
+[docs/upgrading/enforce-auth.md](docs/upgrading/enforce-auth.md), including a warn-mode release to
+find every unauthenticated caller first, and the one-line rollback (`SECURITY_ENFORCE_AUTH=false`).
 
 With enforcement on:
 
 - unauthenticated requests get `401` with `WWW-Authenticate: Bearer`;
-- `/actuator/**` is restricted to health and info — metrics, env and loggers need a credential;
+- every endpoint requires the scope its rule names (`docs/api-authorisation-matrix.md`);
+- a credential bound to an organisation sees only that organisation, and a cross-organisation
+  read needs the `operator` scope and is audited;
+- `/actuator/prometheus` needs `metrics:read`; the rest of `/actuator`, except health and info,
+  needs `admin`;
+- plaintext HTTP from another machine is refused with `426`;
 - Swagger UI, `/api-docs` and the H2 console are no longer served unauthenticated;
 - HSTS is set and a wildcard CORS origin is refused outright;
 - a first-run **bootstrap admin credential** is created so the deployment is administrable.

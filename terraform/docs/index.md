@@ -32,7 +32,7 @@ The provider authenticates using a Factstore API token. You can supply it via:
 | Argument    | Type   | Required | Description |
 |-------------|--------|----------|-------------|
 | `base_url`  | string | yes      | Base URL of the Factstore API. Also settable via `FACTSTORE_BASE_URL`. |
-| `api_token` | string | no       | API token for authentication. Also settable via `FACTSTORE_API_TOKEN`. |
+| `api_token` | string | no       | API token for authentication. Also settable via `FACTSTORE_API_TOKEN`. Required in practice: authentication is enforced by default, and managing flows, policies and environments needs an `admin`-scoped key. |
 
 ## Resources
 

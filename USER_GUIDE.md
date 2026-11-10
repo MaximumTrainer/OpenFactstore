@@ -119,7 +119,7 @@ scripts/bootstrap-env.sh
 docker compose up --build
 ```
 
-The script writes a git-ignored `.env` and prints the bootstrap admin key once. Without it, the stack still starts unauthenticated, but Prometheus cannot scrape. To try enforcement locally, set `SECURITY_WARN_MODE=true` or `SECURITY_ENFORCE_AUTH=true` in `.env` and restart.
+The script writes a git-ignored `.env` and prints the bootstrap admin key once; send it as `Authorization: Bearer <key>`. Authentication is enforced. Without the script, the backend writes a generated bootstrap key to its log instead, and Prometheus cannot scrape.
 
 Services will be available at:
 
@@ -1028,7 +1028,7 @@ cd infra
 terraform init
 terraform apply \
   -var="factstore_url=http://localhost:8080" \
-  -var="factstore_token="        # omit token when SECURITY_ENFORCE_AUTH is not set
+  -var="factstore_token=$FACTSTORE_API_TOKEN"   # an admin-scoped key
 ```
 
 After apply, inspect outputs:
@@ -1047,7 +1047,7 @@ terraform output
 | Variable | Default | Description |
 |---|---|---|
 | `factstore_url` | `http://localhost:8080` | Factstore API base URL |
-| `factstore_token` | `""` | API token (required when `SECURITY_ENFORCE_AUTH=true`) |
+| `factstore_token` | `""` | API token; required, as authentication is enforced by default |
 | `org_slug` | `openfactstore` | URL-safe organisation identifier |
 | `org_name` | `OpenFactstore` | Organisation display name |
 
@@ -1120,7 +1120,7 @@ The user menu shows who you are signed in as, your role and organisation, and **
 
 ### API Authentication
 
-> ⚠️ **Current state:** The server currently trusts all requests without authentication. API key enforcement is implemented (see `POST /api/v1/api-keys`), but is not required by default in the current version. A future release will make authentication mandatory.
+Every request needs a credential: authentication is enforced by default. Upgrading from a version where it was not? See [docs/upgrading/enforce-auth.md](docs/upgrading/enforce-auth.md).
 
 **For production deployments:**
 

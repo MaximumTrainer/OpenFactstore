@@ -2,6 +2,39 @@
 
 This guide explains how to integrate Factstore into your CI/CD pipeline to automatically create compliance trails and record attestations as part of your build process.
 
+## Authenticating a pipeline
+
+Every request needs a credential: authentication is enforced by default. Give **each pipeline its
+own service account and API key**, created with the `CI_PIPELINE` preset, and store the key as a
+CI secret (`FACTSTORE_API_TOKEN` below).
+
+| The preset grants | So a pipeline can |
+|---|---|
+| `trails:write`, `attestations:write`, `artifacts:write`, `evidence:write` | open trails, record attestations and artifacts, upload evidence |
+| `assert:execute` | run compliance assertions and deployment gates |
+| `flows:read`, `trails:read` | look up its flow by name, a trail by commit or identifier, and gate results |
+
+It cannot create or delete flows, change policies, or mint keys. With an `admin` key:
+
+```bash
+SA_ID=$(curl -s -X POST "$FACTSTORE_URL/api/v1/service-accounts" \
+  -H "Authorization: Bearer $ADMIN_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"payments-api-ci","description":"payments-api GitHub Actions"}' | jq -r .id)
+
+curl -s -X POST "$FACTSTORE_URL/api/v1/api-keys" \
+  -H "Authorization: Bearer $ADMIN_KEY" -H "Content-Type: application/json" \
+  -d "{\"ownerId\":\"$SA_ID\",\"ownerType\":\"SERVICE_ACCOUNT\",\"label\":\"payments-api main\",\"preset\":\"CI_PIPELINE\",\"orgSlug\":\"payments\"}"
+```
+
+The response holds the key once, as `plainTextKey`. Binding it to the pipeline's organisation
+(`orgSlug`) keeps it from seeing other organisations' data. Send it as
+`Authorization: Bearer <key>`, always over https: plaintext HTTP from another machine is refused
+with `426`. Keys expire after 90 days by default; rotate with
+`POST /api/v1/api-keys/{id}/rotate`, which keeps the old key working for 24 hours. More in
+[api-authorisation.md](api-authorisation.md).
+
+---
+
 ## The `X-Factstore-CI-Context` Header
 
 When creating a trail, include the `X-Factstore-CI-Context` request header to tell the Factstore server which CI environment you are running in. The server will read well-known environment variables from its own process (when deployed inside the same CI environment) and automatically populate any missing trail fields.
@@ -46,6 +79,7 @@ jobs:
       - name: Create Factstore trail
         run: |
           curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v1/trails" \
+            -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -H "X-Factstore-CI-Context: github-actions" \
             -d '{

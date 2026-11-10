@@ -34,6 +34,12 @@ docker run -d \
 
 The service is ready when you see a log line containing `Started FactstoreApplication`.
 
+Authentication is enforced. On first start the service writes a bootstrap admin key to its log,
+once. Read it with `docker logs factstore 2>&1 | grep -A2 "key:"`, use it as
+`Authorization: Bearer <key>` to create your real admin identity, then revoke it. Docker's port
+mapping makes your requests arrive from a non-loopback address, so a local plain-HTTP trial also
+needs `-e SECURITY_TRANSPORT_REQUIRE_TLS=false`; put TLS in front of anything else.
+
 ### 2 — Open the UI
 
 ```
@@ -83,11 +89,12 @@ docker compose up -d
 | `SSO_JWT_SECRET` | Session signing secret, 48 random bytes |
 | `SECURITY_BOOTSTRAP_API_KEY` | Admin key for first use; create your real admin identity with it, then revoke it |
 | `SECURITY_BOOTSTRAP_METRICS_API_KEY` | Prometheus scrape key, `metrics:read` only; also written to `monitoring/secrets/prometheus-scrape-key` |
-| `SECURITY_ENFORCE_AUTH`, `SECURITY_WARN_MODE` | Both `false`; see below |
+| `SECURITY_ENFORCE_AUTH` | `true`: every request needs a credential |
+| `SECURITY_WARN_MODE` | `false` |
 
-To prepare for enforcement, set `SECURITY_WARN_MODE=true` and watch
-`factstore_warn_mode_refusals_total` in Prometheus. When it stays at zero, set
-`SECURITY_ENFORCE_AUTH=true` and restart. The rollback is `SECURITY_ENFORCE_AUTH=false`.
+Upgrading an existing deployment to enforced authentication is covered in
+[docs/upgrading/enforce-auth.md](docs/upgrading/enforce-auth.md). The rollback is
+`SECURITY_ENFORCE_AUTH=false`.
 See [docs/api-authorisation.md](docs/api-authorisation.md#rolling-out-enforcement).
 
 ---
@@ -175,14 +182,14 @@ cd infra
 terraform init
 terraform apply \
   -var="factstore_url=http://localhost:8080" \
-  -var="factstore_token="      # omit if SECURITY_ENFORCE_AUTH is not set
+  -var="factstore_token=$FACTSTORE_API_TOKEN"   # an admin-scoped key
 ```
 
 Or use environment variables instead of `-var` flags:
 
 ```bash
 export FACTSTORE_BASE_URL=http://localhost:8080
-export FACTSTORE_API_TOKEN=your-token   # omit if auth not enforced
+export FACTSTORE_API_TOKEN=your-token   # required: authentication is enforced by default
 terraform apply
 ```
 
@@ -191,7 +198,7 @@ terraform apply
 | Variable | Default | Description |
 |---|---|---|
 | `factstore_url` | `http://localhost:8080` | Factstore API base URL |
-| `factstore_token` | `""` | API token (required when `SECURITY_ENFORCE_AUTH=true`) |
+| `factstore_token` | `""` | API token; required, as authentication is enforced by default |
 | `org_slug` | `openfactstore` | URL-safe organisation identifier |
 | `org_name` | `OpenFactstore` | Organisation display name |
 
