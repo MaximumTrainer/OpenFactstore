@@ -49,3 +49,15 @@ value class Sha256Hash(val value: String) {
         private val PATTERN = Regex("^[a-fA-F0-9]{64}$")
     }
 }
+
+/** A SPIFFE ID naming a workload, `spiffe://<trust-domain>/<path>` (#189). */
+@JvmInline
+value class SpiffeId(val value: String) {
+    init {
+        require(value.startsWith(SCHEME) && value.length > SCHEME.length) { "must be a spiffe:// URI" }
+    }
+
+    companion object {
+        const val SCHEME = "spiffe://"
+    }
+}

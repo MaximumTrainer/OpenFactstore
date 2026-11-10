@@ -57,6 +57,10 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Every distinct @SpringBootTest configuration keeps a cached application context, and the
+    // suite outgrew the default 512 MB heap (OutOfMemoryError loading WorkloadIdentityTest). Evicting
+    // contexts instead is not an option: closing one drops the shared in-memory test database.
+    maxHeapSize = "1536m"
     // Lets EveryEndpointIsAuthorisedTest regenerate docs/api-authorisation-matrix.md (#155).
     systemProperty("factstore.update-matrix", System.getProperty("factstore.update-matrix") ?: "false")
 }
