@@ -17,6 +17,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 
 /**
@@ -82,6 +83,12 @@ class SecurityConfig(
                 }
             }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED) }
+            // The security context lives for one request only. Credentials are re-checked on
+            // every request (the fs_session cookie against the session table, or an API key), so
+            // revocation and logout take effect immediately. Persisting the context into the
+            // servlet HttpSession let a signed-out principal come back with the JSESSIONID cookie
+            // (#209). The servlet session remains for OAuth2 login's authorization-request state.
+            .securityContext { it.securityContextRepository(RequestAttributeSecurityContextRepository()) }
             // An unauthenticated request is a 401 with a Bearer challenge, not Spring's default
             // bare 403 (#155 FR-2.4). An authenticated caller lacking a scope still gets 403.
             .exceptionHandling { it.authenticationEntryPoint(bearerAuthenticationEntryPoint) }

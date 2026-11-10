@@ -92,9 +92,9 @@ services:
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: dev-root-token
       # Authentication (#205). Run scripts/bootstrap-env.sh once to create .env with a
-      # session secret, a bootstrap admin key and the Prometheus scrape key. Without it the
-      # stack still starts, unauthenticated, and Prometheus cannot scrape.
-      SECURITY_ENFORCE_AUTH: ${SECURITY_ENFORCE_AUTH:-false}
+      # session secret, a bootstrap admin key and the Prometheus scrape key. Without it each
+      # service writes a generated bootstrap key to its log, and Prometheus cannot scrape.
+      SECURITY_ENFORCE_AUTH: ${SECURITY_ENFORCE_AUTH:-true}
       SECURITY_WARN_MODE: ${SECURITY_WARN_MODE:-false}
       # Services talk plain HTTP on the Compose network; TLS belongs in front of it (#208).
       SECURITY_TRANSPORT_REQUIRE_TLS: "false"
@@ -130,9 +130,9 @@ services:
       VAULT_ADDR: http://vault:8200
       VAULT_TOKEN: dev-root-token
       # Authentication (#205). Run scripts/bootstrap-env.sh once to create .env with a
-      # session secret, a bootstrap admin key and the Prometheus scrape key. Without it the
-      # stack still starts, unauthenticated, and Prometheus cannot scrape.
-      SECURITY_ENFORCE_AUTH: ${SECURITY_ENFORCE_AUTH:-false}
+      # session secret, a bootstrap admin key and the Prometheus scrape key. Without it each
+      # service writes a generated bootstrap key to its log, and Prometheus cannot scrape.
+      SECURITY_ENFORCE_AUTH: ${SECURITY_ENFORCE_AUTH:-true}
       SECURITY_WARN_MODE: ${SECURITY_WARN_MODE:-false}
       # Services talk plain HTTP on the Compose network; TLS belongs in front of it (#208).
       SECURITY_TRANSPORT_REQUIRE_TLS: "false"

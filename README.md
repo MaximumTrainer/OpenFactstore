@@ -16,7 +16,7 @@ scripts/bootstrap-env.sh   # once: session secret, bootstrap admin key, Promethe
 docker compose up --build
 ```
 
-`scripts/bootstrap-env.sh` writes a git-ignored `.env`. Its bootstrap admin key is printed once; use it as `Authorization: Bearer <key>`. See [docs/api-authorisation.md](docs/api-authorisation.md#a-local-stack-with-docker-compose).
+`scripts/bootstrap-env.sh` writes a git-ignored `.env`. Its bootstrap admin key is printed once; use it as `Authorization: Bearer <key>`. Authentication is enforced by default; upgrading from an earlier version? See [docs/upgrading/enforce-auth.md](docs/upgrading/enforce-auth.md). See [docs/api-authorisation.md](docs/api-authorisation.md#a-local-stack-with-docker-compose).
 
 - **Command API** → http://localhost:8080
 - **Query API** → http://localhost:8081

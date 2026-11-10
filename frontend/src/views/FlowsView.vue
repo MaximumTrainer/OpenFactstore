@@ -14,6 +14,7 @@
           Show archived
         </label>
         <button
+          v-if="canCreateFlow"
           class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
           @click="showModal = true"
         >
@@ -165,7 +166,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { useAuth } from '../composables/useAuth'
+import { computed, ref, onMounted } from 'vue'
 import { getFlows, createFlow, archiveFlow, unarchiveFlow } from '../api/flows'
 import FlowEditForm from '../components/FlowEditForm.vue'
 import FlowTemplatePicker from '../components/FlowTemplatePicker.vue'
@@ -173,6 +175,10 @@ import type { Flow } from '../types'
 
 const flows = ref<Flow[]>([])
 const loading = ref(true)
+const { isAuthenticated, can } = useAuth()
+// Offered only to callers who may create flows; the server is still the authority (#156 FR-6.5).
+// With no one signed in the instance is not enforcing, so the control stays available.
+const canCreateFlow = computed(() => !isAuthenticated.value || can('flows:write'))
 const showModal = ref(false)
 const submitting = ref(false)
 const formError = ref('')

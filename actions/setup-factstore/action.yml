@@ -5,7 +5,7 @@ inputs:
     description: 'Factstore server base URL'
     required: true
   api-token:
-    description: 'Factstore API token'
+    description: 'Factstore API key for this pipeline, created with the CI_PIPELINE preset (trails:write, attestations:write, artifacts:write, evidence:write, assert:execute, flows:read, trails:read). Use one service account and key per pipeline; see docs/ci-integration.md.'
     required: true
   version:
     description: 'CLI version to install'
