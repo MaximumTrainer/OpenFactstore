@@ -24,11 +24,12 @@ for (const role of roles) {
     await expect(page.getByRole('heading', { name: 'Flows', exact: true })).toBeVisible()
     await expect(page.locator('[data-test="user-role"]')).toHaveText(role)
 
+    // Creating a flow is an ADMIN capability (#155 FR-4.2); MEMBER and VIEWER are not offered it.
     const newFlow = page.getByRole('button', { name: /New Flow/ })
-    if (role === 'VIEWER') {
-      await expect(newFlow).toHaveCount(0)
-    } else {
+    if (role === 'ADMIN') {
       await expect(newFlow).toBeVisible()
+    } else {
+      await expect(newFlow).toHaveCount(0)
     }
   })
 }
@@ -47,7 +48,12 @@ test('signing out ends the session', async ({ page }) => {
   await expect(page.locator('[data-test="user-menu"]')).toBeVisible()
 
   await page.locator('[data-test="user-menu-button"]').click()
-  await page.locator('[data-test="sign-out"]').click()
+  // Wait for the server to end the session before navigating, or the navigation aborts it.
+  await Promise.all([
+    page.waitForResponse(r => r.url().includes('/api/v1/auth/logout')),
+    page.locator('[data-test="sign-out"]').click(),
+  ])
+  await expect(page).toHaveURL(/\/login/)
 
   await page.goto('/flows')
   await expect(page).toHaveURL(/\/login\?/)
