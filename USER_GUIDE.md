@@ -848,7 +848,7 @@ Record a CI/CD identity token (OIDC JWT) issued by GitHub Actions or GitLab as a
 - `https://token.actions.githubusercontent.com` (GitHub Actions)
 - `https://gitlab.com` (GitLab CI/CD)
 
-The server decodes the JWT payload, validates the issuer, and enforces **jti replay-protection** (each token can only be submitted once).
+The server verifies the token's **signature** against the issuer's published keys, and checks that the issuer is trusted, that `aud` is `factstore` (request the token with that audience, as below; configurable with `factstore.oidc.audience`), and that it has not expired. It then enforces **jti replay-protection**: each token can be submitted once. A token that fails any check is refused with `400` and nothing is recorded. More issuers, such as a self-managed GitLab, are trusted with `factstore.oidc.extra-issuers=<issuer>|<jwks-uri>`.
 
 **GitHub Actions — obtain and submit OIDC token:**
 
@@ -862,6 +862,7 @@ The server decodes the JWT payload, validates the issuer, and enforces **jti rep
       "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=factstore" | jq -r '.value')
 
     curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v2/attestations/oidc" \
+      -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
       -H "Content-Type: application/json" \
       -d "{
         \"trailId\": \"${{ env.TRAIL_ID }}\",

@@ -1,5 +1,6 @@
 package com.factstore.application
 
+import com.factstore.application.auth.WorkloadTokenVerifier
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.OidcJtiLog
@@ -13,7 +14,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.Base64
 import java.util.UUID
 
 data class OidcAttestationRequest(
@@ -28,27 +28,22 @@ class OidcAttestationService(
     private val trailRepository: ITrailRepository,
     private val attestationRepository: IAttestationRepository,
     private val jtiLogRepository: IOidcJtiLogRepository,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val tokenVerifier: WorkloadTokenVerifier
 ) {
     private val log = LoggerFactory.getLogger(OidcAttestationService::class.java)
 
-    private val allowedIssuers = setOf(
-        "https://token.actions.githubusercontent.com",
-        "https://gitlab.com"
-    )
 
     fun recordOidcAttestation(request: OidcAttestationRequest): AttestationResponse {
         if (!trailRepository.existsById(request.trailId)) {
             throw NotFoundException("Trail not found: ${request.trailId}")
         }
 
-        val claims = parseAndVerifyToken(request.token)
-        val issuer = claims["iss"] as? String ?: throw IllegalArgumentException("Missing 'iss' claim")
+        // Signature, trusted issuer, audience and expiry are all checked before a claim is
+        // believed (#189). This used to base64-decode the token and trust it.
+        val claims = tokenVerifier.verify(request.token)
+        val issuer = claims["iss"] as String
         val jti = claims["jti"] as? String ?: UUID.randomUUID().toString()
-
-        if (!allowedIssuers.contains(issuer)) {
-            throw IllegalArgumentException("Untrusted OIDC issuer: $issuer")
-        }
 
         if (jtiLogRepository.existsByJti(jti)) {
             throw ConflictException("OIDC token already used (jti: $jti)")
@@ -69,15 +64,6 @@ class OidcAttestationService(
         return saved.toResponse()
     }
 
-    private fun parseAndVerifyToken(token: String): Map<String, Any> {
-        // Decode JWT payload (no signature verification in this implementation —
-        // in production, verify against JWKS endpoint)
-        val parts = token.split(".")
-        if (parts.size != 3) throw IllegalArgumentException("Invalid JWT format")
-        val payloadJson = String(Base64.getUrlDecoder().decode(padBase64(parts[1])))
-        @Suppress("UNCHECKED_CAST")
-        return objectMapper.readValue(payloadJson, Map::class.java) as Map<String, Any>
-    }
 
     private fun extractClaims(claims: Map<String, Any>): Map<String, Any?> = mapOf(
         "issuer" to claims["iss"],
@@ -91,8 +77,4 @@ class OidcAttestationService(
         "issuedAt" to claims["iat"]
     )
 
-    private fun padBase64(s: String): String {
-        val remainder = s.length % 4
-        return if (remainder == 0) s else s + "=".repeat(4 - remainder)
-    }
 }
