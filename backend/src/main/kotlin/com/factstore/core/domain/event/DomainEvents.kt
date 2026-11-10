@@ -136,7 +136,9 @@ sealed class DomainEvent {
         val subjectSha256: String,
         val subjectRepository: String?,
         val payloadJson: String,
-        val ingestedBy: String
+        val ingestedBy: String,
+        /** Who sent it, verified at ingestion (#191). Absent only on events written before #191. */
+        val identity: com.factstore.core.domain.FactIdentity? = null
     ) : DomainEvent() {
         override val aggregateType: String = "Fact"
     }

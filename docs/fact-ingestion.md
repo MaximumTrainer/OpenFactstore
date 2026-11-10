@@ -57,7 +57,23 @@ Each violation is `{ "path": <JSON Pointer into the request body>, "message": ..
 }
 ```
 
+## Identity lineage
+
+Each fact is bound, by the server, to the identity verified when it arrived (#191). The request body cannot carry an identity: an `identity` field is an undefined envelope field and is refused with `invalid_envelope`.
+
+| `identity.kind` | Sender | Recorded |
+|---|---|---|
+| `workload` | a verified OIDC token or SPIFFE JWT-SVID ([workload identity](integrations/workload-identity.md)) | `issuer`, `subject`, `spiffeId`, `repository`, `runId`, `runAttempt`, `actor`, `workflowRef`, `ref`, `sha` |
+| `credential` | a static API key or a signed-in person | `subject`: `api-key:<owner id>` or the person's email |
+
+GitHub Actions claims map directly (`repository`, `run_id`, `run_attempt`, `actor`, `workflow_ref`, `ref`, `sha`). GitLab CI's map as `project_path` → `repository`, `pipeline_id` → `runId`, `user_login` → `actor`, `ci_config_ref_uri` → `workflowRef`.
+
+The identity is stored with the fact and carried in its `FactIngested` event. Nothing updates it. Facts ingested before this was added show `kind: "unrecorded"`.
+
+`GET /api/v1/queries/facts/{fact_id}` (needs `trails:read`) returns the fact with its identity.
+
 ## Not yet covered
 
 - Request signatures (`X-Signature`) and workload identity headers (`X-Spiffe-ID`) from the specification are not verified here yet; they belong to #190 and #191. When they are, validation stays first, so unvalidated data is never signature-checked or stored.
 - Facts are not yet scoped to an organisation; see #218.
+- The identity is stored and evented, but not yet signed or hash-chained; that comes with #184 and #188, which must include it in the bytes they protect.

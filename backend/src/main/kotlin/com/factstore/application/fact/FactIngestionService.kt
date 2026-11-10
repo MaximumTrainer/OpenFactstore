@@ -1,20 +1,24 @@
 package com.factstore.application.fact
 
 import com.factstore.application.ActorResolver
+import com.factstore.application.auth.WorkloadPrincipalDetails
 import com.factstore.application.command.EventAppender
 import com.factstore.application.schema.Conformity
 import com.factstore.application.schema.SchemaRegistryService
 import com.factstore.application.schema.SchemaViolation
 import com.factstore.core.domain.Fact
+import com.factstore.core.domain.FactIdentity
 import com.factstore.core.domain.SchemaUrn
 import com.factstore.core.domain.Sha256Hash
 import com.factstore.core.domain.event.DomainEvent
 import com.factstore.core.port.outbound.IFactRepository
 import com.factstore.exception.ConflictException
 import com.factstore.exception.FactRejectedException
+import com.factstore.exception.NotFoundException
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
@@ -23,6 +27,16 @@ import java.util.UUID
 data class FactIngestionResponse(
     @get:JsonProperty("fact_id") val factId: UUID,
     @get:JsonProperty("schema_ref") val schemaRef: String,
+    @get:JsonProperty("ingested_at") val ingestedAt: Instant
+)
+
+/** A stored fact, with the identity bound to it at ingestion (#191). */
+data class FactView(
+    @get:JsonProperty("fact_id") val factId: UUID,
+    @get:JsonProperty("schema_ref") val schemaRef: String,
+    val subject: Map<String, String?>,
+    val tool: JsonNode,
+    val identity: FactIdentity,
     @get:JsonProperty("ingested_at") val ingestedAt: Instant
 )
 
@@ -73,7 +87,8 @@ class FactIngestionService(
                 subjectSha256 = envelope.sha256.value,
                 subjectRepository = envelope.repository,
                 payloadJson = objectMapper.writeValueAsString(envelope.tool),
-                ingestedBy = actorResolver.current()
+                ingestedBy = actorResolver.current(),
+                identity = verifiedIdentity()
             )
         )
         eventAppender.append(
@@ -84,10 +99,34 @@ class FactIngestionService(
                 subjectSha256 = fact.subjectSha256,
                 subjectRepository = fact.subjectRepository,
                 payloadJson = fact.payloadJson,
-                ingestedBy = fact.ingestedBy
+                ingestedBy = fact.ingestedBy,
+                identity = fact.identity
             )
         )
         return FactIngestionResponse(fact.factId, fact.schemaRef, fact.ingestedAt)
+    }
+
+    /**
+     * The caller's identity as the authentication filters verified it (#191), never anything
+     * from the request body: a workload's token claims, or otherwise the credential's actor.
+     */
+    private fun verifiedIdentity(): FactIdentity {
+        val details = SecurityContextHolder.getContext().authentication?.details
+        if (details is WorkloadPrincipalDetails) return FactIdentity.fromWorkloadClaims(details.claims)
+        return FactIdentity.credential(actorResolver.current())
+    }
+
+    @Transactional(readOnly = true)
+    fun get(factId: UUID): FactView {
+        val fact = facts.findById(factId) ?: throw NotFoundException("No fact $factId")
+        return FactView(
+            factId = fact.factId,
+            schemaRef = fact.schemaRef,
+            subject = mapOf("sha256" to fact.subjectSha256, "repository" to fact.subjectRepository),
+            tool = objectMapper.readTree(fact.payloadJson),
+            identity = fact.identity,
+            ingestedAt = fact.ingestedAt
+        )
     }
 
     private class Envelope(
