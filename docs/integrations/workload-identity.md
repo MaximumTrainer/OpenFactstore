@@ -41,6 +41,28 @@ factstore.oidc.extra-issuers=https://spire.example.org|https://spire.example.org
 
 Patterns match the whole subject. Prefer exact branches or environments over a bare `repo:my-org/*`. Any workflow in a trusted repository can request a token, including one on an unreviewed branch.
 
+## Each pipeline emits facts only for its own service
+
+A workload may ingest a fact only when the fact's `subject.repository` is exactly the service that workload belongs to (#190). Anything else is cross-workload injection. It is refused with `403 {"error": "cross_workload_injection"}`, audited as `AUTH_DENIED` (with the fact id, the repository the fact claimed, and the workload's own service), counted in `factstore.ingest.denials{reason="CROSS_WORKLOAD"}`, and nothing is stored.
+
+The service comes from the verified identity, never from the request:
+
+| Workload | Its service |
+|---|---|
+| GitHub Actions | the token's `repository` claim |
+| GitLab CI | the token's `project_path` claim |
+| SPIFFE | the binding for its ID in `factstore.abac.spiffe-services` |
+
+```properties
+factstore.abac.spiffe-services=spiffe://example.org/ns/ci/sa/payments-runner=org/payments
+```
+
+A SPIFFE ID with no binding, or a token with no repository claim, belongs to no service and cannot ingest. A workload's fact must name `subject.repository`. Matching is exact: `org/payments` cannot emit for `org/payments-legacy`.
+
+Static API keys and signed-in people are not bound to a service. To stop them ingesting at all, set `factstore.ingest.require-workload-identity=true`.
+
+The policy is built in rather than an OPA rule. Moving it to OPA, so that an organisation can write its own mapping, is a possible follow-up.
+
 ## GitHub Actions
 
 ```yaml

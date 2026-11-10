@@ -50,7 +50,9 @@ import java.util.UUID
         "security.enforce-auth=true",
         "factstore.oidc.audience=factstore",
         "factstore.oidc.extra-issuers=https://spire.example.org|https://spire.example.org/keys",
-        "factstore.oidc.allowed-subjects=repo:org/service:*,spiffe://example.org/ns/ci/sa/*"
+        "factstore.oidc.allowed-subjects=repo:org/service:*,spiffe://example.org/ns/ci/sa/*",
+        // Workloads emit facts only for their own service (#190).
+        "factstore.abac.spiffe-services=spiffe://example.org/ns/ci/sa/pipeline-runner=org/service"
     ]
 )
 @AutoConfigureMockMvc
@@ -95,6 +97,7 @@ class WorkloadIdentityTest {
         val claims = JWTClaimsSet.Builder()
             .issuer(issuer)
             .subject(subject)
+            .claim("repository", "org/service")
             .audience(audience)
             .issueTime(Date.from(Instant.now()))
             .expirationTime(Date.from(expiresAt))
@@ -104,7 +107,7 @@ class WorkloadIdentityTest {
     }
 
     private fun fact(factId: UUID = UUID.randomUUID()) = """
-        {"fact_id":"$factId","subject":{"sha256":"${"c".repeat(64)}"},
+        {"fact_id":"$factId","subject":{"sha256":"${"c".repeat(64)}","repository":"org/service"},
          "governance":{"schema_ref":"urn:schema:$schemaName:v1"},"tool":{}}
     """.trimIndent()
 

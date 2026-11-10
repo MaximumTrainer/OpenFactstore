@@ -113,6 +113,16 @@ class FailureMetrics(
             .increment()
     }
 
+    /** A fact refused by ingest authorisation (#190), by bounded reason. */
+    fun ingestDenial(reason: String) {
+        Counter.builder("factstore.ingest.denials")
+            .description("Facts refused by ingest authorisation, by bounded reason")
+            .tag("reason", reason)
+            .tag("service", service)
+            .register(registry)
+            .increment()
+    }
+
     fun authFailure(reason: String) {
         Counter.builder("factstore.auth.failures")
             .description("Rejected credentials, by bounded reason")
