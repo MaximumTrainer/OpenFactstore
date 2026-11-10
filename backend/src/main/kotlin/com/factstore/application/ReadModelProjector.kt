@@ -5,6 +5,7 @@ import com.factstore.core.domain.event.DomainEvent
 import com.factstore.core.domain.event.DomainEventRegistry
 import com.factstore.core.port.outbound.IArtifactRepository
 import com.factstore.core.port.outbound.IAttestationRepository
+import com.factstore.core.port.outbound.IFactRepository
 import com.factstore.core.port.outbound.IFlowRepository
 import com.factstore.core.port.outbound.ITrailRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -29,6 +30,7 @@ class ReadModelProjector(
     private val trailRepository: ITrailRepository,
     private val artifactRepository: IArtifactRepository,
     private val attestationRepository: IAttestationRepository,
+    private val factRepository: IFactRepository,
     private val objectMapper: ObjectMapper
 ) {
 
@@ -67,6 +69,7 @@ class ReadModelProjector(
             is DomainEvent.ArtifactReported -> applyArtifactReported(event)
             is DomainEvent.AttestationRecorded -> applyAttestationRecorded(event)
             is DomainEvent.EvidenceUploaded -> applyEvidenceUploaded(event)
+            is DomainEvent.FactIngested -> applyFactIngested(event)
         }
     }
 
@@ -191,5 +194,24 @@ class ReadModelProjector(
         attestation.evidenceFileSizeBytes = event.fileSizeBytes
         attestationRepository.save(attestation)
         log.debug("Projected EvidenceUploaded: {}", event.aggregateId)
+    }
+
+    private fun applyFactIngested(event: DomainEvent.FactIngested) {
+        if (factRepository.existsById(event.aggregateId)) {
+            log.debug("Fact {} already exists — skipping projection", event.aggregateId)
+            return
+        }
+        factRepository.save(
+            Fact(
+                factId = event.aggregateId,
+                schemaRef = event.schemaRef,
+                subjectSha256 = event.subjectSha256,
+                subjectRepository = event.subjectRepository,
+                payloadJson = event.payloadJson,
+                ingestedBy = event.ingestedBy,
+                ingestedAt = event.occurredAt
+            )
+        )
+        log.debug("Projected FactIngested: {}", event.aggregateId)
     }
 }

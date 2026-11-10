@@ -11,12 +11,16 @@ import com.factstore.exception.ConflictException
 import com.factstore.exception.NotFoundException
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.networknt.schema.JsonSchema
 import com.networknt.schema.JsonSchemaFactory
+import com.networknt.schema.PathType
+import com.networknt.schema.SchemaValidatorsConfig
 import com.networknt.schema.SpecVersion
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 
 data class FactSchemaResponse(
     val ref: String,
@@ -26,6 +30,15 @@ data class FactSchemaResponse(
     val createdBy: String,
     val createdAt: Instant
 )
+
+/** One way a payload fails its schema; [path] is a JSON Pointer into the payload. */
+data class SchemaViolation(val path: String, val message: String)
+
+sealed interface Conformity {
+    data object Conforms : Conformity
+    data object UnknownSchema : Conformity
+    data class Nonconformant(val violations: List<SchemaViolation>) : Conformity
+}
 
 data class PublishResult(val schema: FactSchemaResponse, val created: Boolean)
 
@@ -51,6 +64,10 @@ class SchemaRegistryService(
 ) {
     private val log = LoggerFactory.getLogger(SchemaRegistryService::class.java)
     private val factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
+    private val pointerPaths = SchemaValidatorsConfig.builder().pathType(PathType.JSON_POINTER).build()
+
+    /** Published versions are immutable, so a compiled schema never goes stale. */
+    private val compiled = ConcurrentHashMap<String, JsonSchema>()
 
     fun publish(name: String, version: Int, schema: JsonNode): PublishResult {
         if (!SchemaUrn.NAME.matches(name)) {
@@ -86,6 +103,28 @@ class SchemaRegistryService(
         )
         log.info("Published fact schema {}", saved.ref)
         return PublishResult(saved.toResponse(), created = true)
+    }
+
+    /**
+     * Strict ingress validation (#196): does [payload] conform to the registered schema [ref]?
+     * Returns every violation, not just whether it conforms, so a refusal can say why.
+     */
+    @Transactional(readOnly = true)
+    fun validateConformity(ref: SchemaUrn, payload: JsonNode): Conformity {
+        val schema = compiled[ref.value]
+            ?: repository.find(ref.name, ref.version)
+                ?.let { factory.getSchema(objectMapper.readTree(it.schemaJson), pointerPaths) }
+                ?.also { compiled[ref.value] = it }
+            ?: return Conformity.UnknownSchema
+        val problems = schema.validate(payload)
+        if (problems.isEmpty()) return Conformity.Conforms
+        return Conformity.Nonconformant(
+            problems.map { problem ->
+                val at = problem.instanceLocation.toString().removeSuffix("/")
+                val path = if (problem.type == "required" && problem.property != null) "$at/${problem.property}" else at
+                SchemaViolation(path, problem.message)
+            }.sortedBy { it.path }
+        )
     }
 
     @Transactional(readOnly = true)

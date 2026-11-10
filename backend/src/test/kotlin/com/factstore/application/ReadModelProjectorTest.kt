@@ -2,6 +2,7 @@ package com.factstore.application
 
 import com.factstore.adapter.mock.InMemoryArtifactRepository
 import com.factstore.adapter.mock.InMemoryAttestationRepository
+import com.factstore.adapter.mock.InMemoryFactRepository
 import com.factstore.adapter.mock.InMemoryFlowRepository
 import com.factstore.adapter.mock.InMemoryTrailRepository
 import com.factstore.core.domain.AttestationStatus
@@ -23,6 +24,7 @@ class ReadModelProjectorTest {
     private lateinit var trailRepo: InMemoryTrailRepository
     private lateinit var artifactRepo: InMemoryArtifactRepository
     private lateinit var attestationRepo: InMemoryAttestationRepository
+    private lateinit var factRepo: InMemoryFactRepository
 
     @BeforeEach
     fun setUp() {
@@ -31,7 +33,8 @@ class ReadModelProjectorTest {
         trailRepo = InMemoryTrailRepository()
         artifactRepo = InMemoryArtifactRepository()
         attestationRepo = InMemoryAttestationRepository()
-        projector = ReadModelProjector(flowRepo, trailRepo, artifactRepo, attestationRepo, objectMapper)
+        factRepo = InMemoryFactRepository()
+        projector = ReadModelProjector(flowRepo, trailRepo, artifactRepo, attestationRepo, factRepo, objectMapper)
     }
 
     @Test
@@ -228,6 +231,40 @@ class ReadModelProjectorTest {
 
         // Should succeed (not crash) but skip because attestation doesn't exist
         assertTrue(projector.project("EvidenceUploaded", payload))
+    }
+
+    @Test
+    fun `#196 project FactIngested creates the fact in the read model`() {
+        val factId = UUID.randomUUID()
+        val event = DomainEvent.FactIngested(
+            aggregateId = factId,
+            schemaRef = "urn:schema:junit-summary:v1",
+            subjectSha256 = "a".repeat(64),
+            subjectRepository = "org/service",
+            payloadJson = "{\"passed\":1}",
+            ingestedBy = "ci"
+        )
+
+        assertTrue(projector.project("FactIngested", objectMapper.writeValueAsString(event)))
+
+        val fact = factRepo.findById(factId)
+        assertNotNull(fact)
+        assertEquals("urn:schema:junit-summary:v1", fact!!.schemaRef)
+        assertEquals("{\"passed\":1}", fact.payloadJson)
+    }
+
+    @Test
+    fun `#196 project FactIngested again is a no-op`() {
+        val factId = UUID.randomUUID()
+        val event = DomainEvent.FactIngested(
+            aggregateId = factId, schemaRef = "urn:schema:a:v1", subjectSha256 = "b".repeat(64),
+            subjectRepository = null, payloadJson = "{}", ingestedBy = "ci"
+        )
+        val payload = objectMapper.writeValueAsString(event)
+
+        assertTrue(projector.project("FactIngested", payload))
+        assertTrue(projector.project("FactIngested", payload))
+        assertEquals("{}", factRepo.findById(factId)!!.payloadJson)
     }
 
     @Test

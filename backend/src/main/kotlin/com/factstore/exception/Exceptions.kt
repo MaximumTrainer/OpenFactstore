@@ -14,3 +14,19 @@ class PullRequestNotFoundException(message: String) : RuntimeException(message)
  * a 404 instead, so probing cannot enumerate another organisation's resources (FR-5.2).
  */
 class ForbiddenException(message: String) : RuntimeException(message)
+
+/**
+ * A fact refused at ingress (#196): its envelope was malformed, it named an unregistered schema,
+ * or its payload did not conform. Rendered as `400` with every violation found.
+ */
+class FactRejectedException(
+    val error: String,
+    val schemaRef: String?,
+    val violations: List<com.factstore.application.schema.SchemaViolation>
+) : RuntimeException("$error: ${violations.joinToString("; ") { "${it.path} ${it.message}" }}") {
+    companion object {
+        const val INVALID_ENVELOPE = "invalid_envelope"
+        const val UNKNOWN_SCHEMA = "unknown_schema"
+        const val SCHEMA_NONCONFORMANT = "schema_nonconformant"
+    }
+}
