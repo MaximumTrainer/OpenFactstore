@@ -234,6 +234,13 @@ jobs:
       - name: Backend log on failure
         if: failure()
         run: tail -200 /tmp/factstore.log
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-enforced-traces
+          path: frontend/test-results/
+          if-no-files-found: ignore
 
   frontend-contract:
     name: Frontend Consumer Contract Tests
