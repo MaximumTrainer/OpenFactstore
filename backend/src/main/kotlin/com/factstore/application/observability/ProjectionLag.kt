@@ -47,6 +47,12 @@ class ProjectionLag(
             .register(registry)
     }
 
+    /**
+     * How far behind the writer this read model was when it last caught up (#194): the delay of the
+     * last projected event, or 0 where the read model is written directly (an unsplit deployment).
+     */
+    fun stalenessSeconds(): Double = last.get()?.delaySeconds ?: 0.0
+
     fun applied(occurredAt: Instant) {
         val now = clock.instant()
         last.set(Last(Duration.between(occurredAt, now).toMillis().coerceAtLeast(0) / 1000.0, now))

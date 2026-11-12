@@ -1,6 +1,10 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:factstore;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    # One in-memory database per Spring test context. The suite has more distinct context
+    # configurations than Spring's context cache holds (32), so contexts are evicted and closed;
+    # with one shared database, closing a context ran create-drop and emptied the database under
+    # every other cached context (#194, seen as "Table not found" in WorkloadIdentityTest).
+    url: jdbc:h2:mem:factstore-${random.uuid};DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
