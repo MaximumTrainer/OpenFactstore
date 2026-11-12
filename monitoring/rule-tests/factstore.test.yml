@@ -101,3 +101,23 @@ tests:
               summary: "Reads in us-east-1 have stopped receiving writes"
               description: "No event has been projected for 30m 0s while writes are succeeding; this region is serving stale reads."
               runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/projection-stale.md
+
+  # A standard environment's gate failed open: page.
+  - interval: 1m
+    input_series:
+      - series: 'factstore_gate_fallbacks_total{application="factstore", service="command", mode="FAIL_OPEN"}'
+        values: '0 0 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: FactstoreGateFailedOpen
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              service: command
+            exp_annotations:
+              summary: "Deployments were approved without evidence (fail-open) on command"
+              description: "1 gate decision(s) in the last 5 minutes fell back to fail-open; review the GATE_FALLBACK audit records."
+              runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/gate-fallback.md
+      - eval_time: 4m
+        alertname: FactstoreGateFailedClosed
+        exp_alerts: []

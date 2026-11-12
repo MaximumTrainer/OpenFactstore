@@ -15,6 +15,8 @@ One page per alert in [`monitoring/alerts/factstore.yml`](../../../monitoring/al
 | `FactstoreReadSloSlowBurn`, `FactstoreWriteSloSlowBurn` | warn | [slo-burn.md](slo-burn.md) |
 | `FactstoreProjectionStopped` | page | [projection-stale.md](projection-stale.md) |
 | `FactstoreProjectionStale` | warn | [projection-stale.md](projection-stale.md) |
+| `FactstoreGateFailedOpen` | page | [gate-fallback.md](gate-fallback.md) |
+| `FactstoreGateFailedClosed` | warn | [gate-fallback.md](gate-fallback.md) |
 
 ## Finding the logs for a failure
 

@@ -233,6 +233,7 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `GET` | `/api/v1/queries/data-keys` | `@authz.has('admin')` |
 | `GET` | `/api/v1/queries/event-signing-keys` | `@authz.authenticated()` |
 | `GET` | `/api/v1/queries/facts/{factId}` | `@authz.has('trails:read')` |
+| `POST` | `/api/v1/queries/gates/evaluate` | `@authz.has('assert:execute')` |
 | `GET` | `/api/v1/queries/ledger/checkpoints` | `@authz.authenticated()` |
 | `GET` | `/api/v1/queries/ledger/proof/{factId}` | `@authz.has('trails:read')` |
 | `GET` | `/api/v1/queries/schemas/{name}` | `@authz.has('policies:read')` |

@@ -29,6 +29,7 @@ class InMemoryEnvironmentRepository : IEnvironmentRepository {
     override fun existsById(id: UUID): Boolean = store.containsKey(id)
 
     override fun existsByName(name: String): Boolean = store.values.any { it.name == name }
+    override fun findByName(name: String) = store.values.firstOrNull { it.name == name }
 
     override fun deleteById(id: UUID) {
         store.remove(id)

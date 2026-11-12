@@ -9,6 +9,13 @@ enum class EnvironmentType { K8S, ECS, LAMBDA, S3, DOCKER, GENERIC }
 
 enum class DriftPolicy { WARN, BLOCK, IGNORE }
 
+/**
+ * How a deployment gate for an environment falls back when it cannot be evaluated (#193):
+ * `TIER1` (for example Tier-1 financial services) fails closed, `STANDARD` fails open with an
+ * alerted audit. Stored on the environment, so a pipeline cannot choose a laxer tier for itself.
+ */
+enum class RiskTier { TIER1, STANDARD }
+
 @Entity
 @Table(name = "environments")
 class Environment(
@@ -37,6 +44,12 @@ class Environment(
     @Enumerated(EnumType.STRING)
     @Column(name = "drift_policy", nullable = false)
     var driftPolicy: DriftPolicy = DriftPolicy.WARN,
+
+    /** How a gate for this environment falls back when it cannot be evaluated (#193). Tier 1 unless set. */
+    @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.ColumnDefault("'TIER1'")
+    @Column(name = "tier", nullable = false, length = 16)
+    var tier: RiskTier = RiskTier.TIER1,
 
     @Column(name = "scope_include_names", columnDefinition = "TEXT")
     var scopeIncludeNames: String? = null,

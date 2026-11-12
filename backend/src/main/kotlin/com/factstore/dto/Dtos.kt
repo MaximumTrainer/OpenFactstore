@@ -860,7 +860,9 @@ data class CreateEnvironmentRequest(
     val orgSlug: String? = null,
     val driftPolicy: DriftPolicy = DriftPolicy.WARN,
     val scope: SnapshotScopeDto? = null,
-    val tags: Map<String, String> = emptyMap()
+    val tags: Map<String, String> = emptyMap(),
+    /** Gate fallback when the fact store cannot decide (#193). Tier 1 (fail closed) unless set. */
+    val tier: com.factstore.core.domain.RiskTier? = null
 )
 
 data class UpdateEnvironmentRequest(
@@ -869,7 +871,8 @@ data class UpdateEnvironmentRequest(
     val description: String? = null,
     val driftPolicy: DriftPolicy? = null,
     val scope: SnapshotScopeDto? = null,
-    val tags: Map<String, String>? = null
+    val tags: Map<String, String>? = null,
+    val tier: com.factstore.core.domain.RiskTier? = null
 )
 
 data class EnvironmentResponse(
@@ -879,6 +882,8 @@ data class EnvironmentResponse(
     val description: String,
     val orgSlug: String? = null,
     val driftPolicy: DriftPolicy,
+    /** Gate fallback tier (#193). */
+    val tier: com.factstore.core.domain.RiskTier = com.factstore.core.domain.RiskTier.TIER1,
     val scope: SnapshotScopeDto? = null,
     val createdAt: Instant,
     val updatedAt: Instant,

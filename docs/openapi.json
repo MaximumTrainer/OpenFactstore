@@ -663,7 +663,7 @@
           },
           "eventType" : {
             "type" : "string",
-            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
+            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
           },
           "id" : {
             "format" : "uuid",
@@ -1703,6 +1703,10 @@
             },
             "type" : "object"
           },
+          "tier" : {
+            "enum" : [ "TIER1", "STANDARD" ],
+            "type" : "string"
+          },
           "type" : {
             "enum" : [ "K8S", "ECS", "LAMBDA", "S3", "DOCKER", "GENERIC" ],
             "type" : "string"
@@ -2312,6 +2316,51 @@
         "required" : [ "created_at", "kek_id", "period", "status", "tenant" ],
         "type" : "object"
       },
+      "DecisionTree" : {
+        "properties" : {
+          "environment" : {
+            "type" : "string"
+          },
+          "failed" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "flow_id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "missing" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "outcome" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "required_policies" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tier" : {
+            "enum" : [ "TIER1", "STANDARD" ],
+            "type" : "string"
+          },
+          "trail_id" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "required" : [ "environment", "failed", "flow_id", "missing", "outcome", "reason", "required_policies", "tier" ],
+        "type" : "object"
+      },
       "DeliveryMetricsResponse" : {
         "properties" : {
           "assertions" : {
@@ -2539,6 +2588,10 @@
             },
             "type" : "object"
           },
+          "tier" : {
+            "enum" : [ "TIER1", "STANDARD" ],
+            "type" : "string"
+          },
           "type" : {
             "enum" : [ "K8S", "ECS", "LAMBDA", "S3", "DOCKER", "GENERIC" ],
             "type" : "string"
@@ -2548,7 +2601,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "createdAt", "description", "driftPolicy", "id", "name", "tags", "type", "updatedAt" ],
+        "required" : [ "createdAt", "description", "driftPolicy", "id", "name", "tags", "tier", "type", "updatedAt" ],
         "type" : "object"
       },
       "EnvironmentSnapshotResponse" : {
@@ -3141,6 +3194,33 @@
           }
         },
         "required" : [ "allowed", "blocked", "date" ],
+        "type" : "object"
+      },
+      "GateDecision" : {
+        "properties" : {
+          "audit_alert_id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "decision_tree" : {
+            "$ref" : "#/components/schemas/DecisionTree"
+          },
+          "fallback_mode" : {
+            "enum" : [ "NONE", "FAIL_OPEN", "FAIL_CLOSED" ],
+            "type" : "string"
+          },
+          "missing_attestations" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "enum" : [ "APPROVED", "REJECTED" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "decision_tree", "fallback_mode", "missing_attestations", "status" ],
         "type" : "object"
       },
       "GateEvaluateRequest" : {
@@ -5626,6 +5706,10 @@
             },
             "type" : "object"
           },
+          "tier" : {
+            "enum" : [ "TIER1", "STANDARD" ],
+            "type" : "string"
+          },
           "type" : {
             "enum" : [ "K8S", "ECS", "LAMBDA", "S3", "DOCKER", "GENERIC" ],
             "type" : "string"
@@ -6875,7 +6959,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
+            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
           }
         }, {
           "in" : "query",
@@ -11578,6 +11662,36 @@
         "tags" : [ "Facts" ]
       }
     },
+    "/api/v1/queries/gates/evaluate" : {
+      "post" : {
+        "description" : "Body: artifact_sha256, target_environment, flow_id, optional required_policies (attestation types). APPROVED or REJECTED, with fallback_mode NONE, or FAIL_OPEN / FAIL_CLOSED by the environment's risk tier when the evidence cannot be evaluated, in which case audit_alert_id names the alert raised.",
+        "operationId" : "evaluate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GateDecision"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Evaluate a deployment gate",
+        "tags" : [ "Gates" ]
+      }
+    },
     "/api/v1/queries/ledger/checkpoints" : {
       "get" : {
         "operationId" : "checkpoints",
@@ -14457,6 +14571,9 @@
   }, {
     "description" : "Fact ingestion with strict validation against the schema registry",
     "name" : "Facts"
+  }, {
+    "description" : "May this artifact be deployed to this environment?",
+    "name" : "Gates"
   }, {
     "description" : "Compliance assertion",
     "name" : "Assert"

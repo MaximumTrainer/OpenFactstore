@@ -81,7 +81,8 @@ class EnvironmentService(
             type = request.type,
             description = request.description,
             orgSlug = request.orgSlug,
-            driftPolicy = request.driftPolicy
+            driftPolicy = request.driftPolicy,
+            tier = request.tier ?: com.factstore.core.domain.RiskTier.TIER1
         )
         request.scope?.let { applyScope(environment, it) }
         environment.tags = request.tags.toMutableMap()
@@ -127,6 +128,7 @@ class EnvironmentService(
         request.type?.let { environment.type = it }
         request.description?.let { environment.description = it }
         request.driftPolicy?.let { environment.driftPolicy = it }
+        request.tier?.let { environment.tier = it }
         request.scope?.let { applyScope(environment, it) }
         request.tags?.let { environment.tags = it.toMutableMap() }
         environment.updatedAt = Instant.now()
@@ -431,6 +433,7 @@ fun Environment.toResponse(): EnvironmentResponse {
         description = description,
         orgSlug = orgSlug,
         driftPolicy = driftPolicy,
+        tier = tier,
         scope = scopeDto,
         createdAt = createdAt,
         updatedAt = updatedAt,

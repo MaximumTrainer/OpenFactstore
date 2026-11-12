@@ -12,6 +12,7 @@ interface IEnvironmentRepository {
     fun findAll(pageable: Pageable): Page<Environment>
     fun existsById(id: UUID): Boolean
     fun existsByName(name: String): Boolean
+    fun findByName(name: String): Environment?
     fun deleteById(id: UUID)
     fun findEnvironmentsWithArtifact(sha256: String): List<UUID>
 }

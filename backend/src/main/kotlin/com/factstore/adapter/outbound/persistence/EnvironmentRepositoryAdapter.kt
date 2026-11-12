@@ -12,6 +12,7 @@ import java.util.UUID
 @Repository
 interface EnvironmentRepositoryJpa : JpaRepository<Environment, UUID> {
     fun existsByName(name: String): Boolean
+    fun findByName(name: String): Environment?
 }
 
 @Component
@@ -22,6 +23,7 @@ class EnvironmentRepositoryAdapter(private val jpa: EnvironmentRepositoryJpa) : 
     override fun findAll(pageable: Pageable): Page<Environment> = jpa.findAll(pageable)
     override fun existsById(id: UUID): Boolean = jpa.existsById(id)
     override fun existsByName(name: String): Boolean = jpa.existsByName(name)
+    override fun findByName(name: String): Environment? = jpa.findByName(name)
     override fun deleteById(id: UUID) = jpa.deleteById(id)
     override fun findEnvironmentsWithArtifact(sha256: String): List<UUID> = emptyList()
 }
