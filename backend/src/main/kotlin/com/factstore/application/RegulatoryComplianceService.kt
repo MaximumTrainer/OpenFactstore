@@ -229,7 +229,8 @@ class RegulatoryComplianceService(
     override fun generateReport(frameworkId: UUID): RegulatoryReportResponse {
         val framework = frameworkRepository.findById(frameworkId)
             ?: throw NotFoundException("Framework not found: $frameworkId")
-        val assessments = assessmentRepository.findByFrameworkId(frameworkId)
+        // Frameworks are shared; the assessments in a report are only the caller's organisation's (#218).
+        val assessments = assessmentRepository.findByFrameworkId(frameworkId).filter { visibleAssessment(it) }
         return RegulatoryReportResponse(
             frameworkId = framework.id,
             frameworkName = framework.name,

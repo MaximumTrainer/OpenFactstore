@@ -84,16 +84,20 @@ class DeploymentPolicyService(
         return policyRepository.save(policy).toResponse()
     }
 
-    override fun listPolicies(): List<DeploymentPolicyResponse> =
-        policyRepository.findAll().map { it.toResponse() }
+    /** A policy belongs to its environment's organisation, else its flow's (#218). */
+    private fun orgOf(policy: com.factstore.core.domain.DeploymentPolicy): String? =
+        ownership?.ofEnvironment(policy.environmentId) ?: flowRepository.findById(policy.flowId)?.orgSlug
 
-    override fun getPolicy(id: UUID): DeploymentPolicyResponse =
-        policyRepository.findById(id)?.toResponse()
-            ?: throw NotFoundException("Deployment policy not found: $id")
+    private fun visiblePolicy(id: UUID) =
+        tenantScope.require(policyRepository.findById(id), ::orgOf) { "Deployment policy not found: $id" }
+
+    override fun listPolicies(): List<DeploymentPolicyResponse> =
+        policyRepository.findAll().filter { tenantScope.visible(orgOf(it)) }.map { it.toResponse() }
+
+    override fun getPolicy(id: UUID): DeploymentPolicyResponse = visiblePolicy(id).toResponse()
 
     override fun updatePolicy(id: UUID, request: UpdateDeploymentPolicyRequest): DeploymentPolicyResponse {
-        val policy = policyRepository.findById(id)
-            ?: throw NotFoundException("Deployment policy not found: $id")
+        val policy = visiblePolicy(id)
 
         request.name?.let { policy.name = it }
         request.description?.let { policy.description = it }
@@ -108,7 +112,7 @@ class DeploymentPolicyService(
     }
 
     override fun deletePolicy(id: UUID) {
-        if (!policyRepository.existsById(id)) throw NotFoundException("Deployment policy not found: $id")
+        visiblePolicy(id)
         policyRepository.deleteById(id)
     }
 

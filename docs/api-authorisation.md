@@ -241,6 +241,9 @@ This is enforced (`TenantScope`) for a caller bound to an organisation, whether 
 | Environments (and their snapshots, baselines, drift, audit CSV), policies and their versions, approvals, compliance assessments | another organisation's is `404`; lists show only the caller's (#207) |
 | `GET /api/v1/artifacts?sha256=`, `/api/v1/artifacts/search`, `GET /api/v1/gate/results` | only the caller's organisation (#207) |
 | `GET /api/v1/audit`, `/api/v1/audit/{id}`, a trail's audit events | only events tied to the caller's organisation's trails or environments (#207) |
+| `GET /api/v1/reports/compliance`, `/api/v1/reports/audit-trail/{trailId}`, `/api/v1/reports/regulatory/{frameworkId}` | counts and lists only the caller's trails and assessments; another organisation's flow or trail is `404` (#218) |
+| `GET /api/v1/opa/decisions`, `/api/v1/opa/decisions/{id}` | only the caller's organisation's decisions (#218) |
+| Deployment policies (list, read, update, delete) | scoped through the policy's environment, else its flow; another organisation's is `404` (#218) |
 
 The same lookups back attestation recording and flow edits and deletes, so a bound key cannot
 write to another organisation's trail either: it gets the same `404`.
