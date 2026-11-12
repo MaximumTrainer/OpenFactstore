@@ -1,6 +1,7 @@
-# Unit tests for the alert rules (#192), run in CI with `promtool test rules`.
+# Unit tests for the alert rules (#192), run in CI with `promtool test rules`. Kept outside
+# alerts/, because prometheus.yml loads every alerts/*.yml as a rule file.
 rule_files:
-  - factstore.yml
+  - ../alerts/factstore.yml
 
 evaluation_interval: 1m
 

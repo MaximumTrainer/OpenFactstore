@@ -34,7 +34,7 @@ jobs:
       # #192: the SLO burn-rate and replication alerts fire when they should, and only then.
       - name: promtool test rules
         run: |
-          docker run --rm -v "$PWD/monitoring:/etc/prometheus:ro" -w /etc/prometheus/alerts --entrypoint promtool             prom/prometheus:v2.53.0 test rules factstore.test.yml
+          docker run --rm -v "$PWD/monitoring:/etc/prometheus:ro" -w /etc/prometheus/rule-tests --entrypoint promtool             prom/prometheus:v2.53.0 test rules factstore.test.yml
       - name: amtool check-config
         run: |
           docker run --rm -v "$PWD/monitoring:/etc/alertmanager:ro" --entrypoint amtool             prom/alertmanager:v0.27.0 check-config /etc/alertmanager/alertmanager.yml
