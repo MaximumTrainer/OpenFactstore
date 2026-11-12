@@ -18,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional
 class TrailCommandHandler(
     private val trailRepository: ITrailRepository,
     private val flowRepository: IFlowRepository,
-    private val eventAppender: EventAppender
+    private val eventAppender: EventAppender,
+    /** Strictly increasing creation times, so the latest run for a commit is well defined (#220). */
+    private val time: com.factstore.application.MonotonicTime = com.factstore.application.MonotonicTime(java.time.Clock.systemUTC())
 ) : ITrailCommandHandler {
 
     private val log = LoggerFactory.getLogger(TrailCommandHandler::class.java)
@@ -50,7 +52,8 @@ class TrailCommandHandler(
             templateYaml = command.templateYaml,
             buildUrl = command.buildUrl,
             name = command.name,
-            externalId = command.externalId?.takeIf { it.isNotBlank() }
+            externalId = command.externalId?.takeIf { it.isNotBlank() },
+            createdAt = time.now()
         )
         val saved = trailRepository.save(trail)
         eventAppender.append(DomainEvent.TrailCreated(

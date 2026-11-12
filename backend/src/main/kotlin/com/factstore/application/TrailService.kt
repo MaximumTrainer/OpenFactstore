@@ -23,7 +23,9 @@ import java.util.UUID
 class TrailService(
     private val trailRepository: ITrailRepository,
     private val flowRepository: IFlowRepository,
-    private val tenantScope: TenantScope = TenantScope.UNSCOPED
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
+    /** Strictly increasing creation times, so the latest run for a commit is well defined (#220). */
+    private val time: MonotonicTime = MonotonicTime(java.time.Clock.systemUTC())
 ) : ITrailService {
 
     private val log = LoggerFactory.getLogger(TrailService::class.java)
@@ -75,7 +77,8 @@ class TrailService(
             deploymentActor = request.deploymentActor,
             orgSlug = request.orgSlug,
             templateYaml = request.templateYaml,
-            buildUrl = request.buildUrl
+            buildUrl = request.buildUrl,
+            createdAt = time.now()
         )
         trail.name = request.name
         trail.externalId = request.externalId?.takeIf { it.isNotBlank() }
