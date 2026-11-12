@@ -40,7 +40,8 @@ class EventAppender(
 ) {
     private val log = LoggerFactory.getLogger(EventAppender::class.java)
 
-    fun append(event: DomainEvent) {
+    /** Appends and signs [event]; returns the stored record, whose `recordHash` is its receipt (#186). */
+    fun append(event: DomainEvent): EventLogEntry {
         val entry = EventLogEntry(
             eventId = event.eventId,
             aggregateId = event.aggregateId,
@@ -63,6 +64,7 @@ class EventAppender(
             // No active transaction (e.g. in unit tests) — publish immediately.
             domainEventBus.publish(saved)
         }
+        return saved
     }
 
     private fun publishAfterCommit(saved: EventLogEntry) {

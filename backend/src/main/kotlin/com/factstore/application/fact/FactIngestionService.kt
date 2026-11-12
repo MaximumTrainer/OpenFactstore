@@ -34,7 +34,13 @@ import java.util.UUID
 data class FactIngestionResponse(
     @get:JsonProperty("fact_id") val factId: UUID,
     @get:JsonProperty("schema_ref") val schemaRef: String,
-    @get:JsonProperty("ingested_at") val ingestedAt: Instant
+    @get:JsonProperty("ingested_at") val ingestedAt: Instant,
+    /**
+     * #186: the receipt. The hash of the signed, append-only ledger record the fact was written to,
+     * and that record's position. The proof endpoint (#188) shows the same hash under a signed root.
+     */
+    @get:JsonProperty("receipt_hash") val receiptHash: String?,
+    @get:JsonProperty("ledger_index") val ledgerIndex: Long
 )
 
 /** A stored fact, with the identity bound to it at ingestion (#191). */
@@ -118,7 +124,7 @@ class FactIngestionService(
                 signedBody = signature?.let { rawBody }
             )
         )
-        eventAppender.append(
+        val record = eventAppender.append(
             DomainEvent.FactIngested(
                 aggregateId = fact.factId,
                 occurredAt = fact.ingestedAt,
@@ -133,7 +139,7 @@ class FactIngestionService(
                 signedBody = fact.signedBody
             )
         )
-        return FactIngestionResponse(fact.factId, fact.schemaRef, fact.ingestedAt)
+        return FactIngestionResponse(fact.factId, fact.schemaRef, fact.ingestedAt, record.recordHash, record.sequenceNumber)
     }
 
     private fun sourceSignature(rawBody: String, header: String?, keyId: String?): SourceSignature? {
