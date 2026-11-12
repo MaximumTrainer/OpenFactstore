@@ -55,6 +55,12 @@ dependencies {
     testImplementation("au.com.dius.pact.provider:junit5spring:4.6.9")
 }
 
+// The application's entry point, named so other mains (tools such as SchemaSpecCheck, #197) do
+// not make the boot jar ambiguous.
+springBoot {
+    mainClass.set("com.factstore.FactstoreApplicationKt")
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
     // Every distinct @SpringBootTest configuration keeps a cached application context, and the
