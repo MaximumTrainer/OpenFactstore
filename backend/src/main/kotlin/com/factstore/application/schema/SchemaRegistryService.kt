@@ -127,6 +127,25 @@ class SchemaRegistryService(
         )
     }
 
+    /**
+     * JSON Pointers into the payload of every property the schema marks `"x-sensitive": true`
+     * (#198), with `*` for array items and additional properties.
+     */
+    @Transactional(readOnly = true)
+    fun sensitivePointers(ref: SchemaUrn): Set<String> {
+        val schema = repository.find(ref.name, ref.version)?.let { objectMapper.readTree(it.schemaJson) } ?: return emptySet()
+        val found = linkedSetOf<String>()
+        fun walk(node: JsonNode, at: String) {
+            if (!node.isObject) return
+            if (node.path("x-sensitive").asBoolean(false)) found += at
+            node.path("properties").fields().forEach { (name, child) -> walk(child, "$at/${name.replace("~", "~0").replace("/", "~1")}") }
+            node.get("items")?.let { walk(it, "$at/*") }
+            node.get("additionalProperties")?.let { walk(it, "$at/*") }
+        }
+        walk(schema, "")
+        return found
+    }
+
     @Transactional(readOnly = true)
     fun get(name: String, version: Int): FactSchemaResponse =
         (repository.find(name, version) ?: throw NotFoundException("No schema ${SchemaUrn.of(name, version).value}")).toResponse()

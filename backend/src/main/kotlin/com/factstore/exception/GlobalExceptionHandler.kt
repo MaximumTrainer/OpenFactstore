@@ -114,8 +114,9 @@ class GlobalExceptionHandler(
                 "error" to ex.error.also { com.factstore.adapter.inbound.web.SiemRequestFilter.detail(it) },
                 "schemaRef" to ex.schemaRef,
                 "violations" to ex.violations,
+                "maskingRuleset" to ex.maskingRuleset,
                 "correlationId" to CorrelationIdFilter.current()
-            )
+            ).filterValues { it != null }
         )
     }
 
