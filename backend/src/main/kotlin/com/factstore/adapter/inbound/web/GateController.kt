@@ -25,4 +25,18 @@ class GateController(private val service: GateEvaluationService) {
             "when the evidence cannot be evaluated, in which case audit_alert_id names the alert raised."
     )
     fun evaluate(@RequestBody body: JsonNode): ResponseEntity<GateDecision> = ResponseEntity.ok(service.evaluate(body))
+
+    @PostMapping("/api/v1/commands/gates/fallback-reports")
+    @PreAuthorize("@authz.has('assert:execute')")
+    @Operation(
+        summary = "Report a gate decision the client made by risk tier",
+        description = "Sent by the CLI once Factstore is reachable again, for each gate it decided by the environment's " +
+            "tier while Factstore was unreachable. 201 with audit_alert_id, or 200 for a report already recorded " +
+            "(same report_id)."
+    )
+    fun report(@RequestBody body: JsonNode): ResponseEntity<Map<String, Any>> {
+        val result = service.reportClientFallback(body)
+        val status = if (result.created) org.springframework.http.HttpStatus.CREATED else org.springframework.http.HttpStatus.OK
+        return ResponseEntity.status(status).body(mapOf("audit_alert_id" to result.auditAlertId))
+    }
 }
