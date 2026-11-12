@@ -57,6 +57,9 @@ class AlertRulesTest {
         assertThat(severities).containsEntry("FactstoreWriteSloSlowBurn", "warn")
         assertThat(severities).containsEntry("FactstoreProjectionStopped", "page")
         assertThat(severities).containsEntry("FactstoreProjectionStale", "warn")
+        // #193: gates that fell back by risk tier.
+        assertThat(severities).containsEntry("FactstoreGateFailedOpen", "page")
+        assertThat(severities).containsEntry("FactstoreGateFailedClosed", "warn")
     }
 
     @Test
@@ -85,7 +88,8 @@ class AlertRulesTest {
             "factstore_notification_dead_letters_total" to ("$observability/FailureMetrics.kt" to "factstore.notification.dead.letters"),
             "factstore_auth_failures_total" to ("$observability/FailureMetrics.kt" to "factstore.auth.failures"),
             "factstore_projection_delay_seconds" to ("$observability/ProjectionLag.kt" to "factstore.projection.delay"),
-            "factstore_projection_last_applied_seconds" to ("$observability/ProjectionLag.kt" to "factstore.projection.last.applied")
+            "factstore_projection_last_applied_seconds" to ("$observability/ProjectionLag.kt" to "factstore.projection.last.applied"),
+            "factstore_gate_fallbacks_total" to ("backend/src/main/kotlin/com/factstore/application/gates/GateEvaluationService.kt" to "factstore.gate.fallbacks")
         )
         emittedBy.forEach { (metric, source) ->
             assertThat(File(repoRoot, source.first).readText()).describedAs(metric).contains("\"${source.second}\"")

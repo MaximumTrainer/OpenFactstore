@@ -203,3 +203,25 @@ groups:
           summary: "Reads in {{ $labels.region }} have stopped receiving writes"
           description: "No event has been projected for {{ $value | humanizeDuration }} while writes are succeeding; this region is serving stale reads."
           runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/projection-stale.md
+
+  # #193: a deployment gate could not be evaluated and decided by the environment's risk tier.
+  - name: factstore-gates
+    rules:
+      - alert: FactstoreGateFailedOpen
+        expr: sum by (service) (increase(factstore_gate_fallbacks_total{application="factstore", mode="FAIL_OPEN"}[5m])) > 0
+        labels:
+          severity: page
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Deployments were approved without evidence (fail-open) on {{ $labels.service }}"
+          description: "{{ $value }} gate decision(s) in the last 5 minutes fell back to fail-open; review the GATE_FALLBACK audit records."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/gate-fallback.md
+      - alert: FactstoreGateFailedClosed
+        expr: sum by (service) (increase(factstore_gate_fallbacks_total{application="factstore", mode="FAIL_CLOSED"}[5m])) > 0
+        labels:
+          severity: warn
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Tier 1 deployments were blocked because gates could not be evaluated on {{ $labels.service }}"
+          description: "{{ $value }} gate decision(s) in the last 5 minutes failed closed."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/gate-fallback.md

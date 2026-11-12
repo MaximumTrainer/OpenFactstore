@@ -16,6 +16,8 @@ enum class AuditEventType {
     APPROVAL_REJECTED,
     GATE_BLOCKED,
     GATE_ALLOWED,
+    // A gate could not be evaluated and fell back by its environment's risk tier (#193).
+    GATE_FALLBACK,
     // Flow definition changes are themselves compliance-relevant: they change what an
     // existing trail will be judged against on its next assert (#160).
     FLOW_UPDATED,
