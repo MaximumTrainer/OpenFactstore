@@ -1,0 +1,11 @@
+# Breaking changes to the HTTP API that were reviewed and accepted (#197).
+# The 'Schema and API compatibility' CI job passes this file to 'oasdiff breaking --err-ignore'.
+# Each line: <METHOD> <path> <change, as oasdiff reports it>. Keep a comment saying why.
+#
+# #200: audit event types became x-extensible-enum instead of a closed enum, so adding a type
+# (as every new capability does) is no longer a breaking change. A client must tolerate unknown
+# event types; the set of values a client could receive is unchanged by this switch.
+GET /api/v1/audit removed the enum constraint from the `events/items/eventType` response property for the response status `200`
+GET /api/v1/audit/{id} removed the enum constraint from the `eventType` response property for the response status `200`
+GET /api/v1/trails/{id}/audit removed the enum constraint from the `items/eventType` response property for the response status `200`
+GET /api/v2/trails/{id}/audit removed the enum constraint from the `items/eventType` response property for the response status `200`
