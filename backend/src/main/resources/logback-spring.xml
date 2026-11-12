@@ -25,6 +25,12 @@
         </encoder>
     </appender>
 
+    <!--
+      The SIEM stream (#199): one OCSF event per line. Pinned at INFO so that turning the root
+      level down can never silence the audit trail. See docs/integrations/siem.md.
+    -->
+    <logger name="factstore.audit" level="INFO"/>
+
     <root level="INFO">
         <appender-ref ref="CONSOLE_${FACTSTORE_LOG_FORMAT}"/>
     </root>

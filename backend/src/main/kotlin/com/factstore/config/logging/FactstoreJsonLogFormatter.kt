@@ -32,7 +32,14 @@ class FactstoreJsonLogFormatter(environment: Environment) : StructuredLogFormatt
         fields["timestamp"] = Instant.ofEpochMilli(event.timeStamp).toString()
         fields["level"] = event.level.toString()
         fields["logger"] = event.loggerName
-        fields["message"] = event.formattedMessage
+        if (event.loggerName == "factstore.audit") {
+            // #199: the SIEM stream. The OCSF event is the payload; the envelope stays the same.
+            val ocsf = runCatching { mapper.readTree(event.formattedMessage) }.getOrNull()
+            fields["message"] = ocsf?.get("class_name")?.asText() ?: event.formattedMessage
+            fields["ocsf"] = ocsf
+        } else {
+            fields["message"] = event.formattedMessage
+        }
         fields["correlationId"] = mdc["correlationId"]
         fields["service"] = service
         fields["path"] = mdc["path"]

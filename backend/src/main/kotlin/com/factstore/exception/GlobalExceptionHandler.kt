@@ -31,6 +31,7 @@ class GlobalExceptionHandler(
      */
     private fun respond(ex: Throwable, status: HttpStatus, error: String, message: String): ResponseEntity<ErrorResponse> {
         failureMetrics.error(ex, status.value())
+        com.factstore.adapter.inbound.web.SiemRequestFilter.detail(error)
         MDC.put(CorrelationIdFilter.MDC_STATUS, status.value().toString())
         return ResponseEntity.status(status)
             .body(ErrorResponse(status.value(), error, message, correlationId = CorrelationIdFilter.current()))
@@ -110,7 +111,7 @@ class GlobalExceptionHandler(
         MDC.put(CorrelationIdFilter.MDC_STATUS, HttpStatus.BAD_REQUEST.value().toString())
         return ResponseEntity.badRequest().body(
             mapOf(
-                "error" to ex.error,
+                "error" to ex.error.also { com.factstore.adapter.inbound.web.SiemRequestFilter.detail(it) },
                 "schemaRef" to ex.schemaRef,
                 "violations" to ex.violations,
                 "correlationId" to CorrelationIdFilter.current()
@@ -126,7 +127,7 @@ class GlobalExceptionHandler(
         MDC.put(CorrelationIdFilter.MDC_STATUS, HttpStatus.FORBIDDEN.value().toString())
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
             mapOf(
-                "error" to "cross_workload_injection",
+                "error" to "cross_workload_injection".also { com.factstore.adapter.inbound.web.SiemRequestFilter.detail(it) },
                 "message" to ex.message,
                 "correlationId" to CorrelationIdFilter.current()
             )
@@ -142,7 +143,7 @@ class GlobalExceptionHandler(
         MDC.put(CorrelationIdFilter.MDC_STATUS, HttpStatus.UNAUTHORIZED.value().toString())
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .header(org.springframework.http.HttpHeaders.WWW_AUTHENTICATE, "Signature realm=\"factstore\", algorithm=\"ed25519\"")
-            .body(mapOf("error" to ex.error, "message" to ex.message, "correlationId" to CorrelationIdFilter.current()))
+            .body(mapOf("error" to ex.error.also { com.factstore.adapter.inbound.web.SiemRequestFilter.detail(it) }, "message" to ex.message, "correlationId" to CorrelationIdFilter.current()))
     }
 
     @ExceptionHandler(BadRequestException::class)
