@@ -81,6 +81,8 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `DELETE` | `/api/v1/auth/sessions/{sessionId}` | `@authz.authenticated()` |
 | `DELETE` | `/api/v1/auth/users/{userId}/sessions` | `hasAuthority('SCOPE_admin')` |
 | `GET` | `/api/v1/auth/users/{userId}/sessions` | `hasAuthority('SCOPE_admin')` |
+| `POST` | `/api/v1/commands/data-keys/shred-requests/{requestId}/approve` | `@authz.has('admin')` |
+| `POST` | `/api/v1/commands/data-keys/{tenant}/{period}/shred-requests` | `@authz.has('admin')` |
 | `POST` | `/api/v1/commands/facts` | `@authz.has('attestations:write')` |
 | `PUT` | `/api/v1/commands/schemas/{name}/v{version}` | `@authz.has('admin')` |
 | `POST` | `/api/v1/commands/signing-keys` | `@authz.has('admin')` |
@@ -228,6 +230,7 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `POST` | `/api/v1/policy-attachments` | `@authz.has('policies:write')` |
 | `DELETE` | `/api/v1/policy-attachments/{id}` | `@authz.has('policies:write')` |
 | `GET` | `/api/v1/policy-attachments/{id}` | `@authz.has('policies:read')` |
+| `GET` | `/api/v1/queries/data-keys` | `@authz.has('admin')` |
 | `GET` | `/api/v1/queries/event-signing-keys` | `@authz.authenticated()` |
 | `GET` | `/api/v1/queries/facts/{factId}` | `@authz.has('trails:read')` |
 | `POST` | `/api/v1/queries/gates/evaluate` | `@authz.has('assert:execute')` |

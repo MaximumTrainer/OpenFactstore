@@ -63,4 +63,6 @@ Fact schemas are developed spec-first (#197). The source of truth is `schemas/<n
 - **After a merge**, `scripts/publish-schemas.sh` publishes every version to a Factstore. Publishing is idempotent.
 - **The HTTP API is specified too.** `docs/openapi.json` is the committed OpenAPI document. `OpenApiSnapshotTest` fails if it differs from the served API, and the same CI job runs `oasdiff breaking` on it against the base branch. To regenerate it after an intended change, run `./gradlew test --tests '*OpenApiSnapshotTest' -Dfactstore.update-openapi=true`.
 
+An intended breaking API change is accepted by adding it, with the reason, to `docs/openapi-accepted-breaking.txt`, so the acceptance is reviewed in the pull request. Value sets that grow with the product, such as audit event types, are published as `x-extensible-enum`, so adding a value is not a breaking change.
+
 To change a schema, add `schemas/<name>/v<n+1>.json` and never edit `v<n>`. To make a breaking change, start a new schema name.

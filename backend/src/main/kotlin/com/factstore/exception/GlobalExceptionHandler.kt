@@ -147,6 +147,18 @@ class GlobalExceptionHandler(
             .body(mapOf("error" to ex.error.also { com.factstore.adapter.inbound.web.SiemRequestFilter.detail(it) }, "message" to ex.message, "correlationId" to CorrelationIdFilter.current()))
     }
 
+    /** #200: the fact exists, but its data key has been shredded. */
+    @ExceptionHandler(com.factstore.application.shredding.FactShreddedException::class)
+    fun handleShredded(ex: com.factstore.application.shredding.FactShreddedException): ResponseEntity<Map<String, Any?>> {
+        failureMetrics.error(ex, HttpStatus.GONE.value())
+        return ResponseEntity.status(HttpStatus.GONE).body(
+            mapOf(
+                "error" to "shredded", "tenant" to ex.tenant, "period" to ex.period,
+                "message" to ex.message, "correlationId" to CorrelationIdFilter.current()
+            )
+        )
+    }
+
     @ExceptionHandler(BadRequestException::class)
     fun handleBadRequest(ex: BadRequestException): ResponseEntity<ErrorResponse> {
         log.warn("Bad request: ${ex.message}")

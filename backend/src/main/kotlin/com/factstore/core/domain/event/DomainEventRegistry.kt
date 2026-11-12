@@ -20,6 +20,7 @@ object DomainEventRegistry {
         "ArtifactReported" to DomainEvent.ArtifactReported::class.java,
         "AttestationRecorded" to DomainEvent.AttestationRecorded::class.java,
         "EvidenceUploaded" to DomainEvent.EvidenceUploaded::class.java,
-        "FactIngested" to DomainEvent.FactIngested::class.java
+        "FactIngested" to DomainEvent.FactIngested::class.java,
+        "DataKeyShredded" to DomainEvent.DataKeyShredded::class.java
     )
 }

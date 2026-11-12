@@ -122,7 +122,7 @@ jobs:
             echo "No docs/openapi.json on the base branch yet; nothing to compare."
             exit 0
           fi
-          docker run --rm -v /tmp/base:/base:ro -v "$PWD/docs:/head:ro" tufin/oasdiff:stable breaking /base/openapi.json /head/openapi.json --fail-on ERR
+          docker run --rm -v /tmp/base:/base:ro -v "$PWD/docs:/head:ro" tufin/oasdiff:stable breaking /base/openapi.json /head/openapi.json --fail-on ERR --err-ignore /head/openapi-accepted-breaking.txt
 
   terraform-provider:
     name: Terraform Provider Build & Test

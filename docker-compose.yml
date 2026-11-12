@@ -81,7 +81,9 @@ services:
       - >-
         (vault secrets list | grep -q '^transit/' || vault secrets enable transit) &&
         (vault read transit/keys/factstore-events > /dev/null 2>&1 ||
-        vault write -f transit/keys/factstore-events type=ed25519)
+        vault write -f transit/keys/factstore-events type=ed25519) &&
+        (vault read transit/keys/factstore-data-keys > /dev/null 2>&1 ||
+        vault write -f transit/keys/factstore-data-keys type=aes256-gcm96)
 
   # ── Command service (write side) ──────────────────────────────────────────
   backend-command:
@@ -97,6 +99,7 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       FACTSTORE_CQRS_ROLE: command
       EVENT_SIGNING_PROVIDER: vault-transit
+      DATA_KEYS_PROVIDER: vault-transit
       DB_HOST: postgres-command
       DB_PORT: 5432
       DB_NAME: factstore_command
@@ -136,6 +139,7 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       FACTSTORE_CQRS_ROLE: query
       EVENT_SIGNING_PROVIDER: vault-transit
+      DATA_KEYS_PROVIDER: vault-transit
       DB_HOST: postgres-query
       DB_PORT: 5432
       DB_NAME: factstore_query

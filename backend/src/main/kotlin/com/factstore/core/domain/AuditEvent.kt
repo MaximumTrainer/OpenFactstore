@@ -41,6 +41,9 @@ enum class AuditEventType {
     // The trusted registry of source signing keys (#187).
     SIGNING_KEY_REGISTERED,
     SIGNING_KEY_REVOKED,
+    // Cryptographic shredding of a tenant-month data key (#200): requested, then approved by a second admin.
+    DATA_KEY_SHRED_REQUESTED,
+    DATA_KEY_SHREDDED,
     AUTH_DENIED,
     // Credential lifecycle (#155 FR-8.2).
     API_KEY_CREATED,
