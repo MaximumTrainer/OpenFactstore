@@ -85,6 +85,41 @@ jobs:
           DB_USERNAME: factstore
           DB_PASSWORD: factstore
 
+  # #197: fact schemas and the HTTP API are specified in the repository, and a change that breaks
+  # compatibility fails here. Schemas use the same rules as the registry's 409 on publish.
+  spec-compatibility:
+    name: Schema and API compatibility
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+      - name: Extract the base branch's specifications
+        run: |
+          BASE_REF="${GITHUB_BASE_REF:-main}"
+          mkdir -p /tmp/base/schemas
+          git archive "origin/${BASE_REF}" schemas 2>/dev/null | tar -x -C /tmp/base || true
+          git show "origin/${BASE_REF}:docs/openapi.json" > /tmp/base/openapi.json 2>/dev/null || true
+      - name: Fact schemas are valid and backwards compatible
+        working-directory: backend
+        run: ./gradlew schemaSpecCheck -PschemasBase=/tmp/base/schemas
+      - name: The HTTP API has no breaking changes
+        run: |
+          if [ ! -s /tmp/base/openapi.json ]; then
+            echo "No docs/openapi.json on the base branch yet; nothing to compare."
+            exit 0
+          fi
+          docker run --rm -v /tmp/base:/base:ro -v "$PWD/docs:/head:ro" tufin/oasdiff:stable breaking /base/openapi.json /head/openapi.json --fail-on ERR
+
   terraform-provider:
     name: Terraform Provider Build & Test
     runs-on: ubuntu-latest
