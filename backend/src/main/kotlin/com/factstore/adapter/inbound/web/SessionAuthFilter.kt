@@ -42,7 +42,13 @@ class SessionAuthFilter(private val sessionService: SessionService) : OncePerReq
                 if (presented.fromCookie && isMutating(request) && !hasClientHeader(request)) {
                     log.debug("Ignoring cookie credential on a mutating request without $CLIENT_HEADER")
                 } else {
-                    sessionService.resolve(presented.token)?.let { authenticate(it) }
+                    val user = sessionService.resolve(presented.token)
+                    if (user != null) {
+                        authenticate(user)
+                        SiemRequestFilter.record(request, AuthAttempt("session", true, user.email, null))
+                    } else if (!presented.fromCookie) {
+                        SiemRequestFilter.record(request, AuthAttempt("session", false, null, "INVALID_SESSION"))
+                    }
                 }
             }
         }

@@ -102,6 +102,7 @@ class WorkloadIdentityAuthFilter(
             claims = claims
         )
         SecurityContextHolder.getContext().authentication = auth
+        SiemRequestFilter.record(request, AuthAttempt("oidc_workload", true, "workload:$subject", null))
         filterChain.doFilter(request, response)
     }
 
@@ -119,6 +120,7 @@ class WorkloadIdentityAuthFilter(
     }
 
     private fun refuse(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain, message: String) {
+        SiemRequestFilter.record(request, AuthAttempt("oidc_workload", false, null, message))
         failureMetrics.authFailure(REASON)
         runCatching {
             auditService.record(

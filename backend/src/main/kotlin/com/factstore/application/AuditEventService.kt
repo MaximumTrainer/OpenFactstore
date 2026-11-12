@@ -23,7 +23,8 @@ class AuditEventService(
     private val environmentRepository: IEnvironmentRepository,
     private val objectMapper: ObjectMapper,
     private val tenantScope: TenantScope = TenantScope.UNSCOPED,
-    private val ownership: OrgOwnership? = null
+    private val ownership: OrgOwnership? = null,
+    private val siemStream: com.factstore.application.siem.SiemStream? = null
 ) : IAuditService {
 
     private val log = LoggerFactory.getLogger(AuditEventService::class.java)
@@ -53,6 +54,8 @@ class AuditEventService(
             region = RegionContextHolder.get()
         )
         val saved = auditEventRepository.save(event)
+        // Streamed to the SIEM once committed (#199).
+        siemStream?.auditRecorded(saved)
         log.info("Recorded audit event: ${saved.id} type=${saved.eventType} actor=${saved.actor}")
         return saved.toResponse()
     }

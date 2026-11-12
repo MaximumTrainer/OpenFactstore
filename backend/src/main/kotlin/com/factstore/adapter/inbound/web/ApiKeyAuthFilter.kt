@@ -92,6 +92,7 @@ class ApiKeyAuthFilter(
                 )
             }
             authenticate(key)
+            SiemRequestFilter.record(request, AuthAttempt("api_key", true, "api-key:${key.ownerId}", null))
             warnIfExpiringSoon(response, key)
             filterChain.doFilter(request, response)
             return
@@ -102,6 +103,7 @@ class ApiKeyAuthFilter(
         val reason = validation.reason ?: AuthFailureReason.UNKNOWN
         rateLimiter.recordFailure(source, prefix)
         auditFailure(request, source, prefix, reason)
+        SiemRequestFilter.record(request, AuthAttempt("api_key", false, "key-prefix:$prefix", reason.name))
 
         if (warnMode) {
             failureMetrics.warnModeRefusal("credential")
