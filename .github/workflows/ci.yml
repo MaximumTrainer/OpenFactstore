@@ -31,6 +31,10 @@ jobs:
           printf 'ci-placeholder' > monitoring/secrets/prometheus-scrape-key
           docker run --rm -v "$PWD/monitoring:/etc/prometheus:ro" --entrypoint promtool             prom/prometheus:v2.53.0 check config /etc/prometheus/prometheus.yml
           docker run --rm -v "$PWD/monitoring:/etc/prometheus:ro" --entrypoint promtool             prom/prometheus:v2.53.0 check rules /etc/prometheus/alerts/factstore.yml
+      # #192: the SLO burn-rate and replication alerts fire when they should, and only then.
+      - name: promtool test rules
+        run: |
+          docker run --rm -v "$PWD/monitoring:/etc/prometheus:ro" -w /etc/prometheus/alerts --entrypoint promtool             prom/prometheus:v2.53.0 test rules factstore.test.yml
       - name: amtool check-config
         run: |
           docker run --rm -v "$PWD/monitoring:/etc/alertmanager:ro" --entrypoint amtool             prom/alertmanager:v0.27.0 check-config /etc/alertmanager/alertmanager.yml

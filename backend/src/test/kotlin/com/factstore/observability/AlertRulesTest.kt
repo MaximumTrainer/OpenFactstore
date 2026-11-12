@@ -24,6 +24,9 @@ class AlertRulesTest {
         return (doc["groups"] as List<Map<String, Any>>).flatMap { it["rules"] as List<Map<String, Any>> }
     }
 
+    /** Alerting rules only; recording rules (#192) feed them and carry no routing labels. */
+    private fun alerts(): List<Map<String, Any>> = rules().filter { it["alert"] != null }
+
     @Suppress("UNCHECKED_CAST")
     private fun Map<String, Any>.labels() = this["labels"] as Map<String, String>
 
@@ -39,7 +42,7 @@ class AlertRulesTest {
 
     @Test
     fun `the alerts the issue asks for exist with the agreed severities`() {
-        val severities = rules().associate { it["alert"] as String to it.labels()["severity"] }
+        val severities = alerts().associate { it["alert"] as String to it.labels()["severity"] }
 
         assertThat(severities).containsEntry("FactstoreHigh5xxRatio", "page")
         assertThat(severities).containsEntry("FactstoreIntegrityFailure", "page")
@@ -47,11 +50,18 @@ class AlertRulesTest {
         assertThat(severities).containsEntry("FactstoreDbPoolSaturated", "warn")
         assertThat(severities).containsEntry("FactstoreProjectionFailure", "warn")
         assertThat(severities).containsEntry("FactstoreNotificationDeadLetter", "warn")
+        // #192: the availability objectives and read freshness in every region.
+        assertThat(severities).containsEntry("FactstoreReadSloFastBurn", "page")
+        assertThat(severities).containsEntry("FactstoreWriteSloFastBurn", "page")
+        assertThat(severities).containsEntry("FactstoreReadSloSlowBurn", "warn")
+        assertThat(severities).containsEntry("FactstoreWriteSloSlowBurn", "warn")
+        assertThat(severities).containsEntry("FactstoreProjectionStopped", "page")
+        assertThat(severities).containsEntry("FactstoreProjectionStale", "warn")
     }
 
     @Test
     fun `every rule carries severity, service and a runbook that exists`() {
-        for (rule in rules()) {
+        for (rule in alerts()) {
             val name = rule["alert"]
             assertThat(rule.labels()["severity"]).describedAs("$name severity").isIn("page", "warn")
             assertThat(rule.labels()["service"]).describedAs("$name service").isNotBlank()
@@ -64,20 +74,23 @@ class AlertRulesTest {
 
     @Test
     fun `every factstore metric a rule uses is one the application emits`() {
-        val emitted = setOf(
-            "factstore_errors_total",
-            "factstore_integrity_failures_total",
-            "factstore_event_publish_failures_total",
-            "factstore_projection_failures_total",
-            "factstore_notification_dead_letters_total",
-            "factstore_auth_failures_total"
+        val observability = "backend/src/main/kotlin/com/factstore/application/observability"
+        // Prometheus name -> where it is registered and its Micrometer name. A counter gains
+        // _total; a gauge with base unit seconds gains _seconds.
+        val emittedBy = mapOf(
+            "factstore_errors_total" to ("$observability/FailureMetrics.kt" to "factstore.errors"),
+            "factstore_integrity_failures_total" to ("$observability/FailureMetrics.kt" to "factstore.integrity.failures"),
+            "factstore_event_publish_failures_total" to ("$observability/FailureMetrics.kt" to "factstore.event.publish.failures"),
+            "factstore_projection_failures_total" to ("$observability/FailureMetrics.kt" to "factstore.projection.failures"),
+            "factstore_notification_dead_letters_total" to ("$observability/FailureMetrics.kt" to "factstore.notification.dead.letters"),
+            "factstore_auth_failures_total" to ("$observability/FailureMetrics.kt" to "factstore.auth.failures"),
+            "factstore_projection_delay_seconds" to ("$observability/ProjectionLag.kt" to "factstore.projection.delay"),
+            "factstore_projection_last_applied_seconds" to ("$observability/ProjectionLag.kt" to "factstore.projection.last.applied")
         )
-        val sources = File(repoRoot, "backend/src/main/kotlin/com/factstore/application/observability/FailureMetrics.kt").readText()
-        // Micrometer's dotted name becomes the Prometheus name with _total appended.
-        emitted.forEach { metric ->
-            val micrometerName = metric.removeSuffix("_total").replace('_', '.')
-            assertThat(sources).describedAs(metric).contains("\"$micrometerName\"")
+        emittedBy.forEach { (metric, source) ->
+            assertThat(File(repoRoot, source.first).readText()).describedAs(metric).contains("\"${source.second}\"")
         }
+        val emitted = emittedBy.keys
 
         val used = rules().flatMap { Regex("factstore_[a-z_]+").findAll(it["expr"] as String).map { m -> m.value }.toList() }
         assertThat(used).isNotEmpty

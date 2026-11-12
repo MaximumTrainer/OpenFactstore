@@ -108,6 +108,8 @@ management:
     tags:
       application: factstore
       service: ${factstore.cqrs.role:all}
+      # Which region served it (#192): SLO and replication alerts are per region.
+      region: ${factstore.region:us-east-1}
   health:
     rabbit:
       # Disable the RabbitMQ health indicator so /actuator/health returns UP even when

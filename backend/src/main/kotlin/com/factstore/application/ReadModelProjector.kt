@@ -31,7 +31,9 @@ class ReadModelProjector(
     private val artifactRepository: IArtifactRepository,
     private val attestationRepository: IAttestationRepository,
     private val factRepository: IFactRepository,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    /** How far this read model trails the writer (#192). */
+    private val lag: com.factstore.application.observability.ProjectionLag? = null
 ) {
 
     private val log = LoggerFactory.getLogger(ReadModelProjector::class.java)
@@ -52,6 +54,7 @@ class ReadModelProjector(
         return try {
             val event = objectMapper.readValue(payload, clazz)
             apply(event)
+            lag?.applied(event.occurredAt)
             true
         } catch (e: Exception) {
             log.error("Failed to project event type={}", eventType, e)
