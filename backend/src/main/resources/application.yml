@@ -146,6 +146,12 @@ factstore:
     provider: ${EVENT_SIGNING_PROVIDER:local}
     vault:
       key-name: ${EVENT_SIGNING_VAULT_KEY:factstore-events}
+  # Fact content is encrypted under a data key per tenant and month, wrapped by this key, so it
+  # can be cryptographically shredded (#200). `local` is for development only and refused under prod.
+  data-keys:
+    provider: ${DATA_KEYS_PROVIDER:local}
+    vault:
+      key-name: ${DATA_KEYS_VAULT_KEY:factstore-data-keys}
 
 cosign:
   enabled: ${COSIGN_ENABLED:false}

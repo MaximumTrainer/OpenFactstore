@@ -73,6 +73,8 @@ class ReadModelProjector(
             is DomainEvent.AttestationRecorded -> applyAttestationRecorded(event)
             is DomainEvent.EvidenceUploaded -> applyEvidenceUploaded(event)
             is DomainEvent.FactIngested -> applyFactIngested(event)
+            // The certificate lives in the ledger; the data key itself is not a read model (#200).
+            is DomainEvent.DataKeyShredded -> Unit
         }
     }
 

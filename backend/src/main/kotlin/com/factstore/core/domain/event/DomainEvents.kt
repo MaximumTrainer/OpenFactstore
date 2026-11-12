@@ -150,4 +150,17 @@ sealed class DomainEvent {
     ) : DomainEvent() {
         override val aggregateType: String = "Fact"
     }
+
+    /** A tenant-month data key was destroyed (#200): the destruction certificate, in the ledger. */
+    data class DataKeyShredded(
+        override val eventId: UUID = UUID.randomUUID(),
+        override val aggregateId: UUID,
+        override val occurredAt: Instant = Instant.now(),
+        val tenant: String,
+        val period: String,
+        val requestedBy: String,
+        val approvedBy: String
+    ) : DomainEvent() {
+        override val aggregateType: String = "DataKey"
+    }
 }

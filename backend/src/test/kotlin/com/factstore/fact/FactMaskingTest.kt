@@ -40,6 +40,8 @@ abstract class FactMaskingTestBase {
     @Autowired lateinit var signingKeys: SigningKeyRegistryService
     @Autowired lateinit var facts: IFactRepository
     @Autowired lateinit var eventStore: IEventStore
+    /** Stored content is encrypted (#200); read it back through the service. */
+    @Autowired lateinit var ingestion: com.factstore.application.fact.FactIngestionService
 
     protected val mapper = jacksonObjectMapper()
     protected val signer = TestSigner()
@@ -69,7 +71,7 @@ abstract class FactMaskingTestBase {
     }
 
     protected fun everythingStoredFor(factId: UUID): String =
-        listOfNotNull(facts.findById(factId)?.payloadJson, facts.findById(factId)?.signedBody) .joinToString() +
+        listOfNotNull(facts.findById(factId)?.payloadJson, facts.findById(factId)?.signedBody, ingestion.payload(factId), ingestion.signedBody(factId)).joinToString() +
             eventStore.findByAggregateId(factId).joinToString { it.payload }
 }
 
@@ -109,8 +111,8 @@ class FactMaskingRejectModeTest : FactMaskingTestBase() {
         ingest(factId, tool).andExpect { status { isAccepted() } }
 
         val stored = facts.findById(factId)!!
-        assertThat(mapper.readTree(stored.payloadJson)).isEqualTo(mapper.readTree(tool))
-        assertThat(stored.signedBody).isEqualTo(body(factId, tool))
+        assertThat(mapper.readTree(ingestion.payload(factId))).isEqualTo(mapper.readTree(tool))
+        assertThat(ingestion.signedBody(factId)).isEqualTo(body(factId, tool))
         assertThat(stored.maskingRuleset).isEqualTo("builtin-v1")
     }
 }
@@ -128,7 +130,7 @@ class FactMaskingRedactModeTest : FactMaskingTestBase() {
             .andExpect { status { isAccepted() } }
 
         val stored = facts.findById(factId)!!
-        val payload = mapper.readTree(stored.payloadJson)
+        val payload = mapper.readTree(ingestion.payload(factId))
         assertThat(payload["log"].asText()).isEqualTo("user [MASKED:email] deployed with [MASKED:aws-access-key-id]")
         assertThat(payload.at("/db/password").asText()).isEqualTo("[MASKED:sensitive-field]")
         assertThat(stored.maskedPaths).containsExactlyInAnyOrder("/tool/log", "/tool/db/password")

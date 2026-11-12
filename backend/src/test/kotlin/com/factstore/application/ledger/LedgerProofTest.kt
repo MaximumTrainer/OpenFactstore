@@ -178,7 +178,8 @@ class LedgerProofTest {
         checkpoint()
         val seq = eventStore.findByAggregateId(factId).single().sequenceNumber
         em.flush()
-        jdbc.update("UPDATE domain_events SET payload = REPLACE(payload, ?, ?) WHERE sequence_number = ?", "\"n\\\":1", "\"n\\\":9", seq)
+        // Fact content is ciphertext since #200, so the change is made to the record as stored.
+        jdbc.update("UPDATE domain_events SET payload = REPLACE(payload, ?, ?) WHERE sequence_number = ?", "\"schemaRef\"", "\"schemaReF\"", seq)
         em.clear()
 
         val proof = proof(factId)
