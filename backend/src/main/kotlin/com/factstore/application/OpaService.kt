@@ -26,7 +26,9 @@ class OpaService(
     private val bundleRepository: IOpaBundleRepository,
     private val decisionRepository: IPolicyDecisionRepository,
     private val policyEvaluator: IPolicyEvaluator,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    /** Decisions are visible only to their own organisation (#218). */
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : IOpaService {
 
     private val log = LoggerFactory.getLogger(OpaService::class.java)
@@ -105,11 +107,11 @@ class OpaService(
 
     @Transactional(readOnly = true)
     override fun listDecisions(): List<PolicyDecisionResponse> =
-        decisionRepository.findAll().map { it.toResponse() }
+        decisionRepository.findAll().filter { tenantScope.visible(it.orgSlug) }.map { it.toResponse() }
 
     @Transactional(readOnly = true)
     override fun getDecision(id: UUID): PolicyDecisionResponse =
-        (decisionRepository.findById(id) ?: throw NotFoundException("Policy decision not found: $id")).toResponse()
+        tenantScope.require(decisionRepository.findById(id), { it.orgSlug }) { "Policy decision not found: $id" }.toResponse()
 }
 
 fun OpaBundle.toResponse() = BundleResponse(

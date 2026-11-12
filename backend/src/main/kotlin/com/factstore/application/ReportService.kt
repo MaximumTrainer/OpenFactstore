@@ -28,14 +28,17 @@ class ReportService(
     private val trailRepository: ITrailRepository,
     private val artifactRepository: IArtifactRepository,
     private val attestationRepository: IAttestationRepository,
-    private val evidenceFileRepository: IEvidenceFileRepository
+    private val evidenceFileRepository: IEvidenceFileRepository,
+    /** Reports cover only the caller's organisation (#218, #155 FR-5.3). */
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
+    private val ownership: OrgOwnership? = null
 ) : IReportService {
 
     private val log = LoggerFactory.getLogger(ReportService::class.java)
 
     override fun getComplianceReport(flowId: UUID?, from: Instant?, to: Instant?): FlowComplianceReport {
-        if (flowId != null && !flowRepository.existsById(flowId)) {
-            throw NotFoundException("Flow not found: $flowId")
+        if (flowId != null) {
+            tenantScope.require(flowRepository.findById(flowId), { it.orgSlug }) { "Flow not found: $flowId" }
         }
 
         val trails = when {
@@ -55,7 +58,7 @@ class ReportService(
                 trailRepository.findByCreatedAtBefore(to)
             else ->
                 trailRepository.findAll()
-        }
+        }.filter { tenantScope.visible(it.orgSlug ?: ownership?.ofTrail(it.id)) }
 
         val compliant = trails.count { it.status == TrailStatus.COMPLIANT }
         val nonCompliant = trails.count { it.status == TrailStatus.NON_COMPLIANT }
@@ -97,7 +100,9 @@ class ReportService(
     }
 
     override fun getAuditTrailExport(trailId: UUID): AuditTrailExportResponse {
-        val trail = trailRepository.findById(trailId) ?: throw NotFoundException("Trail not found: $trailId")
+        val trail = tenantScope.require(trailRepository.findById(trailId), { it.orgSlug ?: ownership?.ofTrail(it.id) }) {
+            "Trail not found: $trailId"
+        }
         val flow = flowRepository.findById(trail.flowId) ?: throw NotFoundException("Flow not found: ${trail.flowId}")
         val artifacts = artifactRepository.findByTrailId(trailId)
         val attestations = attestationRepository.findByTrailId(trailId)
