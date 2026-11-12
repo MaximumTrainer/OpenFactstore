@@ -96,3 +96,110 @@ groups:
           summary: "{{ $labels.channel }} notifications are being dead-lettered"
           description: "{{ $value }} notification(s) exhausted their retries in the last 15 minutes; see the rule's delivery history."
           runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/notification-dead-letter.md
+
+  # #192: availability SLOs for the active-active deployment (docs/adr/0002-multi-region.md).
+  # Reads are served in every region: 99.99% of GET/HEAD requests succeed (5xx counts as failure).
+  # Writes go to the single writer region: 99.9%. Alerts follow the multi-window, multi-burn-rate
+  # pattern: page when the budget would be gone in about two days, warn when in about five.
+  - name: factstore-slo-recording
+    rules:
+      - record: factstore:read_error_ratio:rate5m
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="factstore", method=~"GET|HEAD", status=~"5.."}[5m]))
+          / sum(rate(http_server_requests_seconds_count{application="factstore", method=~"GET|HEAD"}[5m]))
+      - record: factstore:read_error_ratio:rate30m
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="factstore", method=~"GET|HEAD", status=~"5.."}[30m]))
+          / sum(rate(http_server_requests_seconds_count{application="factstore", method=~"GET|HEAD"}[30m]))
+      - record: factstore:read_error_ratio:rate1h
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="factstore", method=~"GET|HEAD", status=~"5.."}[1h]))
+          / sum(rate(http_server_requests_seconds_count{application="factstore", method=~"GET|HEAD"}[1h]))
+      - record: factstore:read_error_ratio:rate6h
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="factstore", method=~"GET|HEAD", status=~"5.."}[6h]))
+          / sum(rate(http_server_requests_seconds_count{application="factstore", method=~"GET|HEAD"}[6h]))
+      - record: factstore:write_error_ratio:rate5m
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="factstore", method=~"POST|PUT|PATCH|DELETE", status=~"5.."}[5m]))
+          / sum(rate(http_server_requests_seconds_count{application="factstore", method=~"POST|PUT|PATCH|DELETE"}[5m]))
+      - record: factstore:write_error_ratio:rate30m
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="factstore", method=~"POST|PUT|PATCH|DELETE", status=~"5.."}[30m]))
+          / sum(rate(http_server_requests_seconds_count{application="factstore", method=~"POST|PUT|PATCH|DELETE"}[30m]))
+      - record: factstore:write_error_ratio:rate1h
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="factstore", method=~"POST|PUT|PATCH|DELETE", status=~"5.."}[1h]))
+          / sum(rate(http_server_requests_seconds_count{application="factstore", method=~"POST|PUT|PATCH|DELETE"}[1h]))
+      - record: factstore:write_error_ratio:rate6h
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="factstore", method=~"POST|PUT|PATCH|DELETE", status=~"5.."}[6h]))
+          / sum(rate(http_server_requests_seconds_count{application="factstore", method=~"POST|PUT|PATCH|DELETE"}[6h]))
+
+  - name: factstore-slo
+    rules:
+      - alert: FactstoreReadSloFastBurn
+        expr: factstore:read_error_ratio:rate1h > (14.4 * 0.0001) and factstore:read_error_ratio:rate5m > (14.4 * 0.0001)
+        labels:
+          severity: page
+          slo: read-availability
+          service: all
+        annotations:
+          summary: "Reads are burning the 99.99% availability budget 14x too fast"
+          description: "Read error ratio over the last hour is {{ $value | humanizePercentage }}; at this rate the monthly budget is gone in about two days."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/slo-burn.md
+      - alert: FactstoreReadSloSlowBurn
+        expr: factstore:read_error_ratio:rate6h > (6 * 0.0001) and factstore:read_error_ratio:rate30m > (6 * 0.0001)
+        labels:
+          severity: warn
+          slo: read-availability
+          service: all
+        annotations:
+          summary: "Reads are burning the 99.99% availability budget 6x too fast"
+          description: "Read error ratio over the last six hours is {{ $value | humanizePercentage }}."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/slo-burn.md
+      - alert: FactstoreWriteSloFastBurn
+        expr: factstore:write_error_ratio:rate1h > (14.4 * 0.001) and factstore:write_error_ratio:rate5m > (14.4 * 0.001)
+        labels:
+          severity: page
+          slo: write-availability
+          service: all
+        annotations:
+          summary: "Writes are burning the 99.9% availability budget 14x too fast"
+          description: "Write error ratio over the last hour is {{ $value | humanizePercentage }}. If the writer region is down, see the region failover runbook."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/slo-burn.md
+      - alert: FactstoreWriteSloSlowBurn
+        expr: factstore:write_error_ratio:rate6h > (6 * 0.001) and factstore:write_error_ratio:rate30m > (6 * 0.001)
+        labels:
+          severity: warn
+          slo: write-availability
+          service: all
+        annotations:
+          summary: "Writes are burning the 99.9% availability budget 6x too fast"
+          description: "Write error ratio over the last six hours is {{ $value | humanizePercentage }}."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/slo-burn.md
+
+  - name: factstore-replication
+    rules:
+      - alert: FactstoreProjectionStale
+        expr: max by (service, region) (factstore_projection_delay_seconds{application="factstore"}) > 60
+        for: 10m
+        labels:
+          severity: warn
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Reads in {{ $labels.region }} are more than a minute behind the writer"
+          description: "The most recently projected event took {{ $value | humanizeDuration }} to become readable."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/projection-stale.md
+      - alert: FactstoreProjectionStopped
+        expr: |
+          (time() - max by (service, region) (factstore_projection_last_applied_seconds{application="factstore"})) > 900
+          and on ()
+          sum(rate(http_server_requests_seconds_count{application="factstore", method=~"POST|PUT|PATCH|DELETE", status=~"2.."}[15m])) > 0
+        labels:
+          severity: page
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Reads in {{ $labels.region }} have stopped receiving writes"
+          description: "No event has been projected for {{ $value | humanizeDuration }} while writes are succeeding; this region is serving stale reads."
+          runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/projection-stale.md

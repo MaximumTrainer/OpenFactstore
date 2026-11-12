@@ -11,6 +11,10 @@ One page per alert in [`monitoring/alerts/factstore.yml`](../../../monitoring/al
 | `FactstoreEventPublishFailing` | warn | [event-publish-failing.md](event-publish-failing.md) |
 | `FactstoreAuthFailureSpike` | warn | [auth-failure-spike.md](auth-failure-spike.md) |
 | `FactstoreNotificationDeadLetter` | warn | [notification-dead-letter.md](notification-dead-letter.md) |
+| `FactstoreReadSloFastBurn`, `FactstoreWriteSloFastBurn` | page | [slo-burn.md](slo-burn.md) |
+| `FactstoreReadSloSlowBurn`, `FactstoreWriteSloSlowBurn` | warn | [slo-burn.md](slo-burn.md) |
+| `FactstoreProjectionStopped` | page | [projection-stale.md](projection-stale.md) |
+| `FactstoreProjectionStale` | warn | [projection-stale.md](projection-stale.md) |
 
 ## Finding the logs for a failure
 

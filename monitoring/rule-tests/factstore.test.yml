@@ -1,0 +1,103 @@
+# Unit tests for the alert rules (#192), run in CI with `promtool test rules`. Kept outside
+# alerts/, because prometheus.yml loads every alerts/*.yml as a rule file.
+rule_files:
+  - ../alerts/factstore.yml
+
+evaluation_interval: 1m
+
+tests:
+  # Reads failing at 1%, a hundred times the 0.01% budget: the fast-burn page fires.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{application="factstore", service="query", method="GET", status="200"}'
+        values: '0+990x120'
+      - series: 'http_server_requests_seconds_count{application="factstore", service="query", method="GET", status="503"}'
+        values: '0+10x120'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: FactstoreReadSloFastBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              slo: read-availability
+              service: all
+            exp_annotations:
+              summary: "Reads are burning the 99.99% availability budget 14x too fast"
+              description: "Read error ratio over the last hour is 1%; at this rate the monthly budget is gone in about two days."
+              runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/slo-burn.md
+      - eval_time: 70m
+        alertname: FactstoreWriteSloFastBurn
+        exp_alerts: []
+
+  # Reads failing at 0.001%, inside the budget: nothing fires.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{application="factstore", service="query", method="GET", status="200"}'
+        values: '0+99999x420'
+      - series: 'http_server_requests_seconds_count{application="factstore", service="query", method="GET", status="500"}'
+        values: '0+1x420'
+    alert_rule_test:
+      - eval_time: 7h
+        alertname: FactstoreReadSloFastBurn
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: FactstoreReadSloSlowBurn
+        exp_alerts: []
+
+  # Writes failing at 2% against a 99.9% objective: the write fast-burn page fires.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{application="factstore", service="command", method="POST", status="202"}'
+        values: '0+98x120'
+      - series: 'http_server_requests_seconds_count{application="factstore", service="command", method="POST", status="500"}'
+        values: '0+2x120'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: FactstoreWriteSloFastBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              slo: write-availability
+              service: all
+            exp_annotations:
+              summary: "Writes are burning the 99.9% availability budget 14x too fast"
+              description: "Write error ratio over the last hour is 2%. If the writer region is down, see the region failover runbook."
+              runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/slo-burn.md
+
+  # A region's reads trail the writer by two minutes for over ten minutes.
+  - interval: 1m
+    input_series:
+      - series: 'factstore_projection_delay_seconds{application="factstore", service="query", region="eu-west-1"}'
+        values: '120x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: FactstoreProjectionStale
+        exp_alerts:
+          - exp_labels:
+              severity: warn
+              service: query
+              region: eu-west-1
+            exp_annotations:
+              summary: "Reads in eu-west-1 are more than a minute behind the writer"
+              description: "The most recently projected event took 2m 0s to become readable."
+              runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/projection-stale.md
+
+  # Writes succeed but a region has applied nothing for over fifteen minutes.
+  - interval: 1m
+    input_series:
+      - series: 'factstore_projection_last_applied_seconds{application="factstore", service="query", region="us-east-1"}'
+        values: '0x40'
+      - series: 'http_server_requests_seconds_count{application="factstore", service="command", method="POST", status="202"}'
+        values: '0+10x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: FactstoreProjectionStopped
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              service: query
+              region: us-east-1
+            exp_annotations:
+              summary: "Reads in us-east-1 have stopped receiving writes"
+              description: "No event has been projected for 30m 0s while writes are succeeding; this region is serving stale reads."
+              runbook_url: https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/runbooks/alerts/projection-stale.md
