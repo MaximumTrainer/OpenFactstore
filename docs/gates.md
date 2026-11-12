@@ -55,4 +55,24 @@ If the environment itself can't be read, its tier is unknown, so the gate fails 
 
 ## When Factstore cannot be reached at all
 
-If Factstore can't be reached at all, the server can't answer. The client has to apply the same rule: fetch the environment's tier in advance (`GET /api/v1/environments`), and when the gate call fails to connect, fail open for `STANDARD` or closed for `TIER1`. Record the fallback, and post it once Factstore is reachable again. **This client-side fallback is not yet in the Go CLI or the GitHub Action** (follow-up to #193).
+If Factstore can't be reached at all, the server can't answer, so the CLI decides by the same rule:
+
+```bash
+factstore gate check --artifact sha256:<64 hex> --environment prod-payments --flow-id <uuid> [--require sast]
+```
+
+- When Factstore answers, its decision stands, including any fallback it applied itself.
+- On every successful call the CLI remembers the environment's tier in `--state-dir` (default `~/.factstore`).
+- If Factstore can't be reached (no connection, a timeout, or a `502`/`503`/`504` from a gateway in front of it), the CLI decides by the remembered tier. `STANDARD` fails open; `TIER1`, or a tier the CLI has never seen, fails closed. A refused credential (`401`/`403`) is not an outage: the command fails.
+- Each such decision is kept in the state directory and reported on the next successful call (`POST /api/v1/commands/gates/fallback-reports`, idempotent by `report_id`). Factstore then records it as a `GATE_FALLBACK` audit record with `"source": "client"` and counts it in `factstore_gate_fallbacks_total{source="client"}`, which raises the same alerts as a server-side fallback.
+- The command exits `0` when the deployment may proceed and `1` when it must not, and warns on standard error whenever it approved without evidence.
+
+CI runners are usually ephemeral, so cache the state directory between runs. Otherwise every unreachable call finds no remembered tier and fails closed:
+
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: ~/.factstore
+    key: factstore-gate-state-${{ github.repository }}
+- run: factstore gate check --artifact "$DIGEST" --environment prod-payments --flow-id "$FLOW_ID"
+```

@@ -84,6 +84,7 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `POST` | `/api/v1/commands/data-keys/shred-requests/{requestId}/approve` | `@authz.has('admin')` |
 | `POST` | `/api/v1/commands/data-keys/{tenant}/{period}/shred-requests` | `@authz.has('admin')` |
 | `POST` | `/api/v1/commands/facts` | `@authz.has('attestations:write')` |
+| `POST` | `/api/v1/commands/gates/fallback-reports` | `@authz.has('assert:execute')` |
 | `PUT` | `/api/v1/commands/schemas/{name}/v{version}` | `@authz.has('admin')` |
 | `POST` | `/api/v1/commands/signing-keys` | `@authz.has('admin')` |
 | `POST` | `/api/v1/commands/signing-keys/{keyId}/revoke` | `@authz.has('admin')` |

@@ -72,7 +72,8 @@ class GateEvaluationService(
     private val attestations: IAttestationRepository,
     private val auditService: IAuditService,
     private val failureMetrics: FailureMetrics,
-    private val registry: MeterRegistry
+    private val registry: MeterRegistry,
+    private val reports: com.factstore.core.port.outbound.IGateFallbackReports
 ) {
     private val log = LoggerFactory.getLogger(GateEvaluationService::class.java)
 
@@ -115,11 +116,7 @@ class GateEvaluationService(
 
     private fun fallback(request: GateRequest, environment: String, tier: RiskTier, reason: String): GateDecision {
         val mode = if (tier == RiskTier.STANDARD) FallbackMode.FAIL_OPEN else FallbackMode.FAIL_CLOSED
-        Counter.builder("factstore.gate.fallbacks")
-            .description("Gate decisions made by risk tier because the evidence could not be evaluated")
-            .tag("mode", mode.name)
-            .register(registry)
-            .increment()
+        countFallback(mode, "server")
         val alertId = raiseAlert(request, environment, tier, mode, reason)
         log.error("Gate fallback {} for {} to {} ({}): {} [alert {}]", mode, request.artifactSha256, environment, tier, reason, alertId)
         return GateDecision(
@@ -149,6 +146,51 @@ class GateEvaluationService(
         } catch (e: Exception) {
             UUID.randomUUID().also { log.error("Could not record gate fallback alert {} in the audit log: {}", it, e.message) }
         }
+
+    /** A report is new (created) or a resend of one already recorded. */
+    data class ReportResult(val auditAlertId: UUID, val created: Boolean)
+
+    /**
+     * Records a gate decision the client made by risk tier while Factstore was unreachable (#193),
+     * so it is audited and alerted on like a server-side fallback. Idempotent by `report_id`.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    fun reportClientFallback(body: JsonNode): ReportResult {
+        if (!body.isObject) throw BadRequestException("The request body must be a JSON object")
+        val reportId = runCatching { UUID.fromString(body.path("report_id").asText()) }.getOrNull()
+            ?: throw BadRequestException("report_id must be a UUID")
+        reports.find(reportId)?.let { return ReportResult(it, created = false) }
+        val mode = runCatching { FallbackMode.valueOf(body.path("fallback_mode").asText()) }.getOrNull()
+            ?.takeIf { it != FallbackMode.NONE }
+            ?: throw BadRequestException("fallback_mode must be FAIL_OPEN or FAIL_CLOSED")
+        val tier = runCatching { RiskTier.valueOf(body.path("tier").asText()) }.getOrNull()
+            ?: throw BadRequestException("tier must be TIER1 or STANDARD")
+        val fields = listOf("artifact_sha256", "target_environment", "flow_id", "reason", "decided_at")
+            .associateWith { body.path(it).asText("") }
+        val alert = auditService.record(
+            AuditEventType.GATE_FALLBACK, "gate-client",
+            mapOf(
+                "source" to "client", "reportId" to reportId.toString(), "mode" to mode.name, "tier" to tier.name,
+                "environment" to fields["target_environment"], "artifactSha256" to fields["artifact_sha256"],
+                "flowId" to fields["flow_id"], "reason" to fields["reason"], "decidedAt" to fields["decided_at"]
+            )
+        ).id
+        reports.record(reportId, alert)
+        countFallback(mode, "client")
+        log.error(
+            "Client gate fallback {} reported for {} to {} ({}): {} [alert {}]",
+            mode, fields["artifact_sha256"], fields["target_environment"], tier, fields["reason"], alert
+        )
+        return ReportResult(alert, created = true)
+    }
+
+    private fun countFallback(mode: FallbackMode, source: String) =
+        Counter.builder("factstore.gate.fallbacks")
+            .description("Gate decisions made by risk tier because the evidence could not be evaluated")
+            .tag("mode", mode.name)
+            .tag("source", source)
+            .register(registry)
+            .increment()
 
     private fun isOutage(e: Throwable): Boolean = generateSequence(e) { it.cause }.any {
         it is TransientDataAccessException || it is DataAccessResourceFailureException || it is CannotCreateTransactionException

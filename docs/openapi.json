@@ -7429,6 +7429,37 @@
         "tags" : [ "Facts" ]
       }
     },
+    "/api/v1/commands/gates/fallback-reports" : {
+      "post" : {
+        "description" : "Sent by the CLI once Factstore is reachable again, for each gate it decided by the environment's tier while Factstore was unreachable. 201 with audit_alert_id, or 200 for a report already recorded (same report_id).",
+        "operationId" : "report",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "additionalProperties" : { },
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Report a gate decision the client made by risk tier",
+        "tags" : [ "Gates" ]
+      }
+    },
     "/api/v1/commands/schemas/{name}/v{version}" : {
       "put" : {
         "description" : "201 when published, 200 when the same content was already published, 409 when the version exists with different content or breaks compatibility with the previous version, 400 for an invalid JSON Schema or an out-of-order version.",
