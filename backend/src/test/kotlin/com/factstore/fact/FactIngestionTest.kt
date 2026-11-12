@@ -99,6 +99,18 @@ class FactIngestionTest {
     }
 
     @Test
+    fun `#186 the receipt names the appended record's hash and ledger index`() {
+        val factId = UUID.randomUUID()
+
+        val response = ingest(fact(factId = factId.toString())).andExpect { status { isAccepted() } }.andReturn().response
+
+        val stored = eventStore.findByAggregateId(factId).single()
+        val receipt = mapper.readTree(response.contentAsString)
+        assertThat(receipt["receipt_hash"].asText()).isEqualTo(stored.recordHash).matches("^[0-9a-f]{64}$")
+        assertThat(receipt["ledger_index"].asLong()).isEqualTo(stored.sequenceNumber)
+    }
+
+    @Test
     fun `a payload missing a required field is refused as schema_nonconformant`() {
         val factId = UUID.randomUUID()
 

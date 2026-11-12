@@ -30,7 +30,7 @@ Every violation found at a stage is reported, not only the first.
 
 | Status | When | Body |
 |---|---|---|
-| `202 Accepted` | the fact conforms and was stored and appended as a `FactIngested` event | `fact_id`, `schema_ref`, `ingested_at` |
+| `202 Accepted` | the fact conforms and was stored and appended as a `FactIngested` event | `fact_id`, `schema_ref`, `ingested_at`, and the receipt: `receipt_hash` (the appended record's hash) and `ledger_index` (its position) |
 | `400 Bad Request` | the body is not JSON | the standard error body |
 | `400 Bad Request` | a rule above is broken | `error`, `schemaRef`, `violations`, `correlationId` |
 | `403 Forbidden` | the caller does not hold `attestations:write` | |
@@ -121,3 +121,7 @@ The identity is stored with the fact and carried in its `FactIngested` event. No
 - Signing keys are not yet bound to a workload or service, so any registered key may sign any fact. Binding a key to the identity that may use it is a follow-up.
 - Masking (#198) must happen on the runner, before signing, so the stored body is the signed body.
 - The server-set identity (#191) is stored and evented but is not part of the signed bytes. Storage-side signing and hash chaining (#184, #188) must include it.
+
+## Storage
+
+Facts are appended to an event log that the database itself keeps append-only (#186): no row can be updated, deleted or truncated. The `receipt_hash` returned at ingest is that record's hash. The [ledger proof](ledger-proofs.md) for the fact later shows the same hash under a signed, published Merkle root. See [ADR 0001](adr/0001-append-only-postgres-event-log.md).
