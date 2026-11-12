@@ -55,6 +55,12 @@ dependencies {
     testImplementation("au.com.dius.pact.provider:junit5spring:4.6.9")
 }
 
+// The application's entry point, named so other mains (tools such as SchemaSpecCheck, #197) do
+// not make the boot jar ambiguous.
+springBoot {
+    mainClass.set("com.factstore.FactstoreApplicationKt")
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
     // Every distinct @SpringBootTest configuration keeps a cached application context, and the
@@ -63,6 +69,8 @@ tasks.withType<Test> {
     maxHeapSize = "1536m"
     // Lets EveryEndpointIsAuthorisedTest regenerate docs/api-authorisation-matrix.md (#155).
     systemProperty("factstore.update-matrix", System.getProperty("factstore.update-matrix") ?: "false")
+    // Lets OpenApiSnapshotTest regenerate docs/openapi.json (#197).
+    systemProperty("factstore.update-openapi", System.getProperty("factstore.update-openapi") ?: "false")
 }
 
 tasks.named<Test>("test") {
@@ -70,6 +78,18 @@ tasks.named<Test>("test") {
     exclude("**/migration/**")
     // Measurements, not assertions: run with ./gradlew authBenchmark (#208).
     useJUnitPlatform { excludeTags("benchmark") }
+}
+
+// #197: fact schemas in schemas/ are the source of truth. Fails on a gap, an invalid schema, a
+// breaking change between versions, or (with -PschemasBase=<dir>) an edit to a published version.
+tasks.register<JavaExec>("schemaSpecCheck") {
+    description = "Checks schemas/<name>/v<n>.json for validity and backwards compatibility (#197)"
+    group = "verification"
+    dependsOn("classes")
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.factstore.tools.SchemaSpecCheck")
+    val base = project.findProperty("schemasBase")?.toString()
+    args = listOfNotNull(rootProject.file("../schemas").absolutePath, base)
 }
 
 tasks.register<Test>("eventSigningBenchmark") {

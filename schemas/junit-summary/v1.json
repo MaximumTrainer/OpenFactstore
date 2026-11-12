@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JUnit test summary",
+  "description": "A test run's totals, as reported by a CI runner. Published as urn:schema:junit-summary:v1.",
+  "type": "object",
+  "required": ["tool", "passed", "failed"],
+  "properties": {
+    "tool": { "type": "string", "description": "The test framework, for example junit or pytest." },
+    "passed": { "type": "integer", "minimum": 0 },
+    "failed": { "type": "integer", "minimum": 0 },
+    "skipped": { "type": "integer", "minimum": 0 },
+    "report_url": { "type": "string" }
+  }
+}

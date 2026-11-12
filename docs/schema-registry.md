@@ -54,3 +54,13 @@ These rules are `SchemaCompatibility`, which #197's CI check is to reuse. To mak
 ## Scope
 
 Schemas are global, not per organisation: one registry serves every tenant.
+
+## Schemas are specified in the repository
+
+Fact schemas are developed spec-first (#197). The source of truth is `schemas/<name>/v<n>.json` in this repository, and the registry is a published copy of it.
+
+- **On every pull request**, the `Schema and API compatibility` CI job runs `./gradlew schemaSpecCheck` against the base branch. It fails when a file is misnamed, a schema is not valid JSON Schema 2020-12, versions have a gap, a new version breaks compatibility with the previous one, or a published version was edited or deleted. "Breaking" means exactly what the registry answers `409` for on publish (the table above); both use `SchemaCompatibility`.
+- **After a merge**, `scripts/publish-schemas.sh` publishes every version to a Factstore. Publishing is idempotent.
+- **The HTTP API is specified too.** `docs/openapi.json` is the committed OpenAPI document. `OpenApiSnapshotTest` fails if it differs from the served API, and the same CI job runs `oasdiff breaking` on it against the base branch. To regenerate it after an intended change, run `./gradlew test --tests '*OpenApiSnapshotTest' -Dfactstore.update-openapi=true`.
+
+To change a schema, add `schemas/<name>/v<n+1>.json` and never edit `v<n>`. To make a breaking change, start a new schema name.
