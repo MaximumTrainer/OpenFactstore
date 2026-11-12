@@ -169,6 +169,26 @@ func (c *Client) Post(path string, body interface{}) ([]byte, int, error) {
 	return c.doRequest(http.MethodPost, path, body)
 }
 
+// PostRaw posts body exactly as given, with extra headers. Used where the bytes themselves
+// matter, such as a fact whose signature covers them (#238).
+func (c *Client) PostRaw(path string, body []byte, headers map[string]string) ([]byte, int, error) {
+	return c.do(func() (*http.Request, error) {
+		req, err := http.NewRequest(http.MethodPost, c.BaseURL+path, bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+		if c.Token != "" {
+			req.Header.Set("Authorization", "Bearer "+c.Token)
+		}
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		return req, nil
+	})
+}
+
 // Put performs a PUT request with a JSON body.
 func (c *Client) Put(path string, body interface{}) ([]byte, int, error) {
 	return c.doRequest(http.MethodPut, path, body)
