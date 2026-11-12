@@ -25,12 +25,15 @@ class ForbiddenException(message: String) : RuntimeException(message)
 class FactRejectedException(
     val error: String,
     val schemaRef: String?,
-    val violations: List<com.factstore.application.schema.SchemaViolation>
+    val violations: List<com.factstore.application.schema.SchemaViolation>,
+    /** For `unmasked_secret_detected` (#198): the ruleset the payload was checked against. */
+    val maskingRuleset: String? = null
 ) : RuntimeException("$error: ${violations.joinToString("; ") { "${it.path} ${it.message}" }}") {
     companion object {
         const val INVALID_ENVELOPE = "invalid_envelope"
         const val UNKNOWN_SCHEMA = "unknown_schema"
         const val SCHEMA_NONCONFORMANT = "schema_nonconformant"
+        const val UNMASKED_SECRET = "unmasked_secret_detected"
     }
 }
 

@@ -49,6 +49,19 @@ class Fact(
     @Column(name = "signed_body", columnDefinition = "TEXT")
     val signedBody: String? = null,
 
+    /** SHA-256 of the signed request body, kept even when masking means the body itself is not (#198). */
+    @Column(name = "signed_body_sha256", length = 64)
+    val signedBodySha256: String? = null,
+
+    /** The masking ruleset the payload was checked against (#198). */
+    @Column(name = "masking_ruleset", length = 64)
+    val maskingRuleset: String? = null,
+
+    /** Paths Factstore masked on arrival, in redact mode (#198). Empty when nothing was masked. */
+    @Convert(converter = StringListConverter::class)
+    @Column(name = "masked_paths", columnDefinition = "TEXT")
+    val maskedPaths: List<String> = emptyList(),
+
     @Column(name = "ingested_by", nullable = false)
     val ingestedBy: String,
 

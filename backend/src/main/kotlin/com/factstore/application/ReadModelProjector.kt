@@ -213,6 +213,9 @@ class ReadModelProjector(
                 signatureKeyId = event.signatureKeyId,
                 signature = event.signature,
                 signedBody = event.signedBody,
+                signedBodySha256 = event.signedBodySha256,
+                maskingRuleset = event.maskingRuleset,
+                maskedPaths = event.maskedPaths,
                 ingestedAt = event.occurredAt
             )
         )

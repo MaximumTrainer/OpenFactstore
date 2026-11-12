@@ -100,6 +100,30 @@ Registration and revocation are audited (`SIGNING_KEY_REGISTERED`, `SIGNING_KEY_
 
 `factstore.ingest.require-signature` (default `true`) can be set to `false` while runners are being moved to signing. Unsigned facts are then accepted, but a signature that is sent is still verified.
 
+## Masking secrets and PII
+
+Nothing unmasked reaches immutable storage (#198). After validation and the signature check, every string in `tool` is checked against the masking ruleset. Fields the fact's schema marks `"x-sensitive": true` must be masked as a whole.
+
+The built-in ruleset, `builtin-v1` (`masking/rules-v1.yaml`), finds:
+
+- private keys;
+- JWTs;
+- AWS access key ids;
+- GitHub, Slack, Factstore and Google API tokens;
+- `password=`, `secret=`, `token=` and `api_key=` assignments;
+- email addresses.
+
+A match becomes `[MASKED:<rule>]`; for an assignment, only the value is replaced. An `x-sensitive` field becomes `[MASKED:sensitive-field]`. To use your own rules, point `factstore.masking.rules-file` at a file in the same format.
+
+`factstore.masking.mode` chooses what happens when something unmasked arrives:
+
+| Mode | Behaviour | Trade-off |
+|---|---|---|
+| `reject` (default) | `400 unmasked_secret_detected`, with each path and the rule that matched (never the value) and `maskingRuleset`. Nothing is stored. | The runner must mask **before** signing. The stored bytes are then exactly the signed bytes, so the source signature (#187) stays verifiable forever. |
+| `redact` | Factstore masks the payload and stores the masked version, listing what it masked in `masked_paths`. | The runner's signature is verified on arrival, but the signed bytes contained the secret, so they are not stored; only `signed_body_sha256` is. The fact can no longer be re-verified against the runner's signature. |
+
+Every fact records the `masking_ruleset` it was checked against.
+
 ## Identity lineage
 
 Each fact is bound, by the server, to the identity verified when it arrived (#191). The request body cannot carry an identity: an `identity` field is an undefined envelope field and is refused with `invalid_envelope`.
@@ -119,7 +143,6 @@ The identity is stored with the fact and carried in its `FactIngested` event. No
 
 - Facts are not yet scoped to an organisation; see #218.
 - Signing keys are not yet bound to a workload or service, so any registered key may sign any fact. Binding a key to the identity that may use it is a follow-up.
-- Masking (#198) must happen on the runner, before signing, so the stored body is the signed body.
 - The server-set identity (#191) is stored and evented but is not part of the signed bytes. Storage-side signing and hash chaining (#184, #188) must include it.
 
 ## Storage

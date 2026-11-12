@@ -142,7 +142,11 @@ sealed class DomainEvent {
         /** The source signature (#187): the registry key, the signature, and the exact bytes signed. */
         val signatureKeyId: String? = null,
         val signature: String? = null,
-        val signedBody: String? = null
+        val signedBody: String? = null,
+        /** Masking (#198): the ruleset applied, what was masked, and the signed bytes' hash. */
+        val signedBodySha256: String? = null,
+        val maskingRuleset: String? = null,
+        val maskedPaths: List<String> = emptyList()
     ) : DomainEvent() {
         override val aggregateType: String = "Fact"
     }

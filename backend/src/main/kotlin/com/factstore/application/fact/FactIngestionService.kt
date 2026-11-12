@@ -75,6 +75,7 @@ class FactIngestionService(
     private val servicePolicy: WorkloadServicePolicy,
     private val auditService: IAuditService,
     private val failureMetrics: FailureMetrics,
+    private val masking: com.factstore.application.masking.IngressMasking,
     private val signatureVerifier: SourceSignatureVerifier,
     /** #187: every fact must be signed at the source. Off only for a deployment migrating its runners. */
     @Value("\${factstore.ingest.require-signature:true}") private val requireSignature: Boolean
@@ -105,6 +106,9 @@ class FactIngestionService(
         // Validation first (#196), then the source signature over the exact bytes received (#187).
         val signature = sourceSignature(rawBody, signatureHeader, signatureKeyId)
 
+        // Then masking (#198): nothing unmasked reaches immutable storage.
+        val masking = masking.check(schemaRef, envelope.tool)
+
         val identity = verifiedIdentity()
         authorise(envelope, identity)
 
@@ -116,12 +120,16 @@ class FactIngestionService(
                 schemaRef = schemaRef.value,
                 subjectSha256 = envelope.sha256.value,
                 subjectRepository = envelope.repository,
-                payloadJson = objectMapper.writeValueAsString(envelope.tool),
+                payloadJson = objectMapper.writeValueAsString(masking.payload),
                 ingestedBy = actorResolver.current(),
                 identity = identity,
                 signatureKeyId = signature?.keyId,
                 signature = signature?.signature,
-                signedBody = signature?.let { rawBody }
+                // When Factstore masked the payload, the signed bytes held the secret: keep their hash only.
+                signedBody = signature?.takeIf { masking.maskedPaths.isEmpty() }?.let { rawBody },
+                signedBodySha256 = signature?.let { sha256(rawBody) },
+                maskingRuleset = masking.ruleset,
+                maskedPaths = masking.maskedPaths
             )
         )
         val record = eventAppender.append(
@@ -136,11 +144,17 @@ class FactIngestionService(
                 identity = fact.identity,
                 signatureKeyId = fact.signatureKeyId,
                 signature = fact.signature,
-                signedBody = fact.signedBody
+                signedBody = fact.signedBody,
+                signedBodySha256 = fact.signedBodySha256,
+                maskingRuleset = fact.maskingRuleset,
+                maskedPaths = fact.maskedPaths
             )
         )
         return FactIngestionResponse(fact.factId, fact.schemaRef, fact.ingestedAt, record.recordHash, record.sequenceNumber)
     }
+
+    private fun sha256(text: String): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 
     private fun sourceSignature(rawBody: String, header: String?, keyId: String?): SourceSignature? {
         if (!requireSignature && header.isNullOrBlank() && keyId.isNullOrBlank()) return null
