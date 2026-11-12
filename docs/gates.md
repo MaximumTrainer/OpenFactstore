@@ -36,6 +36,14 @@ Content-Type: application/json
 
 `required_policies` lists attestation types that must have passed, in addition to the flow's own requirements. The gate does not accept any other field. In particular it rejects `tier` with `400`: the tier is the environment's, not the caller's.
 
+## Read path: caching and freshness
+
+Gates are the critical read path, separate from the write path that CI agents load (#194). Writes go to `/api/v1/commands/**` on the command service; gate queries go to `/api/v1/queries/**`, which a query service can serve from its own read replica in every region (see [ADR 0002](adr/0002-multi-region.md)).
+
+- **Cached decisions.** A decision made from the evidence is cached in-process for `factstore.gates.cache-ttl-seconds` (default 30). Any change to the read model clears the cache at once, and again when the change commits: a new attestation, a projected event, any entity write. A repeated query therefore costs nothing until something changes. Fallback decisions are never cached.
+- **`data_as_of`.** Every decision says how fresh it is: `evaluated_at` (earlier than now when it came from the cache), `cached`, and `staleness_seconds`. Staleness is how far behind the writer this read model was when it last caught up, the same measure as `factstore_projection_delay_seconds`. It is 0 on an unsplit deployment, where the read model is the writer's.
+- **`max_staleness_seconds`.** A gate request may set the oldest data it accepts. If this read model is staler than that, the gate does not give a stale answer: it falls back by the environment's risk tier, below, with `reason` saying the data was stale.
+
 ## Risk tiers
 
 Each environment has a `tier`, set with `POST` or `PUT /api/v1/environments`:

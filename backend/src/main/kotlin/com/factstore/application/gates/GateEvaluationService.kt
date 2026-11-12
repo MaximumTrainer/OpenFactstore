@@ -48,7 +48,18 @@ data class GateDecision(
     /** The audit record raised for a fallback decision; absent when there was none. */
     @get:JsonProperty("audit_alert_id") val auditAlertId: UUID?,
     @get:JsonProperty("decision_tree") val decisionTree: DecisionTree,
-    @get:JsonProperty("missing_attestations") val missingAttestations: List<String>
+    @get:JsonProperty("missing_attestations") val missingAttestations: List<String>,
+    /** How fresh the data behind this decision is (#194). */
+    @get:JsonProperty("data_as_of") val dataAsOf: DataAsOf? = null
+)
+
+/** The freshness of a gate decision (#194). */
+data class DataAsOf(
+    /** When the decision was computed; earlier than now when it was served from the cache. */
+    @get:JsonProperty("evaluated_at") val evaluatedAt: java.time.Instant,
+    /** How far behind the writer this read model was when it last caught up (0 when it is the writer). */
+    @get:JsonProperty("staleness_seconds") val stalenessSeconds: Double,
+    val cached: Boolean
 )
 
 /**
@@ -73,12 +84,33 @@ class GateEvaluationService(
     private val auditService: IAuditService,
     private val failureMetrics: FailureMetrics,
     private val registry: MeterRegistry,
-    private val reports: com.factstore.core.port.outbound.IGateFallbackReports
+    private val reports: com.factstore.core.port.outbound.IGateFallbackReports,
+    private val cache: GateDecisionCache,
+    private val lag: com.factstore.application.observability.ProjectionLag,
+    private val clock: java.time.Clock
 ) {
     private val log = LoggerFactory.getLogger(GateEvaluationService::class.java)
 
     fun evaluate(body: JsonNode): GateDecision {
         val request = GateRequest.parse(body)
+        val now = clock.instant()
+        val staleness = lag.stalenessSeconds()
+        val freshness = DataAsOf(now, staleness, cached = false)
+
+        // #194: decisions are cached until the read model changes or the TTL passes.
+        val key = GateDecisionCache.Key(request.artifactSha256, request.targetEnvironment, request.flowId, request.requiredPolicies)
+        cache.get(key, now)?.let { hit ->
+            if (request.maxStalenessSeconds == null || staleness <= request.maxStalenessSeconds) {
+                return hit.copy(dataAsOf = hit.dataAsOf?.copy(stalenessSeconds = staleness, cached = true))
+            }
+        }
+
+        val decision = decide(request, freshness)
+        if (decision.fallbackMode == FallbackMode.NONE) cache.put(key, decision, now)
+        return decision
+    }
+
+    private fun decide(request: GateRequest, freshness: DataAsOf): GateDecision {
         val (environment, tier) = try {
             val env = environments.findByName(request.targetEnvironment)
                 ?: throw NotFoundException("No environment named '${request.targetEnvironment}'")
@@ -86,6 +118,15 @@ class GateEvaluationService(
         } catch (e: Exception) {
             if (!isOutage(e)) throw e
             return fallback(request, request.targetEnvironment, RiskTier.TIER1, "the environment's tier could not be read (${e.javaClass.simpleName}); treated as TIER1")
+                .copy(dataAsOf = freshness)
+        }
+
+        // #194: a caller that cannot accept stale data gets the tier's fallback, not a stale answer.
+        if (request.maxStalenessSeconds != null && freshness.stalenessSeconds > request.maxStalenessSeconds) {
+            return fallback(
+                request, environment, tier,
+                "the read model is stale: ${freshness.stalenessSeconds}s behind the writer, more than the ${request.maxStalenessSeconds}s accepted"
+            ).copy(dataAsOf = freshness)
         }
 
         val verdict = try {
@@ -93,6 +134,7 @@ class GateEvaluationService(
         } catch (e: Exception) {
             if (!isOutage(e)) throw e
             return fallback(request, environment, tier, "evidence could not be evaluated: ${e.message ?: e.javaClass.simpleName}")
+                .copy(dataAsOf = freshness)
         }
 
         val policyGaps = verdict.trailId?.let { trail ->
@@ -110,7 +152,8 @@ class GateEvaluationService(
                 environment, tier, request.flowId, verdict.trailId, "EVALUATED", verdict.details,
                 request.requiredPolicies, missing, failed
             ),
-            missingAttestations = missing
+            missingAttestations = missing,
+            dataAsOf = freshness
         )
     }
 
@@ -200,10 +243,12 @@ class GateEvaluationService(
         val artifactSha256: String,
         val targetEnvironment: String,
         val flowId: UUID,
-        val requiredPolicies: List<String>
+        val requiredPolicies: List<String>,
+        /** The oldest data the caller accepts (#194); null when any is acceptable. */
+        val maxStalenessSeconds: Double? = null
     ) {
         companion object {
-            private val FIELDS = setOf("artifact_sha256", "target_environment", "flow_id", "required_policies")
+            private val FIELDS = setOf("artifact_sha256", "target_environment", "flow_id", "required_policies", "max_staleness_seconds")
             private val DIGEST = Regex("^sha256:[a-fA-F0-9]{64}$")
 
             fun parse(body: JsonNode): GateRequest {
@@ -218,7 +263,11 @@ class GateEvaluationService(
                 val flowId = runCatching { UUID.fromString(body.path("flow_id").asText()) }.getOrNull()
                     ?: throw BadRequestException("flow_id must be a UUID")
                 val policies = body.path("required_policies").takeIf { it.isArray }?.map { it.asText() } ?: emptyList()
-                return GateRequest(digest, environment, flowId, policies)
+                val maxStaleness = body.get("max_staleness_seconds")?.let {
+                    if (!it.isNumber || it.asDouble() < 0) throw BadRequestException("max_staleness_seconds must be a non-negative number")
+                    it.asDouble()
+                }
+                return GateRequest(digest, environment, flowId, policies, maxStaleness)
             }
         }
     }

@@ -2289,6 +2289,23 @@
         "required" : [ "complianceRate", "compliantTrails", "nonCompliantTrails", "pendingTrails", "totalFlows", "totalTrails" ],
         "type" : "object"
       },
+      "DataAsOf" : {
+        "properties" : {
+          "cached" : {
+            "type" : "boolean"
+          },
+          "evaluated_at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "staleness_seconds" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [ "cached", "evaluated_at", "staleness_seconds" ],
+        "type" : "object"
+      },
       "DataKeyView" : {
         "properties" : {
           "created_at" : {
@@ -3201,6 +3218,9 @@
           "audit_alert_id" : {
             "format" : "uuid",
             "type" : "string"
+          },
+          "data_as_of" : {
+            "$ref" : "#/components/schemas/DataAsOf"
           },
           "decision_tree" : {
             "$ref" : "#/components/schemas/DecisionTree"
