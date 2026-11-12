@@ -41,6 +41,8 @@ class FactSignatureTest {
     @Autowired lateinit var signingKeys: SigningKeyRegistryService
     @Autowired lateinit var facts: IFactRepository
     @Autowired lateinit var eventStore: IEventStore
+    /** Stored content is encrypted (#200); read it back through the service. */
+    @Autowired lateinit var ingestion: com.factstore.application.fact.FactIngestionService
     @Autowired lateinit var audit: IAuditService
 
     private val schemaName = "signed-${System.nanoTime()}"
@@ -86,7 +88,7 @@ class FactSignatureTest {
         val stored = facts.findById(factId)!!
         assertThat(stored.signatureKeyId).isEqualTo(runner.keyId)
         assertThat(stored.signature).isEqualTo(runner.sign(body))
-        assertThat(stored.signedBody).isEqualTo(body)
+        assertThat(ingestion.signedBody(factId)).isEqualTo(body)
     }
 
     @Test

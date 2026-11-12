@@ -662,7 +662,7 @@
             "type" : "string"
           },
           "eventType" : {
-            "enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ],
+            "enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ],
             "type" : "string"
           },
           "id" : {
@@ -2283,6 +2283,33 @@
           }
         },
         "required" : [ "complianceRate", "compliantTrails", "nonCompliantTrails", "pendingTrails", "totalFlows", "totalTrails" ],
+        "type" : "object"
+      },
+      "DataKeyView" : {
+        "properties" : {
+          "created_at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "kek_id" : {
+            "type" : "string"
+          },
+          "period" : {
+            "type" : "string"
+          },
+          "shredded_at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "ACTIVE", "SHREDDED" ],
+            "type" : "string"
+          },
+          "tenant" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "created_at", "kek_id", "period", "status", "tenant" ],
         "type" : "object"
       },
       "DeliveryMetricsResponse" : {
@@ -4855,6 +4882,58 @@
         "required" : [ "maxCritical", "maxHigh", "maxLow", "maxMedium" ],
         "type" : "object"
       },
+      "ShredCertificate" : {
+        "properties" : {
+          "approved_by" : {
+            "type" : "string"
+          },
+          "certificate_hash" : {
+            "type" : "string"
+          },
+          "ledger_index" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "period" : {
+            "type" : "string"
+          },
+          "requested_by" : {
+            "type" : "string"
+          },
+          "shredded_at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "tenant" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "approved_by", "ledger_index", "period", "requested_by", "shredded_at", "tenant" ],
+        "type" : "object"
+      },
+      "ShredRequestView" : {
+        "properties" : {
+          "period" : {
+            "type" : "string"
+          },
+          "request_id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "requested_by" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "PENDING_APPROVAL", "APPROVED" ],
+            "type" : "string"
+          },
+          "tenant" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "period", "request_id", "requested_by", "status", "tenant" ],
+        "type" : "object"
+      },
       "SigningKeyResponse" : {
         "properties" : {
           "algorithm" : {
@@ -6226,7 +6305,7 @@
     },
     "/api/v1/approvals/{approvalId}/approve" : {
       "post" : {
-        "operationId" : "approve",
+        "operationId" : "approve_1",
         "parameters" : [ {
           "in" : "path",
           "name" : "approvalId",
@@ -6795,7 +6874,7 @@
           "name" : "eventType",
           "required" : false,
           "schema" : {
-            "enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ],
+            "enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ],
             "type" : "string"
           }
         }, {
@@ -7155,6 +7234,70 @@
         },
         "summary" : "List a user's active sessions (administrator)",
         "tags" : [ "Authentication" ]
+      }
+    },
+    "/api/v1/commands/data-keys/shred-requests/{requestId}/approve" : {
+      "post" : {
+        "description" : "Must be a different administrator from the requester (403 otherwise). Irreversible: every fact encrypted under the key becomes unreadable (410). Returns the destruction certificate, a ledger record.",
+        "operationId" : "approve",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "requestId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShredCertificate"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Approve a shred request and destroy the key",
+        "tags" : [ "Data keys" ]
+      }
+    },
+    "/api/v1/commands/data-keys/{tenant}/{period}/shred-requests" : {
+      "post" : {
+        "description" : "period is YYYY-MM. 202 with a request that a different administrator must approve; 404 when no key exists; 409 when it is already shredded.",
+        "operationId" : "request",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tenant",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "period",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShredRequestView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Request that a data key be shredded",
+        "tags" : [ "Data keys" ]
       }
     },
     "/api/v1/commands/facts" : {
@@ -11361,6 +11504,28 @@
         "tags" : [ "Policy Attachments" ]
       }
     },
+    "/api/v1/queries/data-keys" : {
+      "get" : {
+        "operationId" : "list_3",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/DataKeyView"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "List data keys and whether they are shredded",
+        "tags" : [ "Data keys" ]
+      }
+    },
     "/api/v1/queries/event-signing-keys" : {
       "get" : {
         "description" : "Every key version that has signed records, oldest first, with its validity window.",
@@ -14214,6 +14379,9 @@
   }, {
     "description" : "Attestation read operations (CQRS query path)",
     "name" : "Attestations – Queries"
+  }, {
+    "description" : "Per-tenant, per-month encryption keys and their shredding",
+    "name" : "Data keys"
   }, {
     "description" : "Downloadable tamper-evident audit bundles",
     "name" : "Audit Package"

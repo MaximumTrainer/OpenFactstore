@@ -76,6 +76,8 @@ class FactIngestionService(
     private val auditService: IAuditService,
     private val failureMetrics: FailureMetrics,
     private val masking: com.factstore.application.masking.IngressMasking,
+    private val encryption: com.factstore.application.shredding.PayloadEncryption,
+    private val clock: java.time.Clock,
     private val signatureVerifier: SourceSignatureVerifier,
     /** #187: every fact must be signed at the source. Off only for a deployment migrating its runners. */
     @Value("\${factstore.ingest.require-signature:true}") private val requireSignature: Boolean
@@ -114,22 +116,29 @@ class FactIngestionService(
 
         if (facts.existsById(envelope.factId)) throw ConflictException("Fact ${envelope.factId} has already been ingested")
 
+        // Content is encrypted under the tenant-month data key, so it can be shredded later (#200).
+        val ingestedAt = clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MICROS)
+        val tenant = actorResolver.currentOrgSlug() ?: DEFAULT_TENANT
+        val period = encryption.periodOf(ingestedAt)
+        fun seal(text: String) = encryption.encrypt(tenant, period, envelope.factId, text)
+
         val fact = facts.save(
             Fact(
                 factId = envelope.factId,
                 schemaRef = schemaRef.value,
                 subjectSha256 = envelope.sha256.value,
                 subjectRepository = envelope.repository,
-                payloadJson = objectMapper.writeValueAsString(masking.payload),
+                payloadJson = seal(objectMapper.writeValueAsString(masking.payload)),
                 ingestedBy = actorResolver.current(),
                 identity = identity,
                 signatureKeyId = signature?.keyId,
                 signature = signature?.signature,
                 // When Factstore masked the payload, the signed bytes held the secret: keep their hash only.
-                signedBody = signature?.takeIf { masking.maskedPaths.isEmpty() }?.let { rawBody },
+                signedBody = signature?.takeIf { masking.maskedPaths.isEmpty() }?.let { seal(rawBody) },
                 signedBodySha256 = signature?.let { sha256(rawBody) },
                 maskingRuleset = masking.ruleset,
-                maskedPaths = masking.maskedPaths
+                maskedPaths = masking.maskedPaths,
+                ingestedAt = ingestedAt
             )
         )
         val record = eventAppender.append(
@@ -152,6 +161,16 @@ class FactIngestionService(
         )
         return FactIngestionResponse(fact.factId, fact.schemaRef, fact.ingestedAt, record.recordHash, record.sequenceNumber)
     }
+
+    /** The exact signed body, decrypted (#187, #200); null when it was not kept. */
+    @Transactional(readOnly = true)
+    fun signedBody(factId: UUID): String? =
+        facts.findById(factId)?.signedBody?.let { encryption.decrypt(factId, it) }
+
+    /** The stored payload, decrypted (#200). */
+    @Transactional(readOnly = true)
+    fun payload(factId: UUID): String? =
+        facts.findById(factId)?.payloadJson?.let { encryption.decrypt(factId, it) }
 
     private fun sha256(text: String): String =
         java.security.MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
@@ -197,7 +216,7 @@ class FactIngestionService(
             factId = fact.factId,
             schemaRef = fact.schemaRef,
             subject = mapOf("sha256" to fact.subjectSha256, "repository" to fact.subjectRepository),
-            tool = objectMapper.readTree(fact.payloadJson),
+            tool = objectMapper.readTree(encryption.decrypt(fact.factId, fact.payloadJson)),
             identity = fact.identity,
             ingestedAt = fact.ingestedAt
         )
@@ -276,3 +295,6 @@ class FactIngestionService(
         }
     }
 }
+
+/** The tenant for facts sent by a caller bound to no organisation (#200). */
+private const val DEFAULT_TENANT = "default"
