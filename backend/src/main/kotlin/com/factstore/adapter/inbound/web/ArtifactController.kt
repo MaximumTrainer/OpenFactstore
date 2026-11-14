@@ -29,6 +29,7 @@ class ArtifactController(
 ) {
 
     @PreAuthorize("@authz.has('artifacts:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/artifacts")
     @PostMapping("/api/v1/trails/{trailId}/artifacts")
     @Operation(summary = "Report an artifact for a trail")
     fun reportArtifact(
@@ -55,12 +56,14 @@ class ArtifactController(
     }
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/artifacts")
     @GetMapping("/api/v1/trails/{trailId}/artifacts")
     @Operation(summary = "List artifacts for a trail")
     fun listArtifacts(@PathVariable trailId: UUID): ResponseEntity<List<ArtifactResponse>> =
         ResponseEntity.ok(artifactService.listArtifactsForTrail(trailId))
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/artifacts")
     @GetMapping("/api/v1/artifacts")
     @Operation(summary = "Find artifacts by SHA256 digest")
     fun findBySha256(@RequestParam sha256: String): ResponseEntity<List<ArtifactResponse>> =

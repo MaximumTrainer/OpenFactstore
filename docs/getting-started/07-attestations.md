@@ -34,7 +34,7 @@ Factstore accepts any string as an attestation type. Use a consistent naming con
 Keep the attestation's `id`; the evidence upload below attaches a file to it:
 
 ```bash
-ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -48,7 +48,7 @@ echo "$ATTESTATION_ID"
 ### Snyk security scan
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -64,7 +64,7 @@ A gate that failed is recorded the same way, with `"status": "FAILED"`. (Not run
 
 <!-- docs-e2e:skip -->
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -98,7 +98,7 @@ You can attach a file (e.g. an XML test report, a JSON scan output, a PDF) as ev
 mkdir -p test-results
 printf '<testsuite name="unit" tests="156" failures="0" errors="0" skipped="2"/>\n' > test-results/junit-report.xml
 
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTESTATION_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$ATTESTATION_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@./test-results/junit-report.xml" | jq .
 ```
@@ -123,7 +123,7 @@ The evidence file is stored in the **Evidence Vault** and addressed by its SHA-2
 ## List attestations for a Trail
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" | jq '.items[] | {type, status}'
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" | jq '.items[] | {type, status}'
 ```
 
 The list is paginated: `items`, plus `page`, `size`, `totalItems` and `totalPages`.

@@ -9,7 +9,7 @@ After your build produces an artifact, report it to the Trail (`TRAIL_ID` from [
 ```bash
 DIGEST="sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f"
 
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/artifacts" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/artifacts" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -84,7 +84,7 @@ Because Factstore uses the digest as the artifact identity, the same image pulle
 ## List artifacts for a Trail
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails/$TRAIL_ID/artifacts" | jq .
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/trails/$TRAIL_ID/artifacts" | jq .
 ```
 
 ## Find artifacts by SHA-256
@@ -92,14 +92,14 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails/$TR
 Search across all Trails for a specific artifact digest:
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/artifacts?sha256=$DIGEST" | jq .
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/artifacts?sha256=$DIGEST" | jq .
 ```
 
 This is useful for answering: *"Which pipeline built this exact image?"* or *"Has this digest been seen before?"*
 
 ## Build provenance
 
-Beyond the basic metadata, you can record an artifact's build provenance (builder identity, SLSA level, source repository and build configuration) with `POST /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance`, check its signature with `POST /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance/verify`, and read it back by digest with `GET /api/v1/artifacts/{sha256}/provenance`. To prove *which pipeline* built an artifact, record the CI provider's identity token as an attestation; see [OIDC Provenance Attestation](../user-guide.md#oidc-provenance-attestation).
+Beyond the basic metadata, you can record an artifact's build provenance (builder identity, SLSA level, source repository and build configuration) with `POST /api/v2/trails/{trailId}/artifacts/{artifactId}/provenance`, check its signature with `POST /api/v2/trails/{trailId}/artifacts/{artifactId}/provenance/verify`, and read it back by digest with `GET /api/v2/artifacts/{sha256}/provenance`. To prove *which pipeline* built an artifact, record the CI provider's identity token as an attestation; see [OIDC Provenance Attestation](../user-guide.md#oidc-provenance-attestation).
 
 ---
 

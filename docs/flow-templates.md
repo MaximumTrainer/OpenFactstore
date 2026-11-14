@@ -48,7 +48,7 @@ before saving. **Blank flow** remains available.
 Over the API:
 
 ```http
-POST /api/v1/flows
+POST /api/v2/flows
 {
   "name": "payments-api",
   "description": "Payments service gates",

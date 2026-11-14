@@ -35,5 +35,7 @@ fun Trail.toView() = TrailView(
     name = name,
     externalId = externalId,
     createdAt = createdAt,
-    updatedAt = updatedAt
+    updatedAt = updatedAt,
+    archivedAt = archivedAt,
+    tags = tags.toMap()
 )

@@ -29,5 +29,8 @@ fun Flow.toView() = FlowView(
     createdAt = createdAt,
     updatedAt = updatedAt,
     requiresApproval = requiresApproval,
-    requiredApproverRoles = requiredApproverRoles
+    requiredApproverRoles = requiredApproverRoles,
+    archivedAt = archivedAt,
+    templateId = templateId,
+    templateVersion = templateVersion
 )

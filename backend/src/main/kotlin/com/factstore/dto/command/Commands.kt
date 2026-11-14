@@ -21,7 +21,11 @@ data class CreateFlowCommand(
     val orgSlug: String? = null,
     val templateYaml: String? = null,
     val requiresApproval: Boolean = false,
-    val requiredApproverRoles: List<String> = emptyList()
+    val requiredApproverRoles: List<String> = emptyList(),
+    /** Apply a hub template at creation; its YAML is copied onto the flow (#162, #250). */
+    val templateId: String? = null,
+    /** Apply several hub templates combined. */
+    val templateIds: List<String>? = null
 )
 
 /** JSON body for PUT /api/v2/flows/{id} — `id` comes from the path variable. */
@@ -68,7 +72,8 @@ data class CreateTrailCommand(
     val buildUrl: String? = null,
     val name: String? = null,
     /** Stable release identifier; makes trail creation idempotent per flow (#164). */
-    val externalId: String? = null
+    val externalId: String? = null,
+    val tags: Map<String, String>? = null
 )
 
 // ── Artifact Commands ──────────────────────────────────────────────────────────
@@ -80,7 +85,8 @@ data class ReportArtifactRequest(
     val sha256Digest: String,
     val registry: String? = null,
     val reportedBy: String,
-    val orgSlug: String? = null
+    val orgSlug: String? = null,
+    val tags: Map<String, String>? = null
 )
 
 data class ReportArtifactCommand(
@@ -90,7 +96,8 @@ data class ReportArtifactCommand(
     val sha256Digest: String,
     val registry: String? = null,
     val reportedBy: String,
-    val orgSlug: String? = null
+    val orgSlug: String? = null,
+    val tags: Map<String, String>? = null
 )
 
 // ── Attestation Commands ───────────────────────────────────────────────────────
@@ -104,7 +111,15 @@ data class RecordAttestationRequest(
     val evidenceUrl: String? = null,
     val orgSlug: String? = null,
     val artifactFingerprint: String? = null,
-    val flowName: String? = null
+    val flowName: String? = null,
+    /** Structured result data, checked against the type's schema when it is a custom type. */
+    val attestationData: String? = null,
+    /** Links to the evidence; defaults to `evidenceUrl` when empty. */
+    val externalUrls: List<String>? = null,
+    val annotations: Map<String, String>? = null,
+    val gitCommitSha: String? = null,
+    val gitBranch: String? = null,
+    val gitRepoUrl: String? = null
 )
 
 data class RecordAttestationCommand(
@@ -116,7 +131,15 @@ data class RecordAttestationCommand(
     val evidenceUrl: String? = null,
     val orgSlug: String? = null,
     val artifactFingerprint: String? = null,
-    val flowName: String? = null
+    val flowName: String? = null,
+    /** Structured result data, checked against the type's schema when it is a custom type. */
+    val attestationData: String? = null,
+    /** Links to the evidence; defaults to `evidenceUrl` when empty. */
+    val externalUrls: List<String>? = null,
+    val annotations: Map<String, String>? = null,
+    val gitCommitSha: String? = null,
+    val gitBranch: String? = null,
+    val gitRepoUrl: String? = null
 )
 
 data class UploadEvidenceCommand(

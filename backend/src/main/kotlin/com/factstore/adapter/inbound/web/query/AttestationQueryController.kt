@@ -17,6 +17,9 @@ class AttestationQueryController(private val queryHandler: IAttestationQueryHand
     @PreAuthorize("@authz.has('trails:read')")
     @GetMapping
     @Operation(summary = "List attestations for a trail")
-    fun listAttestations(@PathVariable trailId: UUID): ResponseEntity<List<AttestationView>> =
-        ResponseEntity.ok(queryHandler.listAttestations(trailId))
+    fun listAttestations(
+        @PathVariable trailId: UUID,
+        @RequestParam(required = false) page: Int?,
+        @RequestParam(required = false) size: Int?
+    ): ResponseEntity<List<AttestationView>> = Paging.page(queryHandler.listAttestations(trailId), page, size)
 }

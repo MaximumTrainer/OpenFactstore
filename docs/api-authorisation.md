@@ -59,7 +59,7 @@ window, not per request. The budget for the added latency of authenticating a re
 **1 ms at p50 and 5 ms at p99**.
 
 `./gradlew authBenchmark` measures it (`AuthOverheadBenchmark`). It makes 5,000 authenticated
-`GET /api/v1/flows/{id}` requests with a warm cache, interleaved with the same request made
+`GET /api/v2/flows/{id}` requests with a warm cache, interleaved with the same request made
 anonymously, and writes `build/reports/auth-benchmark.json`. CI runs it and warns when either
 figure is over budget. Measured on 2026-11-10 (Windows laptop, JDK 21, in-process MockMvc):
 
@@ -234,12 +234,12 @@ This is enforced (`TenantScope`) for a caller bound to an organisation, whether 
 
 | Surface | Behaviour |
 |---|---|
-| `GET /api/v1/flows/{id}`, `/api/v1/trails/{id}`, `/api/v1/evidence/{sha256}` and the v2 equivalents | another organisation's resource is `404` |
-| `GET /api/v1/flows`, `/api/v1/trails`, `/api/v2/flows`, `/api/v2/trails`, and a trail list for another organisation's flow | only the caller's organisation |
+| `GET /api/v2/flows/{id}`, `/api/v1/trails/{id}`, `/api/v1/evidence/{sha256}` and the v2 equivalents | another organisation's resource is `404` |
+| `GET /api/v2/flows`, `/api/v1/trails`, `/api/v2/flows`, `/api/v2/trails`, and a trail list for another organisation's flow | only the caller's organisation |
 | `GET /api/v1/search`, `POST /api/v1/search` | only the caller's organisation, whatever `orgSlug` the request names |
 | `GET /api/v1/dashboard/stats` | counts only the caller's organisation |
 | Environments (and their snapshots, baselines, drift, audit CSV), policies and their versions, approvals, compliance assessments | another organisation's is `404`; lists show only the caller's (#207) |
-| `GET /api/v1/artifacts?sha256=`, `/api/v1/artifacts/search`, `GET /api/v1/gate/results` | only the caller's organisation (#207) |
+| `GET /api/v2/artifacts?sha256=`, `/api/v1/artifacts/search`, `GET /api/v1/gate/results` | only the caller's organisation (#207) |
 | `GET /api/v1/audit`, `/api/v1/audit/{id}`, a trail's audit events | only events tied to the caller's organisation's trails or environments (#207) |
 | `GET /api/v1/reports/compliance`, `/api/v1/reports/audit-trail/{trailId}`, `/api/v1/reports/regulatory/{frameworkId}` | counts and lists only the caller's trails and assessments; another organisation's flow or trail is `404` (#218) |
 | `GET /api/v1/opa/decisions`, `/api/v1/opa/decisions/{id}` | only the caller's organisation's decisions (#218) |

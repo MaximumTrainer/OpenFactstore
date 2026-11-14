@@ -36,6 +36,7 @@ class ArtifactCommandHandler(
             reportedBy = command.reportedBy,
             orgSlug = command.orgSlug
         )
+        artifact.tags = command.tags.orEmpty().toMutableMap()
         val saved = artifactRepository.save(artifact)
         eventAppender.append(DomainEvent.ArtifactReported(
             aggregateId = saved.id,
@@ -45,7 +46,8 @@ class ArtifactCommandHandler(
             sha256Digest = saved.sha256Digest,
             registry = saved.registry,
             reportedBy = saved.reportedBy,
-            orgSlug = saved.orgSlug
+            orgSlug = saved.orgSlug,
+            tags = saved.tags.toMap()
         ))
         auditService.record(
             eventType = AuditEventType.ARTIFACT_DEPLOYED,

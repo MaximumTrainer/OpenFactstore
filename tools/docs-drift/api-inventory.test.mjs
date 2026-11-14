@@ -42,12 +42,15 @@ test('the operations deprecated in the spec are exactly those the decisions depr
 
 test('the docs do not tell readers to call a deprecated endpoint', () => {
   const deprecated = new Set(deprecatedByDecision(decisions))
-  // The inventory and the deprecation notices name them on purpose.
+  // The inventory, the deprecation notice and the generated matrix name them on purpose; anywhere
+  // else a deprecated endpoint may only be named on a line that says it is deprecated.
   const allowed = new Set(['docs/api-inventory.md', 'docs/upgrading/api-deprecations.md', 'docs/api-authorisation-matrix.md'])
   const uses = docFiles().filter((f) => !allowed.has(f)).flatMap((file) => {
     const text = read(file)
+    const lines = text.split('\n')
+    const flagged = (c) => /deprecated/i.test(lines[c.line - 1] ?? '')
     return [...curlCommands(text, file), ...endpointMentions(text, file)]
-      .filter((c) => c.path)
+      .filter((c) => c.path && !flagged(c))
       .map((c) => ({ ...c, found: findOperation(openapi, c.method ?? 'GET', c.path) }))
       .filter((c) => c.found && deprecated.has(`${(c.method ?? 'GET').toUpperCase()} ${c.found.template}`))
       .map((c) => `${c.file}:${c.line} ${c.method} ${c.path}`)

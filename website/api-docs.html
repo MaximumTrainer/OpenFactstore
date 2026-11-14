@@ -70,7 +70,7 @@
         and revoke the bootstrap key afterwards.
       </p>
       <pre><code>export FACTSTORE_TOKEN="$(grep '^SECURITY_BOOTSTRAP_API_KEY=' .env | cut -d= -f2-)"
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v1/flows | jq .</code></pre>
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v2/flows | jq .</code></pre>
       <p>
         Keys, scopes and rotation: <a href="https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/api-authorisation.md" target="_blank" rel="noopener">docs/api-authorisation.md</a>.
       </p>
@@ -187,10 +187,10 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v1
       <h2>Example Requests</h2>
 
       <h3>List all Flows</h3>
-      <pre><code>curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v1/flows | jq .</code></pre>
+      <pre><code>curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v2/flows | jq .</code></pre>
 
       <h3>Create an Attestation</h3>
-      <pre><code>curl -s -X POST http://localhost:8080/api/v1/trails/&lt;trail-id&gt;/attestations \
+      <pre><code>curl -s -X POST http://localhost:8080/api/v2/trails/&lt;trail-id&gt;/attestations \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

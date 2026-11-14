@@ -24,7 +24,11 @@ data class FlowView(
     val createdAt: Instant,
     val updatedAt: Instant,
     val requiresApproval: Boolean = false,
-    val requiredApproverRoles: List<String> = emptyList()
+    val requiredApproverRoles: List<String> = emptyList(),
+    val archivedAt: Instant? = null,
+    /** Hub template(s) the flow was created from, `+`-joined (#162). */
+    val templateId: String? = null,
+    val templateVersion: String? = null
 )
 
 data class FlowTemplateView(
@@ -52,7 +56,9 @@ data class TrailView(
     val name: String? = null,
     val externalId: String? = null,
     val createdAt: Instant,
-    val updatedAt: Instant
+    val updatedAt: Instant,
+    val archivedAt: Instant? = null,
+    val tags: Map<String, String> = emptyMap()
 )
 
 // ── Artifact Views ─────────────────────────────────────────────────────────────
@@ -67,7 +73,8 @@ data class ArtifactView(
     val reportedAt: Instant,
     val reportedBy: String,
     val orgSlug: String? = null,
-    val provenanceStatus: ProvenanceStatus = ProvenanceStatus.NO_PROVENANCE
+    val provenanceStatus: ProvenanceStatus = ProvenanceStatus.NO_PROVENANCE,
+    val tags: Map<String, String> = emptyMap()
 )
 
 // ── Attestation Views ──────────────────────────────────────────────────────────
@@ -86,7 +93,16 @@ data class AttestationView(
     val compliant: Boolean,
     val orgSlug: String? = null,
     val artifactFingerprint: String? = null,
-    val createdAt: Instant
+    val createdAt: Instant,
+    val attestationData: String? = null,
+    val externalUrls: List<String> = emptyList(),
+    val annotations: Map<String, String> = emptyMap(),
+    val gitCommitSha: String? = null,
+    val gitBranch: String? = null,
+    val gitRepoUrl: String? = null,
+    val artifactId: UUID? = null,
+    val overridesAttestationId: UUID? = null,
+    val justification: String? = null
 )
 
 data class EvidenceFileView(

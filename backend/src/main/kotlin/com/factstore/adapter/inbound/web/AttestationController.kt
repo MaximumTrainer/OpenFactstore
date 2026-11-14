@@ -34,10 +34,8 @@ class AttestationController(
 ) {
 
     @PreAuthorize("@authz.has('attestations:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/attestations")
     @PostMapping
-    // #250: no longer flagged deprecated. The v2 artifact endpoint it pointed to only covers
-    // attestations bound to an artifact, and the CLI and every tutorial call this one. The
-    // decision is recorded in tools/endpoint-inventory/decisions.json (trail-attestations).
     @Operation(summary = "Record an attestation for a trail")
     fun recordAttestation(
         @PathVariable trailId: UUID,
@@ -72,6 +70,7 @@ class AttestationController(
     }
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/attestations")
     @GetMapping
     @Operation(summary = "List attestations for a trail")
     fun listAttestations(
@@ -82,6 +81,7 @@ class AttestationController(
         ResponseEntity.ok(attestationService.listAttestations(trailId, page, size))
 
     @PreAuthorize("@authz.has('evidence:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/attestations/{attestationId}/evidence")
     @PostMapping("/{attestationId}/evidence", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @Operation(summary = "Upload evidence file for an attestation")
     fun uploadEvidence(

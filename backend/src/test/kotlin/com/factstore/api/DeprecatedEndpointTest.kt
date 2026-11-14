@@ -127,7 +127,7 @@ class DeprecatedEndpointTest {
             header { doesNotExist("Deprecation") }
             header { doesNotExist("Sunset") }
         }
-        mockMvc.get("/api/v1/flows").andExpect {
+        mockMvc.get("/api/v1/audit").andExpect {
             header { doesNotExist("Deprecation") }
         }
     }

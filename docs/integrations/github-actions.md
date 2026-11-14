@@ -129,7 +129,7 @@ jobs:
       - name: Create Factstore Trail
         id: trail
         run: |
-          TRAIL=$(curl -s -f -X POST "${{ vars.FACTSTORE_URL }}/api/v1/trails" \
+          TRAIL=$(curl -s -f -X POST "${{ vars.FACTSTORE_URL }}/api/v2/trails" \
             -H "Authorization: Bearer ${{ secrets.FACTSTORE_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d "{

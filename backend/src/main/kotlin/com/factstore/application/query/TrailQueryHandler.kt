@@ -24,12 +24,12 @@ class TrailQueryHandler(
     override fun getTrail(id: UUID): TrailView =
         tenantScope.require(trailReadRepository.findById(id), ::orgOf) { "Trail not found: $id" }
 
-    override fun listTrails(flowId: UUID?): List<TrailView> =
+    override fun listTrails(flowId: UUID?, includeArchived: Boolean): List<TrailView> =
         (if (flowId != null) trailReadRepository.findByFlowId(flowId) else trailReadRepository.findAll())
-            .filter { tenantScope.visible(orgOf(it)) }
+            .filter { tenantScope.visible(orgOf(it)) && (includeArchived || it.archivedAt == null) }
 
-    override fun listTrailsForFlow(flowId: UUID): List<TrailView> {
+    override fun listTrailsForFlow(flowId: UUID, includeArchived: Boolean): List<TrailView> {
         tenantScope.require(flowRepository.findById(flowId), { it.orgSlug }) { "Flow not found: $flowId" }
-        return trailReadRepository.findByFlowId(flowId)
+        return trailReadRepository.findByFlowId(flowId).filter { includeArchived || it.archivedAt == null }
     }
 }

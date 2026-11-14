@@ -150,4 +150,40 @@ class V2ParityTest {
         post("/api/v2/trails/$trailId/attestations", """{"type":"$type","status":"PASSED","attestationData":"{\"ok\":false}"}""")
         assertThat(get("/api/v2/trails/$trailId/attestations").single()["status"].asText()).isEqualTo("FAILED")
     }
+
+    @Test
+    fun `#250 v2 refuses the same bad input v1 refuses`() {
+        fun refused(path: String, body: String) = mockMvc.post(path) {
+            contentType = MediaType.APPLICATION_JSON; content = body
+        }.andExpect { status { isBadRequest() } }
+
+        refused("/api/v2/flows", """{"name":"  "}""")
+        refused("/api/v2/flows", """{"name":"${"x".repeat(256)}"}""")
+        val flowId = flow()
+        refused("/api/v2/trails", """{"flowId":"$flowId","gitCommitSha":"$sha","gitBranch":"main","gitAuthor":" ","gitAuthorEmail":"a@example.com"}""")
+        refused("/api/v2/trails", """{"flowId":"$flowId","gitCommitSha":"$sha","gitBranch":"main","gitAuthor":"a","gitAuthorEmail":"not-an-address"}""")
+        val trailId = trail(flowId)
+        refused("/api/v2/trails/$trailId/artifacts", """{"imageName":"app","imageTag":"1.0","sha256Digest":"abc","reportedBy":"ci"}""")
+        refused("/api/v2/trails/$trailId/artifacts", """{"imageName":"","imageTag":"1.0","sha256Digest":"sha256:${"c".repeat(64)}","reportedBy":"ci"}""")
+    }
+
+    @Test
+    fun `#250 v2 evidence is processed by the attestation type like v1`() {
+        val trailId = trail(flow())
+        val attestationId = post("/api/v2/trails/$trailId/attestations", """{"type":"junit","status":"PENDING"}""")["id"].asText()
+        val report = org.springframework.mock.web.MockMultipartFile(
+            "file", "junit.xml", "application/xml",
+            """<testsuite name="unit" tests="3" failures="1" errors="0" skipped="0"/>""".toByteArray()
+        )
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .multipart("/api/v2/trails/$trailId/attestations/$attestationId/evidence").file(report)
+        ).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated)
+
+        val view = get("/api/v2/trails/$trailId/attestations").single()
+        assertThat(view["status"].asText()).isEqualTo("FAILED")
+        assertThat(view["details"].asText()).contains("\"failures\":1")
+        assertThat(view["evidenceFileName"].asText()).isEqualTo("junit.xml")
+        assertThat(get("/api/v2/trails/$trailId")["status"].asText()).isEqualTo("NON_COMPLIANT")
+    }
 }

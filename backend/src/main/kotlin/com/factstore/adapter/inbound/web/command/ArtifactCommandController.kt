@@ -59,7 +59,8 @@ class ArtifactCommandController(
             sha256Digest = request.sha256Digest,
             registry = request.registry,
             reportedBy = request.reportedBy,
-            orgSlug = request.orgSlug
+            orgSlug = request.orgSlug,
+            tags = request.tags
         )
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(commandHandler.reportArtifact(command))

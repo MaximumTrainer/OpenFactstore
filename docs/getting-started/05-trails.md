@@ -9,7 +9,7 @@ Trails are uniquely identified within a Flow. Typically you use the Git commit S
 `FLOW_ID` is the flow you created in [Part 4](./04-flows.md). Keep the new trail's `id` as `TRAIL_ID`:
 
 ```bash
-TRAIL_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails" \
+TRAIL_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -78,13 +78,13 @@ You decide what constitutes a single Trail execution. Common patterns:
 ## List all Trails
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails" | jq length
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/trails" | jq length
 ```
 
 Filter by Flow:
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails?flowId=$FLOW_ID" | jq length
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/trails?flowId=$FLOW_ID" | jq length
 ```
 
 ## List Trails for a specific Flow
@@ -92,13 +92,13 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails?flo
 This one is paginated (`items`, `page`, `size`, `totalItems`, `totalPages`):
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows/$FLOW_ID/trails" | jq .totalItems
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows/$FLOW_ID/trails" | jq .totalItems
 ```
 
 ## Get a Trail by ID
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails/$TRAIL_ID" | jq .
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/trails/$TRAIL_ID" | jq .
 ```
 
 ## Using the Trail ID in subsequent steps

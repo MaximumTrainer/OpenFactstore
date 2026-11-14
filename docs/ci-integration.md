@@ -78,7 +78,7 @@ jobs:
 
       - name: Create Factstore trail
         run: |
-          curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v1/trails" \
+          curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v2/trails" \
             -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -H "X-Factstore-CI-Context: github-actions" \
@@ -283,7 +283,7 @@ factstore-trail:
   image: curlimages/curl:latest
   script:
     - |
-      curl -s -X POST "$FACTSTORE_BASE_URL/api/v1/trails" \
+      curl -s -X POST "$FACTSTORE_BASE_URL/api/v2/trails" \
         -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
         -H "Content-Type: application/json" \
         -H "X-Factstore-CI-Context: gitlab-ci" \
@@ -353,7 +353,7 @@ jobs:
       - run:
           name: Create Factstore trail
           command: |
-            curl -s -X POST "$FACTSTORE_BASE_URL/api/v1/trails" \
+            curl -s -X POST "$FACTSTORE_BASE_URL/api/v2/trails" \
               -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
               -H "Content-Type: application/json" \
               -H "X-Factstore-CI-Context: circleci" \
@@ -394,7 +394,7 @@ steps:
     inputs:
       targetType: inline
       script: |
-        curl -s -X POST "$FACTSTORE_BASE_URL/api/v1/trails" \
+        curl -s -X POST "$FACTSTORE_BASE_URL/api/v2/trails" \
           -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
           -H "Content-Type: application/json" \
           -H "X-Factstore-CI-Context: azure-devops" \
