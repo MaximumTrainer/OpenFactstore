@@ -34,7 +34,7 @@ class ArtifactCommandController(
     @Operation(summary = "Report an artifact for a trail")
     fun reportArtifact(
         @PathVariable trailId: UUID,
-        @RequestBody request: ReportArtifactRequest,
+        @jakarta.validation.Valid @RequestBody request: ReportArtifactRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {
         if (DryRunContext.isDryRun(httpRequest)) {
@@ -59,7 +59,8 @@ class ArtifactCommandController(
             sha256Digest = request.sha256Digest,
             registry = request.registry,
             reportedBy = request.reportedBy,
-            orgSlug = request.orgSlug
+            orgSlug = request.orgSlug,
+            tags = request.tags
         )
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(commandHandler.reportArtifact(command))

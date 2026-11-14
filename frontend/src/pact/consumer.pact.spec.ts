@@ -33,11 +33,11 @@ const newProvider = () =>
   })
 
 describe('Factstore API Contract – Flows', () => {
-  test('GET /api/v1/flows returns a list of flows', async () => {
+  test('GET /api/v2/flows returns a list of flows', async () => {
     await newProvider()
       .given('flows exist')
       .uponReceiving('a GET request for all flows')
-      .withRequest({ method: 'GET', path: '/api/v1/flows' })
+      .withRequest({ method: 'GET', path: '/api/v2/flows' })
       .willRespondWith({
         status: 200,
         body: eachLike({
@@ -51,7 +51,7 @@ describe('Factstore API Contract – Flows', () => {
         }),
       })
       .executeTest(async (mockServer) => {
-        const response = await axios.get(`${mockServer.url}/api/v1/flows`)
+        const response = await axios.get(`${mockServer.url}/api/v2/flows`)
         expect(response.status).toBe(200)
         expect(Array.isArray(response.data)).toBe(true)
         expect(response.data[0]).toHaveProperty('id')
@@ -60,7 +60,7 @@ describe('Factstore API Contract – Flows', () => {
       })
   })
 
-  test('POST /api/v1/flows creates a flow', async () => {
+  test('POST /api/v2/flows creates a flow', async () => {
     const requestBody = {
       name: 'new-flow',
       description: 'A new flow',
@@ -73,31 +73,26 @@ describe('Factstore API Contract – Flows', () => {
       .uponReceiving('a POST request to create a flow')
       .withRequest({
         method: 'POST',
-        path: '/api/v1/flows',
+        path: '/api/v2/flows',
         body: like(requestBody),
       })
       .willRespondWith({
         status: 201,
+        // A v2 write answers with the id and what happened (#250: the v1 twin is deprecated).
         body: like({
           id: like('7f3f2b99-0000-0000-0000-000000000002'),
-          name: like('new-flow'),
-          description: like('A new flow'),
-          requiredAttestationTypes: like(['junit', 'snyk']),
-          tags: like({ 'risk-level': 'high' }),
-          createdAt: like('2024-01-01T00:00:00Z'),
-          updatedAt: like('2024-01-01T00:00:00Z'),
+          status: like('created'),
         }),
       })
       .executeTest(async (mockServer) => {
         const response = await axios.post(
-          `${mockServer.url}/api/v1/flows`,
+          `${mockServer.url}/api/v2/flows`,
           requestBody,
           { headers: { 'Content-Type': 'application/json' } }
         )
         expect(response.status).toBe(201)
         expect(response.data).toHaveProperty('id')
-        expect(response.data.name).toBe('new-flow')
-        expect(response.data).toHaveProperty('tags')
+        expect(response.data.status).toBe('created')
       })
   })
 })

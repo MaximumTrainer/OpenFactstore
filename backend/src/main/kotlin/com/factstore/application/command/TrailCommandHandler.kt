@@ -57,6 +57,7 @@ class TrailCommandHandler(
             externalId = command.externalId?.takeIf { it.isNotBlank() },
             createdAt = time.now()
         )
+        trail.tags = command.tags.orEmpty().toMutableMap()
         val saved = trailRepository.save(trail)
         eventAppender.append(DomainEvent.TrailCreated(
             aggregateId = saved.id,
@@ -72,7 +73,8 @@ class TrailCommandHandler(
             templateYaml = saved.templateYaml,
             buildUrl = saved.buildUrl,
             name = saved.name,
-            externalId = saved.externalId
+            externalId = saved.externalId,
+            tags = saved.tags.toMap()
         ))
         log.info("Created trail: ${saved.id} for flow: ${saved.flowId}")
         return CommandResult(id = saved.id, status = "created")

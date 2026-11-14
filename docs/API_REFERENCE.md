@@ -11,7 +11,7 @@ Interactive documentation is also available at **[http://localhost:8080/swagger-
 Authentication is enforced by default: every request needs a credential, or it is refused with `401` and `WWW-Authenticate: Bearer`. API clients send an API key as a bearer token:
 
 ```bash
-curl -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows"
+curl -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows"
 ```
 
 `scripts/bootstrap-env.sh` writes a bootstrap admin key to `.env` for first use. Service accounts, scopes, rotation and the other accepted schemes are in [api-authorisation.md](./api-authorisation.md); signing in to the web UI is in [authentication.md](./authentication.md).
@@ -34,7 +34,7 @@ The API is served by two services (see the [user guide's architecture](./user-gu
 | `Content-Type: application/json` | Required on all POST/PUT requests with a JSON body |
 | `Authorization: Bearer <key>` | API key or session token; required on every request |
 | `X-Factstore-Dry-Run: true` | Preview the result of any mutating request without persisting data |
-| `X-Factstore-CI-Context: <system>` | On `POST /api/v1/trails` — auto-populate Git fields from CI environment variables. Values: `github-actions`, `gitlab-ci`, `jenkins`, `circleci`, `azure-devops` |
+| `X-Factstore-CI-Context: <system>` | On `POST /api/v2/trails` — auto-populate Git fields from CI environment variables. Values: `github-actions`, `gitlab-ci`, `jenkins`, `circleci`, `azure-devops` |
 
 ---
 
@@ -68,22 +68,43 @@ A `5xx` body never contains the exception's own text, class names or SQL; those 
 
 ---
 
+## Deprecated endpoints
+
+An endpoint that has been superseded keeps working until its sunset date, and every response from
+it carries three headers:
+
+| Header | Example | Meaning |
+|---|---|---|
+| `Deprecation` | `@1794614400` | When it was deprecated, as a Unix time ([RFC 9745](https://www.rfc-editor.org/rfc/rfc9745)) |
+| `Sunset` | `Fri, 14 May 2027 00:00:00 GMT` | After this date it may be removed ([RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)) |
+| `Link` | `</api/v2/flows/3f…>; rel="successor-version"` | The endpoint to call instead |
+
+The OpenAPI document marks these operations `deprecated: true`. The 22 `/api/v1` endpoints that have
+a `/api/v2` twin with the same method and path are deprecated, with a sunset of 2027-05-14; the
+tables below list their `/api/v2` paths. [API deprecations](upgrading/api-deprecations.md) says how to
+move, and the [endpoint inventory](api-inventory.md) lists every endpoint and each duplicate decision.
+
+The v2 lists `GET /api/v2/flows`, `GET /api/v2/trails`, `GET /api/v2/flows/{flowId}/trails` and
+`GET /api/v2/trails/{trailId}/attestations` return a JSON array. They take optional `page` (from 0)
+and `size` (1–500) parameters; when either is given, one page is returned and `X-Total-Count`
+holds the full count. The flow and trail lists also take `includeArchived` (default `false`).
+
 ## Endpoints by Resource
 
 ### Flows
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/flows` | Create a new flow |
-| `GET` | `/api/v1/flows` | List flows (query param: `includeArchived`, default `false`) |
-| `GET` | `/api/v1/flows/{id}` | Get flow by ID |
-| `PUT` | `/api/v1/flows/{id}` | Update a flow |
+| `POST` | `/api/v2/flows` | Create a new flow (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/flows` | List flows (query param: `includeArchived`, default `false`) (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/flows/{id}` | Get flow by ID (the `/api/v1` path is deprecated) |
+| `PUT` | `/api/v2/flows/{id}` | Update a flow (the `/api/v1` path is deprecated) |
 | `POST` | `/api/v1/flows/{id}/rename` | Rename a flow, preserving the old name for forwarding |
 | `POST` | `/api/v1/flows/{id}/archive` | Archive a flow (soft delete) |
 | `POST` | `/api/v1/flows/{id}/unarchive` | Unarchive a flow |
-| `DELETE` | `/api/v1/flows/{id}` | Delete a flow |
+| `DELETE` | `/api/v2/flows/{id}` | Delete a flow (the `/api/v1` path is deprecated) |
 | `GET` | `/api/v1/flows/{id}/impact` | How much existing evidence a change to this flow would affect |
-| `GET` | `/api/v1/flows/{id}/template` | Get flow template as YAML |
+| `GET` | `/api/v2/flows/{id}/template` | Get flow template as YAML (the `/api/v1` path is deprecated) |
 | `GET` | `/api/v1/flows/{id}/template-drift` | Whether the flow still matches the template it came from |
 | `POST` | `/api/v1/flows/{flowId}/security-thresholds` | Set security scan thresholds for a flow |
 | `GET` | `/api/v1/flows/{flowId}/security-thresholds` | Get security scan thresholds for a flow |
@@ -101,7 +122,7 @@ A `5xx` body never contains the exception's own text, class names or SQL; those 
 }
 ```
 
-**Update flow — `PUT /api/v1/flows/{id}`:**
+**Update flow — `PUT /api/v2/flows/{id}`:**
 
 Every field is optional; only what is sent is changed. An absent field is left alone — so an
 omitted `templateYaml` does *not* clear an existing template.
@@ -124,7 +145,7 @@ the actor and a before/after diff of exactly the fields that changed:
 
 | Event type | Written by |
 |---|---|
-| `FLOW_UPDATED` | `PUT /api/v1/flows/{id}` |
+| `FLOW_UPDATED` | `PUT /api/v2/flows/{id}` |
 | `FLOW_RENAMED` | `POST /api/v1/flows/{id}/rename` |
 | `FLOW_ARCHIVED` | `POST /api/v1/flows/{id}/archive` |
 | `FLOW_UNARCHIVED` | `POST /api/v1/flows/{id}/unarchive` |
@@ -164,12 +185,12 @@ the new definition on its next assertion. The web UI shows this as a warning on 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/trails` | Create (or join) a trail — supports `X-Factstore-CI-Context` header |
-| `GET` | `/api/v1/trails` | List trails (optional query param: `flowId`) |
-| `GET` | `/api/v1/trails/{id}` | Get trail by ID |
+| `POST` | `/api/v2/trails` | Create (or join) a trail — supports `X-Factstore-CI-Context` header (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/trails` | List trails (optional query param: `flowId`) (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/trails/{id}` | Get trail by ID (the `/api/v1` path is deprecated) |
 | `GET` | `/api/v1/trails/lookup` | Resolve a trail without its UUID |
-| `GET` | `/api/v1/flows/{flowId}/trails` | List trails for a specific flow |
-| `GET` | `/api/v1/trails/{id}/audit` | Get audit events for a trail |
+| `GET` | `/api/v2/flows/{flowId}/trails` | List trails for a specific flow (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/trails/{id}/audit` | Get audit events for a trail (the `/api/v1` path is deprecated) |
 | `POST` | `/api/v1/trails/{id}/assert` | Assert this pipeline execution — see [Compliance Assertion](#compliance-assertion) |
 | `POST` | `/api/v1/trails/{id}/archive` | Archive a trail (read-only, hidden from listings, reversible) |
 | `POST` | `/api/v1/trails/{id}/unarchive` | Restore an archived trail |
@@ -228,13 +249,13 @@ multi-pipeline example.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/trails/{trailId}/artifacts` | Report an artifact for a trail |
-| `GET` | `/api/v1/trails/{trailId}/artifacts` | List artifacts for a trail |
-| `GET` | `/api/v1/artifacts` | Find artifacts by digest (query param: `sha256`) |
-| `POST` | `/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance` | Record build provenance |
-| `GET` | `/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance` | Get build provenance |
-| `GET` | `/api/v1/artifacts/{sha256}/provenance` | Get provenance by SHA-256 digest |
-| `POST` | `/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance/verify` | Verify provenance signature |
+| `POST` | `/api/v2/trails/{trailId}/artifacts` | Report an artifact for a trail (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/trails/{trailId}/artifacts` | List artifacts for a trail (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/artifacts` | Find artifacts by digest (query param: `sha256`) (the `/api/v1` path is deprecated) |
+| `POST` | `/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance` | Record build provenance (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance` | Get build provenance (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/artifacts/{sha256}/provenance` | Get provenance by SHA-256 digest (the `/api/v1` path is deprecated) |
+| `POST` | `/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance/verify` | Verify provenance signature (the `/api/v1` path is deprecated) |
 
 **Report artifact — request body:**
 ```json
@@ -252,10 +273,10 @@ multi-pipeline example.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/trails/{trailId}/attestations` | Record an attestation |
-| `GET` | `/api/v1/trails/{trailId}/attestations` | List attestations for a trail |
-| `POST` | `/api/v1/trails/{trailId}/attestations/{id}/evidence` | Upload evidence file (multipart/form-data) |
-| `POST` | `/api/v1/trails/{trailId}/attestations/pull-request` | Record a PR attestation from SCM |
+| `POST` | `/api/v2/trails/{trailId}/attestations` | Record an attestation (the `/api/v1` path is deprecated) |
+| `GET` | `/api/v2/trails/{trailId}/attestations` | List attestations for a trail (the `/api/v1` path is deprecated) |
+| `POST` | `/api/v2/trails/{trailId}/attestations/{id}/evidence` | Upload evidence file (multipart/form-data) (the `/api/v1` path is deprecated) |
+| `POST` | `/api/v2/trails/{trailId}/attestations/pull-request` | Record a PR attestation from SCM (the `/api/v1` path is deprecated) |
 
 **Record attestation — request body:**
 ```json
@@ -265,7 +286,7 @@ multi-pipeline example.
 }
 ```
 
-The server decides the status wherever it can evaluate the evidence (#240): for `junit`, `snyk`, `sonar` and `jira` the uploaded evidence file decides and the attestation is `PENDING` until then; a custom type with a `jqExpression` is decided by the expression on `attestationData`. A `status` sent for those types is ignored (a claimed `FAILED` is kept). For any other type the sent `status` is recorded and the response has `"selfAsserted": true`. The same applies to `POST /api/v1/evidence/collect`, whose `passed` is a claim; each result reports the stored `status` and `selfAsserted`.
+The server decides the status wherever it can evaluate the evidence (#240): for `junit`, `snyk`, `sonar` and `jira` the uploaded evidence file decides and the attestation is `PENDING` until then; a custom type with a `jqExpression` is decided by the expression on `attestationData`. A `status` sent for those types is ignored (a claimed `FAILED` is kept). For any other type the sent `status` is recorded with `"selfAsserted": true`, which the attestation shows in `GET /api/v2/trails/{trailId}/attestations` (and in the deprecated `/api/v1` create response). The same applies to `POST /api/v1/evidence/collect`, whose `passed` is a claim; each result reports the stored `status` and `selfAsserted`.
 
 Assert responses list self-asserted evidence in `selfAssertedAttestationTypes`, and evidence the flow refuses in `rejectedSelfAssertedAttestationTypes`; gate decisions use `self_asserted` and `rejected_self_asserted`. A flow refuses self-asserted evidence with `rejectSelfAsserted: true` (create or update), except for the types in `acceptedSelfAssertedTypes`.
 
@@ -351,7 +372,7 @@ silently close the gaps where nothing shipped.
 Two categories: `SERVICE_TYPE` templates are the baseline gates for a shape of service
 (`service-public-api`, `service-internal`, `service-batch-job`, `service-frontend`); `FRAMEWORK`
 templates are regulatory (`slsa-level-2`, `pci-dss-v4`, `sox-itgc`, `gdpr-art32`). A flow commonly
-wants one of each — `POST /api/v1/flows` accepts `templateIds` and copies the merged template onto
+wants one of each — `POST /api/v2/flows` accepts `templateIds` and copies the merged template onto
 the flow.
 
 Full guide, including the composition and drift semantics and how to add templates:
@@ -369,7 +390,7 @@ endpoint changes or removes an attestation's status or its evidence. Lawful eras
 does the same and returns the trail) keeps the trail and everything attached to it. An archived
 trail:
 
-- is hidden by `GET /api/v1/trails` and `GET /api/v1/flows/{flowId}/trails` unless `includeArchived=true`;
+- is hidden by `GET /api/v2/trails` and `GET /api/v2/flows/{flowId}/trails` unless `includeArchived=true`;
 - is read-only: recording an attestation or an artifact against it, or uploading evidence to one of
   its attestations, is refused with `409`, on both `/api/v1` and `/api/v2`;
 - comes back with `POST /api/v1/trails/{id}/unarchive`.
@@ -406,7 +427,7 @@ select every trail in the system. `dryRun` defaults to `true`; a dry run returns
 `400`. Every archive is written to the audit log as `TRAIL_ARCHIVED` or `TRAIL_UNARCHIVED`, with the
 actor.
 
-**Deleting a flow** (`DELETE /api/v1/flows/{id}`, and `/api/v2/flows/{id}`) is refused with `409`
+**Deleting a flow** (`DELETE /api/v2/flows/{id}`, or the deprecated `/api/v1/flows/{id}`) is refused with `409`
 while trails are attached, whatever `force` says, because it would orphan the evidence recorded
 against it. Archive the flow to retire it. A flow with no trails can still be deleted; that is
 audited as `FLOW_DELETED`.

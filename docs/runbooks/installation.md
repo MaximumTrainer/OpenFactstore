@@ -51,7 +51,7 @@ The server starts on **http://localhost:8080**.
 Verify the API is responding:
 
 ```bash
-curl -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v1/flows
+curl -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v2/flows
 # Expected: []
 ```
 
@@ -323,7 +323,7 @@ Store `API_KEY` in your secret manager (GitHub Secrets, AWS Secrets Manager, Has
 ### 5c. Create the compliance flow
 
 ```bash
-FLOW=$(curl -sf -X POST "$BASE_URL/api/v1/flows" \
+FLOW=$(curl -sf -X POST "$BASE_URL/api/v2/flows" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $API_KEY" \
   -d '{
@@ -353,7 +353,7 @@ export FLOW_ID=<your-flow-uuid>
 curl -sf "$BASE_URL/actuator/health" | jq .
 
 # 2. Create a trail
-TRAIL=$(curl -sf -X POST "$BASE_URL/api/v1/trails" \
+TRAIL=$(curl -sf -X POST "$BASE_URL/api/v2/trails" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $API_KEY" \
   -d "{\"flowId\": \"$FLOW_ID\", \"gitCommitSha\": \"abc123\", \"gitBranch\": \"main\", \"gitAuthor\": \"smoke-test\", \"gitAuthorEmail\": \"smoke-test@example.com\"}")
@@ -361,13 +361,13 @@ TRAIL_ID=$(echo "$TRAIL" | jq -r '.id')
 echo "Trail: $TRAIL_ID"
 
 # 3. Record an attestation
-curl -sf -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+curl -sf -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $API_KEY" \
   -d '{"type": "unit-tests", "status": "PASSED", "details": "Smoke test attestation"}'
 
 # 4. Retrieve the trail and verify
-curl -sf "$BASE_URL/api/v1/trails/$TRAIL_ID" \
+curl -sf "$BASE_URL/api/v2/trails/$TRAIL_ID" \
   -H "Authorization: Bearer $API_KEY" | jq .
 
 echo "✅ Smoke test complete"

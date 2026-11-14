@@ -16,3 +16,16 @@ GET /api/v2/trails/{id}/audit removed the enum constraint from the `items/eventT
 # removed; it is not in the published spec because that controller only loads with Vault.
 DELETE /api/v1/trails/{id} removed the required property `cascade` from the response with the `200` status
 DELETE /api/v1/trails/{id} removed the required property `trailId` from the response with the `200` status
+
+# #250: the /api/v1 twins are deprecated in favour of /api/v2, so v2 now validates its input as v1
+# always has. Each bound below is the one the v1 endpoint already enforced; a client that worked
+# against v1 is unaffected.
+POST /api/v2/flows the `description` request property's maxLength was set to `2048`
+POST /api/v2/flows the `name` request property's maxLength was set to `255`
+POST /api/v2/trails the `gitAuthorEmail` request property's maxLength was set to `255`
+POST /api/v2/trails the `gitAuthor` request property's minLength was set to `1`
+POST /api/v2/trails added the pattern `^[^\s@]+@[^\s@]+\.[^\s@.]+$` to the request property `gitAuthorEmail`
+POST /api/v2/trails/{trailId}/artifacts the `imageName` request property's minLength was set to `1`
+POST /api/v2/trails/{trailId}/artifacts the `imageTag` request property's minLength was set to `1`
+POST /api/v2/trails/{trailId}/artifacts the `sha256Digest` request property's minLength was set to `1`
+POST /api/v2/trails/{trailId}/artifacts added the pattern `sha256:[a-fA-F0-9]{64}` to the request property `sha256Digest`

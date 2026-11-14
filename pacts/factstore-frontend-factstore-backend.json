@@ -12,7 +12,7 @@
       ],
       "request": {
         "method": "GET",
-        "path": "/api/v1/flows"
+        "path": "/api/v2/flows"
       },
       "response": {
         "body": [
@@ -243,22 +243,12 @@
           }
         },
         "method": "POST",
-        "path": "/api/v1/flows"
+        "path": "/api/v2/flows"
       },
       "response": {
         "body": {
-          "createdAt": "2024-01-01T00:00:00Z",
-          "description": "A new flow",
           "id": "7f3f2b99-0000-0000-0000-000000000002",
-          "name": "new-flow",
-          "requiredAttestationTypes": [
-            "junit",
-            "snyk"
-          ],
-          "tags": {
-            "risk-level": "high"
-          },
-          "updatedAt": "2024-01-01T00:00:00Z"
+          "status": "created"
         },
         "headers": {
           "Content-Type": "application/json"
@@ -266,22 +256,6 @@
         "matchingRules": {
           "body": {
             "$": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.createdAt": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.description": {
               "combine": "AND",
               "matchers": [
                 {
@@ -297,31 +271,7 @@
                 }
               ]
             },
-            "$.name": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.requiredAttestationTypes": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.tags": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.updatedAt": {
+            "$.status": {
               "combine": "AND",
               "matchers": [
                 {

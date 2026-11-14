@@ -1,0 +1,338 @@
+{
+  "since": "2026-11-14",
+  "sunset": "2027-05-14",
+  "groups": [
+    {
+      "id": "get-artifacts",
+      "operations": [
+        "GET /api/v1/artifacts",
+        "GET /api/v2/artifacts"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/artifacts",
+      "deprecate": [
+        "GET /api/v1/artifacts"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "get-artifacts-sha256-provenance",
+      "operations": [
+        "GET /api/v1/artifacts/{sha256}/provenance",
+        "GET /api/v2/artifacts/{sha256}/provenance"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/artifacts/{sha256}/provenance",
+      "deprecate": [
+        "GET /api/v1/artifacts/{sha256}/provenance"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "get-flows",
+      "operations": [
+        "GET /api/v1/flows",
+        "GET /api/v2/flows"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/flows",
+      "deprecate": [
+        "GET /api/v1/flows"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "post-flows",
+      "operations": [
+        "POST /api/v1/flows",
+        "POST /api/v2/flows"
+      ],
+      "decision": "deprecate",
+      "keep": "POST /api/v2/flows",
+      "deprecate": [
+        "POST /api/v1/flows"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2.",
+      "migration": "v2 returns `{id, status}` instead of the flow; read it back with `GET /api/v2/flows/{id}`."
+    },
+    {
+      "id": "get-flows-flowid-trails",
+      "operations": [
+        "GET /api/v1/flows/{flowId}/trails",
+        "GET /api/v2/flows/{flowId}/trails"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/flows/{flowId}/trails",
+      "deprecate": [
+        "GET /api/v1/flows/{flowId}/trails"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2.",
+      "migration": "v1 returns a page object; v2 returns a JSON array and, with `page`/`size`, the total in `X-Total-Count`."
+    },
+    {
+      "id": "delete-flows-id",
+      "operations": [
+        "DELETE /api/v1/flows/{id}",
+        "DELETE /api/v2/flows/{id}"
+      ],
+      "decision": "deprecate",
+      "keep": "DELETE /api/v2/flows/{id}",
+      "deprecate": [
+        "DELETE /api/v1/flows/{id}"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "get-flows-id",
+      "operations": [
+        "GET /api/v1/flows/{id}",
+        "GET /api/v2/flows/{id}"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/flows/{id}",
+      "deprecate": [
+        "GET /api/v1/flows/{id}"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "put-flows-id",
+      "operations": [
+        "PUT /api/v1/flows/{id}",
+        "PUT /api/v2/flows/{id}"
+      ],
+      "decision": "deprecate",
+      "keep": "PUT /api/v2/flows/{id}",
+      "deprecate": [
+        "PUT /api/v1/flows/{id}"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2.",
+      "migration": "v2 returns `{id, status}` instead of the flow; read it back with `GET /api/v2/flows/{id}`."
+    },
+    {
+      "id": "get-flows-id-template",
+      "operations": [
+        "GET /api/v1/flows/{id}/template",
+        "GET /api/v2/flows/{id}/template"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/flows/{id}/template",
+      "deprecate": [
+        "GET /api/v1/flows/{id}/template"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "get-trails",
+      "operations": [
+        "GET /api/v1/trails",
+        "GET /api/v2/trails"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/trails",
+      "deprecate": [
+        "GET /api/v1/trails"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "post-trails",
+      "operations": [
+        "POST /api/v1/trails",
+        "POST /api/v2/trails"
+      ],
+      "decision": "deprecate",
+      "keep": "POST /api/v2/trails",
+      "deprecate": [
+        "POST /api/v1/trails"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2.",
+      "migration": "v2 returns `{id, status}` instead of the trail; read it back with `GET /api/v2/trails/{id}`."
+    },
+    {
+      "id": "get-trails-id",
+      "operations": [
+        "GET /api/v1/trails/{id}",
+        "GET /api/v2/trails/{id}"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/trails/{id}",
+      "deprecate": [
+        "GET /api/v1/trails/{id}"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "get-trails-id-audit",
+      "operations": [
+        "GET /api/v1/trails/{id}/audit",
+        "GET /api/v2/trails/{id}/audit"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/trails/{id}/audit",
+      "deprecate": [
+        "GET /api/v1/trails/{id}/audit"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "get-trails-trailid-artifacts",
+      "operations": [
+        "GET /api/v1/trails/{trailId}/artifacts",
+        "GET /api/v2/trails/{trailId}/artifacts"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/trails/{trailId}/artifacts",
+      "deprecate": [
+        "GET /api/v1/trails/{trailId}/artifacts"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "post-trails-trailid-artifacts",
+      "operations": [
+        "POST /api/v1/trails/{trailId}/artifacts",
+        "POST /api/v2/trails/{trailId}/artifacts"
+      ],
+      "decision": "deprecate",
+      "keep": "POST /api/v2/trails/{trailId}/artifacts",
+      "deprecate": [
+        "POST /api/v1/trails/{trailId}/artifacts"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2.",
+      "migration": "v2 returns `{id, status}` instead of the artifact."
+    },
+    {
+      "id": "get-trails-trailid-artifacts-artifactid-provenance",
+      "operations": [
+        "GET /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance",
+        "GET /api/v2/trails/{trailId}/artifacts/{artifactId}/provenance"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/trails/{trailId}/artifacts/{artifactId}/provenance",
+      "deprecate": [
+        "GET /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "post-trails-trailid-artifacts-artifactid-provenance",
+      "operations": [
+        "POST /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance",
+        "POST /api/v2/trails/{trailId}/artifacts/{artifactId}/provenance"
+      ],
+      "decision": "deprecate",
+      "keep": "POST /api/v2/trails/{trailId}/artifacts/{artifactId}/provenance",
+      "deprecate": [
+        "POST /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "post-trails-trailid-artifacts-artifactid-provenance-verify",
+      "operations": [
+        "POST /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance/verify",
+        "POST /api/v2/trails/{trailId}/artifacts/{artifactId}/provenance/verify"
+      ],
+      "decision": "deprecate",
+      "keep": "POST /api/v2/trails/{trailId}/artifacts/{artifactId}/provenance/verify",
+      "deprecate": [
+        "POST /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance/verify"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "get-trails-trailid-attestations",
+      "operations": [
+        "GET /api/v1/trails/{trailId}/attestations",
+        "GET /api/v2/trails/{trailId}/attestations"
+      ],
+      "decision": "deprecate",
+      "keep": "GET /api/v2/trails/{trailId}/attestations",
+      "deprecate": [
+        "GET /api/v1/trails/{trailId}/attestations"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2.",
+      "migration": "v1 returns a page object; v2 returns a JSON array and, with `page`/`size`, the total in `X-Total-Count`."
+    },
+    {
+      "id": "post-trails-trailid-attestations",
+      "operations": [
+        "POST /api/v1/trails/{trailId}/attestations",
+        "POST /api/v2/trails/{trailId}/attestations"
+      ],
+      "decision": "deprecate",
+      "keep": "POST /api/v2/trails/{trailId}/attestations",
+      "deprecate": [
+        "POST /api/v1/trails/{trailId}/attestations"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2.",
+      "migration": "v2 returns `{id, status}` instead of the attestation."
+    },
+    {
+      "id": "post-trails-trailid-attestations-pull-request",
+      "operations": [
+        "POST /api/v1/trails/{trailId}/attestations/pull-request",
+        "POST /api/v2/trails/{trailId}/attestations/pull-request"
+      ],
+      "decision": "deprecate",
+      "keep": "POST /api/v2/trails/{trailId}/attestations/pull-request",
+      "deprecate": [
+        "POST /api/v1/trails/{trailId}/attestations/pull-request"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2."
+    },
+    {
+      "id": "post-trails-trailid-attestations-attestationid-evidence",
+      "operations": [
+        "POST /api/v1/trails/{trailId}/attestations/{attestationId}/evidence",
+        "POST /api/v2/trails/{trailId}/attestations/{attestationId}/evidence"
+      ],
+      "decision": "deprecate",
+      "keep": "POST /api/v2/trails/{trailId}/attestations/{attestationId}/evidence",
+      "deprecate": [
+        "POST /api/v1/trails/{trailId}/attestations/{attestationId}/evidence"
+      ],
+      "reason": "Same method and path on v1 and v2. v2 is the command/query API that appends to the event log and feeds the query service's projections; v1 writes do not. Decided on #250 to keep v2.",
+      "migration": "v2 returns `{id, status}`; the file's hash, name and size are on the attestation (`GET /api/v2/trails/{trailId}/attestations`)."
+    },
+    {
+      "id": "assert",
+      "operations": [
+        "POST /api/v1/assert",
+        "POST /api/v1/trails/{trailId}/assert"
+      ],
+      "decision": "keep",
+      "reason": "Different questions: `/assert` judges an artifact digest against a flow (latest evidence for that digest); `/trails/{trailId}/assert` judges one pipeline run. Neither is a subset of the other."
+    },
+    {
+      "id": "gate-evaluation",
+      "operations": [
+        "POST /api/v1/gate/evaluate",
+        "POST /api/v1/queries/gates/evaluate"
+      ],
+      "decision": "keep",
+      "reason": "`/gate/evaluate` applies deployment policies attached to an environment (used by `factstore gate` and the policies tutorial). `/queries/gates/evaluate` evaluates the gate with risk-tier fallback when the server cannot answer (docs/gates.md). Candidate to merge once deployment policies move onto the gate engine."
+    },
+    {
+      "id": "policy-engines",
+      "operations": [
+        "GET /api/v1/policies",
+        "GET /api/v1/deployment-policies",
+        "GET /api/v1/opa/bundles"
+      ],
+      "decision": "keep",
+      "reason": "Three policy models with different inputs: attestation requirement policies, environment deployment policies, and OPA/Rego bundles. Consolidating them is a product decision outside #250."
+    },
+    {
+      "id": "compliance-reporting",
+      "operations": [
+        "GET /api/v1/metrics/compliance",
+        "GET /api/v1/reports/compliance",
+        "GET /api/v1/dashboard/stats"
+      ],
+      "decision": "keep",
+      "reason": "Real overlap: `/dashboard/stats` and `/metrics/compliance` both return trail compliance totals (metrics adds attestation counts), while `/reports/compliance` breaks the same figures down per flow for auditors. Kept for this release because the web dashboard reads `/dashboard/stats`; next candidate for deprecation once the dashboard reads `/metrics/compliance`."
+    }
+  ]
+}

@@ -33,11 +33,11 @@ const newProvider = () =>
   })
 
 describe('Factstore CLI API Contract – Flows', () => {
-  test('GET /api/v1/flows returns available flows for selection', async () => {
+  test('GET /api/v2/flows returns available flows for selection', async () => {
     await newProvider()
       .given('flows exist')
       .uponReceiving('a CLI GET request for all flows')
-      .withRequest({ method: 'GET', path: '/api/v1/flows' })
+      .withRequest({ method: 'GET', path: '/api/v2/flows' })
       .willRespondWith({
         status: 200,
         body: eachLike({
@@ -51,7 +51,7 @@ describe('Factstore CLI API Contract – Flows', () => {
         }),
       })
       .executeTest(async (mockServer) => {
-        const response = await axios.get(`${mockServer.url}/api/v1/flows`)
+        const response = await axios.get(`${mockServer.url}/api/v2/flows`)
         expect(response.status).toBe(200)
         expect(Array.isArray(response.data)).toBe(true)
         expect(response.data[0]).toHaveProperty('id')
@@ -101,7 +101,7 @@ describe('Factstore CLI API Contract – Assert', () => {
       })
   })
 
-  test('POST /api/v1/trails creates a new trail', async () => {
+  test('POST /api/v2/trails creates a new trail', async () => {
     const requestBody = {
       flowId: '7f3f2b99-0000-0000-0000-000000000001',
       gitCommitSha: 'abc123def456',
@@ -115,33 +115,26 @@ describe('Factstore CLI API Contract – Assert', () => {
       .uponReceiving('a CLI POST request to create a trail')
       .withRequest({
         method: 'POST',
-        path: '/api/v1/trails',
+        path: '/api/v2/trails',
         body: like(requestBody),
       })
       .willRespondWith({
         status: 201,
+        // A v2 write answers with the id and what happened (#250: the v1 twin is deprecated).
         body: like({
           id: like('8a4e3c00-0000-0000-0000-000000000001'),
-          flowId: like('7f3f2b99-0000-0000-0000-000000000001'),
-          gitCommitSha: like('abc123def456'),
-          gitBranch: like('main'),
-          gitAuthor: like('developer'),
-          gitAuthorEmail: like('dev@example.com'),
-          status: like('PENDING'),
-          createdAt: like('2024-01-01T00:00:00Z'),
-          updatedAt: like('2024-01-01T00:00:00Z'),
+          status: like('created'),
         }),
       })
       .executeTest(async (mockServer) => {
         const response = await axios.post(
-          `${mockServer.url}/api/v1/trails`,
+          `${mockServer.url}/api/v2/trails`,
           requestBody,
           { headers: { 'Content-Type': 'application/json' } }
         )
         expect(response.status).toBe(201)
         expect(response.data).toHaveProperty('id')
         expect(response.data).toHaveProperty('status')
-        expect(response.data.flowId).toBe(requestBody.flowId)
       })
   })
 })

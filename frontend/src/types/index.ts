@@ -943,3 +943,10 @@ export interface LegalHold {
   releasedAt?: string | null
   active: boolean
 }
+
+/** What a `/api/v2` write answers with (#250): the id of the record and what happened to it. */
+export interface CommandResult {
+  id: string
+  status: string
+  timestamp?: string
+}

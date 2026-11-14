@@ -34,13 +34,9 @@ class AttestationController(
 ) {
 
     @PreAuthorize("@authz.has('attestations:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/attestations")
     @PostMapping
-    @Operation(
-        summary = "Record an attestation for a trail",
-        deprecated = true,
-        description = "⚠️ Deprecated: use the v2 endpoint " +
-            "POST /api/v2/attestations/{org}/{flow}/{trail}/{artifactFingerprint} instead."
-    )
+    @Operation(summary = "Record an attestation for a trail")
     fun recordAttestation(
         @PathVariable trailId: UUID,
         @Valid @RequestBody request: CreateAttestationRequest,
@@ -74,6 +70,7 @@ class AttestationController(
     }
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/attestations")
     @GetMapping
     @Operation(summary = "List attestations for a trail")
     fun listAttestations(
@@ -84,6 +81,7 @@ class AttestationController(
         ResponseEntity.ok(attestationService.listAttestations(trailId, page, size))
 
     @PreAuthorize("@authz.has('evidence:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/attestations/{attestationId}/evidence")
     @PostMapping("/{attestationId}/evidence", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     @Operation(summary = "Upload evidence file for an attestation")
     fun uploadEvidence(
@@ -99,6 +97,7 @@ class AttestationController(
     }
 
     @PreAuthorize("@authz.has('attestations:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/attestations/pull-request")
     @PostMapping("/pull-request")
     @Operation(summary = "Record a pull request attestation by querying the SCM provider")
     fun attestPullRequest(

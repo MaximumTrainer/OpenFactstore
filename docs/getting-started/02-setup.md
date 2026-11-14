@@ -40,7 +40,7 @@ export FACTSTORE_TOKEN="$(grep '^SECURITY_BOOTSTRAP_API_KEY=' .env | cut -d= -f2
 ## Verifying the server is running
 
 ```bash
-curl -s "$BASE_URL/api/v1/flows" -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq length
+curl -s "$BASE_URL/api/v2/flows" -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq length
 # A number: 0 on a fresh instance
 ```
 

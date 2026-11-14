@@ -3,7 +3,7 @@
 Authentication is enforced: every API request must carry a credential, or it is refused with `401`. API clients send an **API key** as a bearer token in the `Authorization` header:
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows" | jq length
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows" | jq length
 ```
 
 Until now `FACTSTORE_TOKEN` has been the bootstrap admin key from `.env` ([Part 2](./02-setup.md)). It exists for first use: create the identities and keys you need with it, then revoke it. People sign in to the web UI instead; see [docs/authentication.md](../authentication.md).
@@ -49,7 +49,7 @@ CI_KEY=$(curl -s -X POST "$BASE_URL/api/v1/api-keys" \
 ### Use the key
 
 ```bash
-curl -s -H "Authorization: Bearer $CI_KEY" "$BASE_URL/api/v1/flows" | jq length
+curl -s -H "Authorization: Bearer $CI_KEY" "$BASE_URL/api/v2/flows" | jq length
 ```
 
 ### List service accounts

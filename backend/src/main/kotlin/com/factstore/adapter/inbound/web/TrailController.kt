@@ -34,6 +34,7 @@ class TrailController(
 ) {
 
     @PreAuthorize("@authz.has('trails:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails")
     @PostMapping("/api/v1/trails")
     @Operation(summary = "Create/begin a trail")
     fun createTrail(
@@ -89,6 +90,7 @@ class TrailController(
         ResponseEntity.ok(trailService.lookupTrail(flowId, externalId, name, gitCommitSha))
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails")
     @GetMapping("/api/v1/trails")
     @Operation(summary = "List trails, optionally filter by flowId; archived trails are hidden by default")
     fun listTrails(
@@ -98,12 +100,14 @@ class TrailController(
         ResponseEntity.ok(trailService.listTrails(flowId, includeArchived))
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{id}")
     @GetMapping("/api/v1/trails/{id}")
     @Operation(summary = "Get trail by ID")
     fun getTrail(@PathVariable id: UUID): ResponseEntity<TrailResponse> =
         ResponseEntity.ok(trailService.getTrail(id))
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/flows/{flowId}/trails")
     @GetMapping("/api/v1/flows/{flowId}/trails")
     @Operation(summary = "List trails for a flow; archived trails are hidden by default")
     fun listTrailsForFlow(
@@ -158,6 +162,7 @@ class TrailController(
         ResponseEntity.ok(trailCleanupService.cleanup(request))
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{id}/audit")
     @GetMapping("/api/v1/trails/{id}/audit")
     @Operation(summary = "Get audit events for a specific trail")
     fun getTrailAuditEvents(@PathVariable id: UUID): ResponseEntity<List<AuditEventResponse>> =
