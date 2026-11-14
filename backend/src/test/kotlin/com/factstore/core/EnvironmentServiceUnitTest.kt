@@ -193,17 +193,41 @@ class EnvironmentServiceUnitTest {
     }
 
     @Test
-    fun `delete environment removes it from storage`() {
+    fun `archiving an environment keeps it readable but hides it from the listing`() {
         val created = environmentService.createEnvironment(
             CreateEnvironmentRequest("del-env", EnvironmentType.GENERIC)
         )
-        environmentService.deleteEnvironment(created.id)
-        assertThrows<NotFoundException> { environmentService.getEnvironment(created.id) }
+        environmentService.archiveEnvironment(created.id)
+        assertNotNull(environmentService.getEnvironment(created.id).archivedAt)
+        assertTrue(environmentService.listEnvironments(0, 100).items.none { it.id == created.id })
+        assertTrue(environmentService.listEnvironments(0, 100, includeArchived = true).items.any { it.id == created.id })
     }
 
     @Test
-    fun `delete non-existent environment throws NotFoundException`() {
-        assertThrows<NotFoundException> { environmentService.deleteEnvironment(UUID.randomUUID()) }
+    fun `unarchiving an environment restores it`() {
+        val created = environmentService.createEnvironment(
+            CreateEnvironmentRequest("undel-env", EnvironmentType.GENERIC)
+        )
+        environmentService.archiveEnvironment(created.id)
+        environmentService.unarchiveEnvironment(created.id)
+        assertNull(environmentService.getEnvironment(created.id).archivedAt)
+        assertTrue(environmentService.listEnvironments(0, 100).items.any { it.id == created.id })
+    }
+
+    @Test
+    fun `an archived environment refuses new snapshots`() {
+        val created = environmentService.createEnvironment(
+            CreateEnvironmentRequest("arch-snap-env", EnvironmentType.GENERIC)
+        )
+        environmentService.archiveEnvironment(created.id)
+        assertThrows<ConflictException> {
+            environmentService.recordSnapshot(created.id, RecordSnapshotRequest(recordedBy = "ci"))
+        }
+    }
+
+    @Test
+    fun `archive non-existent environment throws NotFoundException`() {
+        assertThrows<NotFoundException> { environmentService.archiveEnvironment(UUID.randomUUID()) }
     }
 
     @Test

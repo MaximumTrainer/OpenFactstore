@@ -165,15 +165,6 @@ class VaultEvidenceServiceTest {
         }
     }
 
-    // ----- deleteEvidence tests -----
-
-    @Test
-    fun `deleteEvidence delegates soft-delete to secureStore`() {
-        service.deleteEvidence("trail", "abc-123", "approval")
-
-        verify(secureStore).deleteEvidence("trail", "abc-123", "approval")
-    }
-
     // ----- getHealth tests -----
 
     @Test
