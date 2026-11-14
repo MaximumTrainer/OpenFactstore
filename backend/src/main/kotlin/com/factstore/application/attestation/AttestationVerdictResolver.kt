@@ -29,14 +29,16 @@ class AttestationVerdictResolver(
 
     data class Verdict(val status: AttestationStatus, val selfAsserted: Boolean)
 
-    fun hasProcessor(type: String): Boolean = processors.any { it.typeName.equals(type, ignoreCase = true) }
+    private fun processorFor(type: String) = processors.firstOrNull { it.typeName.equals(type, ignoreCase = true) }
+
+    fun hasProcessor(type: String): Boolean = processorFor(type) != null
 
     /**
      * Lets the type's processor, if any, decide the attestation's status from uploaded evidence.
      * Returns true when a processor ran; the status is then the server's, never self-asserted.
      */
     fun applyEvidence(attestation: com.factstore.core.domain.Attestation, evidenceContent: ByteArray): Boolean {
-        val processor = processors.firstOrNull { it.typeName.equals(attestation.type, ignoreCase = true) } ?: return false
+        val processor = processorFor(attestation.type) ?: return false
         processor.process(evidenceContent, attestation)
         attestation.selfAsserted = false
         return true
@@ -44,10 +46,8 @@ class AttestationVerdictResolver(
 
     fun resolve(type: String, claimed: AttestationStatus, attestationData: String?): Verdict {
         if (hasProcessor(type)) {
+            // Its status is derived from uploaded evidence; only a claimed failure is kept.
             val status = if (claimed == AttestationStatus.FAILED) AttestationStatus.FAILED else AttestationStatus.PENDING
-            if (claimed == AttestationStatus.PASSED) {
-                log.info("Ignoring claimed PASSED for '{}': its status is derived from uploaded evidence", type)
-            }
             return Verdict(status, selfAsserted = false)
         }
         val jq = customTypes.findByName(type)?.jqExpression
