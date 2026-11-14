@@ -147,9 +147,9 @@ docker compose up --build
 | Command API (writes, and reads) | http://localhost:8080 |
 | Query API (reads) | http://localhost:8081 |
 | Swagger UI | http://localhost:8080/swagger-ui.html (spec at `/api-docs`; both need a credential, like the API) |
-| RabbitMQ management | http://localhost:15672 (guest / guest) |
+| RabbitMQ management | http://localhost:15672 (`RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` from `.env`) |
 | Prometheus | http://localhost:9090 |
-| Grafana | http://localhost:3000 (admin / `changeme`) |
+| Grafana | http://localhost:3000 (`GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD` from `.env`) |
 | HashiCorp Vault | http://localhost:8200 |
 | Web UI | http://localhost:8080 (built into the image); http://localhost:5173 with the dev server |
 
@@ -210,8 +210,9 @@ The backend reads these environment variables at startup. `docker-compose.yml` s
 | `VAULT_ENABLED` | `false` | Enable HashiCorp Vault for evidence storage |
 | `VAULT_ADDR` | `http://localhost:8200` | Vault address |
 | `VAULT_TOKEN` | *(required if enabled)* | Vault root/app token |
-| `SCM_ENCRYPTION_KEY` | `default-dev-key-32chars!!!!!!` | AES-256-GCM key for SCM token encryption. **Set to a strong random 32-char value in production.** |
-| `GF_SECURITY_ADMIN_PASSWORD` | `changeme` | Grafana admin password |
+| `SCM_ENCRYPTION_KEY` | *(none outside the `dev`/`local` profiles; set by `scripts/bootstrap-env.sh`)* | AES-256-GCM key for SCM tokens: base64 of exactly 32 random bytes (`openssl rand -base64 32`). The service refuses to start without a valid one |
+| `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` | *(none; set by `scripts/bootstrap-env.sh`)* | Message broker credentials; Compose refuses to start without them |
+| `GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD` | *(none; set by `scripts/bootstrap-env.sh`)* | Grafana admin login; Compose refuses to start without them |
 
 > 💡 **Pro-tip:** For production, set `DB_PASSWORD`, `VAULT_TOKEN` and the bootstrap keys via a secrets manager. Never commit them.
 
@@ -1124,7 +1125,7 @@ curl -s -X POST "$BASE_URL/api/v1/organisations/acme-corp/scm-integrations" \
   }' | jq .
 ```
 
-> 💡 **Pro-tip:** The token is encrypted at rest using AES-256-GCM. Set `SCM_ENCRYPTION_KEY` to a strong, random 32-character key in production. If Vault is enabled (`VAULT_ENABLED=true`), tokens are additionally stored in HashiCorp Vault.
+> 💡 **Pro-tip:** The token is encrypted at rest using AES-256-GCM. `SCM_ENCRYPTION_KEY` (base64 of 32 random bytes) is required outside the dev profile. If Vault is enabled (`VAULT_ENABLED=true`), tokens are additionally stored in HashiCorp Vault.
 
 **Step 2 — Record a PR attestation:**
 
@@ -1902,15 +1903,15 @@ curl -s -X POST "$BASE_URL/api/v1/api-keys" \
 |---------|-------------|---------------------------|
 | Relational data | H2 in-memory (unit tests) / PostgreSQL (dev/prod) | PostgreSQL 16 with encrypted volumes (e.g. AWS RDS with encryption-at-rest enabled) |
 | Evidence files | Local DB (Base64) | HashiCorp Vault (`VAULT_ENABLED=true`) |
-| SCM tokens | AES-256-GCM encrypted in PostgreSQL | Same — set `SCM_ENCRYPTION_KEY` to a strong random 32-char key + HashiCorp Vault for additional secret management |
+| SCM tokens | AES-256-GCM encrypted in PostgreSQL | Same — keep `SCM_ENCRYPTION_KEY` (base64 of 32 random bytes) in a secrets manager |
 
 > 💡 **Pro-tip:** Enable `VAULT_ENABLED=true` in production to store all evidence files and SCM tokens in HashiCorp Vault. The `vault` service is included in the Docker Compose file for local testing.
 
 ### SCM Token Storage
 
-When you register an SCM integration (GitHub, GitLab, Bitbucket), the token is **encrypted at rest using AES-256-GCM** before being stored in PostgreSQL. The encryption key is derived from the `SCM_ENCRYPTION_KEY` environment variable (padded or truncated to 32 bytes). **For production:**
+When you register an SCM integration (GitHub, GitLab, Bitbucket), the token is **encrypted at rest using AES-256-GCM** before being stored in PostgreSQL. The key is the `SCM_ENCRYPTION_KEY` environment variable: the base64 encoding of exactly 32 random bytes, used as is (never padded or truncated). Outside the `dev` and `local` profiles it has no default and the service refuses to start without a valid key. **For production:**
 
-1. Set `SCM_ENCRYPTION_KEY` to a strong, randomly generated 32-character key.
+1. Set `SCM_ENCRYPTION_KEY` to the output of `openssl rand -base64 32`, kept in a secrets manager. Tokens stored under an older key can be re-encrypted once; see [docs/security-hardening.md](./security-hardening.md#scm-token-key).
 2. Optionally set `VAULT_ENABLED=true` to back token storage with HashiCorp Vault.
 3. Consider a KMS-backed Vault auto-unseal for fully automated operations.
 
@@ -1965,7 +1966,7 @@ The `monitoring/dashboards/` directory contains four pre-built dashboards:
 | Deployment Gates | `deployment-gates.json` | Gate pass/block rates by environment |
 | Audit & Forensics | `audit-forensics.json` | Audit event volume and anomaly detection |
 
-Dashboards are auto-provisioned via `monitoring/provisioning/`. Open http://localhost:3000 and log in as `admin` / `changeme` (or the value of `GF_SECURITY_ADMIN_PASSWORD`).
+Dashboards are auto-provisioned via `monitoring/provisioning/`. Open http://localhost:3000 and log in with `GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD` from `.env`.
 
 ---
 

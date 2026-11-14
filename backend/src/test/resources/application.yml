@@ -43,6 +43,9 @@ sso:
     issuer: openfactstore-test
 
 factstore:
+  # A test-only SCM token key (#242): the suite runs without a profile, where there is no default.
+  scm:
+    encryption-key: dGVzdC1vbmx5LXNjbS10b2tlbi1rZXktMzItYnl0ZXM=
   # Tests drive the event outbox relay directly rather than racing a scheduler thread (#185).
   scheduling:
     enabled: false

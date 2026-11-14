@@ -2,8 +2,10 @@
 # Generate the secrets a local Docker Compose stack needs to run with authentication (#205).
 #
 # Writes, once:
-#   .env                                    SSO_JWT_SECRET, the bootstrap admin key and the
-#                                           Prometheus scrape key, read by docker-compose.yml
+#   .env                                    SSO_JWT_SECRET, the bootstrap admin key, the
+#                                           Prometheus scrape key, the SCM token key and the
+#                                           RabbitMQ and Grafana credentials, read by
+#                                           docker-compose.yml (which has no defaults, #242)
 #   monitoring/secrets/prometheus-scrape-key the scrape key, read by monitoring/prometheus.yml
 #
 # Both are git-ignored. Re-running refuses to overwrite them unless --force is given, because
@@ -29,6 +31,10 @@ admin_key="fsp_$(openssl rand -hex 32)"
 scrape_key="fss_$(openssl rand -hex 32)"
 # The session signing secret must be at least 32 bytes and not a placeholder.
 jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
+# AES-256 key for SCM tokens: exactly 32 random bytes, base64-encoded (#242).
+scm_key="$(openssl rand -base64 32 | tr -d '\n')"
+rabbit_pass="$(openssl rand -hex 24)"
+grafana_pass="$(openssl rand -hex 24)"
 
 umask 077
 cat > "$ENV_FILE" <<EOF
@@ -43,6 +49,13 @@ SSO_JWT_SECRET=${jwt_secret}
 SECURITY_BOOTSTRAP_API_KEY=${admin_key}
 # Carries only metrics:read. Prometheus presents it from ${SCRAPE_FILE}.
 SECURITY_BOOTSTRAP_METRICS_API_KEY=${scrape_key}
+# Encrypts SCM tokens at rest. Keep it: tokens encrypted with it cannot be read without it.
+SCM_ENCRYPTION_KEY=${scm_key}
+# Message broker and Grafana credentials; Compose refuses to start without them.
+RABBITMQ_DEFAULT_USER=factstore
+RABBITMQ_DEFAULT_PASS=${rabbit_pass}
+GF_SECURITY_ADMIN_USER=admin
+GF_SECURITY_ADMIN_PASSWORD=${grafana_pass}
 EOF
 
 mkdir -p "$(dirname "$SCRAPE_FILE")"
@@ -50,4 +63,5 @@ printf '%s' "$scrape_key" > "$SCRAPE_FILE"
 
 echo "Wrote $ENV_FILE and $SCRAPE_FILE."
 echo "Bootstrap admin key (also in $ENV_FILE): $admin_key"
+echo "Grafana: admin / $grafana_pass (also in $ENV_FILE)"
 echo "Next: docker compose up -d"

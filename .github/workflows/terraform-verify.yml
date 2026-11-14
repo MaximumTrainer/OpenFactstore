@@ -60,6 +60,7 @@ jobs:
           nohup java -jar "$JAR" \
             --server.port=8080 \
             --security.bootstrap.api-key="${FACTSTORE_TOKEN}" \
+            --factstore.scm.encryption-key="$(openssl rand -base64 32)" \
             > /tmp/factstore.log 2>&1 &
           echo "FACTSTORE_PID=$!" >> "$GITHUB_ENV"
         env:

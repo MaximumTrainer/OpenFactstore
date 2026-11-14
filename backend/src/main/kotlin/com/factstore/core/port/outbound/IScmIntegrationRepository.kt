@@ -11,4 +11,5 @@ interface IScmIntegrationRepository {
     fun findByOrgSlugAndProvider(orgSlug: String, provider: ScmProvider): ScmIntegration?
     fun deleteByOrgSlugAndProvider(orgSlug: String, provider: ScmProvider)
     fun existsByOrgSlugAndProvider(orgSlug: String, provider: ScmProvider): Boolean
+    fun findAll(): List<ScmIntegration>
 }

@@ -383,8 +383,8 @@ All standard Spring Boot properties can be passed as command-line flags or envir
 |----------------------|-------------|
 | `RABBITMQ_HOST` | RabbitMQ hostname (default: `localhost`) |
 | `RABBITMQ_PORT` | RabbitMQ AMQP port (default: `5672`) |
-| `RABBITMQ_USERNAME` | RabbitMQ user (default: `guest`) |
-| `RABBITMQ_PASSWORD` | RabbitMQ password (default: `guest`) |
+| `RABBITMQ_USERNAME` | RabbitMQ user (required in the `prod` profile; no default) |
+| `RABBITMQ_PASSWORD` | RabbitMQ password (required in the `prod` profile; no default) |
 
 #### Event publisher
 
@@ -404,7 +404,7 @@ All standard Spring Boot properties can be passed as command-line flags or envir
 
 | Environment Variable | Description |
 |----------------------|-------------|
-| `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password (default: `admin`) |
+| `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password (required by Compose; no default) |
 
 #### OAuth / GitHub SSO
 
@@ -499,7 +499,7 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8081/api/v2
 
 # 5. Verify RabbitMQ is healthy
 curl -fs http://localhost:15672/api/healthchecks/node \
-  -u guest:guest
+  -u "$RABBITMQ_DEFAULT_USER:$RABBITMQ_DEFAULT_PASS"
 ```
 
 ### Docker environment variable example

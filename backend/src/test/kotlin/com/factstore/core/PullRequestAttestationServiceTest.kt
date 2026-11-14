@@ -56,7 +56,7 @@ class PullRequestAttestationServiceTest {
             scmIntegrationRepository = scmIntegrationRepository,
             auditService = NoOpAuditService(),
             objectMapper = objectMapper,
-            encryptionService = ScmTokenEncryptionService("default-dev-key-32chars!!!!!!"),
+            encryptionService = ScmTokenEncryptionService("dGVzdC1vbmx5LXNjbS10b2tlbi1rZXktMzItYnl0ZXM="),
             actorResolver = ActorResolver()
         )
     }
