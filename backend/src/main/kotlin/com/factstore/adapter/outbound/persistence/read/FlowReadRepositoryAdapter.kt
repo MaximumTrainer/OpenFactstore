@@ -32,5 +32,7 @@ fun Flow.toView() = FlowView(
     requiredApproverRoles = requiredApproverRoles,
     archivedAt = archivedAt,
     templateId = templateId,
-    templateVersion = templateVersion
+    templateVersion = templateVersion,
+    rejectSelfAsserted = rejectSelfAsserted,
+    acceptedSelfAssertedTypes = acceptedSelfAssertedTypes.toList()
 )

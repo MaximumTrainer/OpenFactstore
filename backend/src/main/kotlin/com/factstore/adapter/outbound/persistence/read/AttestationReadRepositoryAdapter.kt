@@ -38,5 +38,6 @@ fun Attestation.toView() = AttestationView(
     gitRepoUrl = gitRepoUrl,
     artifactId = artifactId,
     overridesAttestationId = overridesAttestationId,
-    justification = justification
+    justification = justification,
+    selfAsserted = selfAsserted
 )

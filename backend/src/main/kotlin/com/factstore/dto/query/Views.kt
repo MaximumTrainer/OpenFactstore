@@ -28,7 +28,10 @@ data class FlowView(
     val archivedAt: Instant? = null,
     /** Hub template(s) the flow was created from, `+`-joined (#162). */
     val templateId: String? = null,
-    val templateVersion: String? = null
+    val templateVersion: String? = null,
+    /** #240: whether assert and gates refuse self-asserted attestations, and the exceptions. */
+    val rejectSelfAsserted: Boolean = false,
+    val acceptedSelfAssertedTypes: List<String> = emptyList()
 )
 
 data class FlowTemplateView(
@@ -102,7 +105,9 @@ data class AttestationView(
     val gitRepoUrl: String? = null,
     val artifactId: UUID? = null,
     val overridesAttestationId: UUID? = null,
-    val justification: String? = null
+    val justification: String? = null,
+    /** #240: true when the status is the caller's claim, not decided by the server. */
+    val selfAsserted: Boolean = false
 )
 
 data class EvidenceFileView(

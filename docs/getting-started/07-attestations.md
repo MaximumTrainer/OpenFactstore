@@ -49,7 +49,7 @@ echo "$ATTESTATION_ID"
 ### Snyk security scan
 
 ```bash
-SNYK_ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+SNYK_ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -58,24 +58,28 @@ SNYK_ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attesta
   }' | jq -r .id)
 
 printf '{"vulnerabilities": []}\n' > snyk-results.json
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$SNYK_ATTESTATION_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$SNYK_ATTESTATION_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@./snyk-results.json" | jq .
 ```
 
 ### A gate with no evaluator
 
-A type Factstore cannot evaluate takes the status you send, labelled as self-asserted:
+A type Factstore cannot evaluate takes the status you send, labelled as self-asserted in the attestation list:
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+APPROVAL_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "type": "change-approval",
     "status": "PASSED",
     "details": "Approved in CHANGE-42"
-  }' | jq -e '.selfAsserted == true'
+  }' | jq -r .id)
+
+curl -s "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  | jq -e --arg id "$APPROVAL_ID" '.[] | select(.id == $id) | .selfAsserted == true'
 ```
 
 ### Failed attestation

@@ -650,6 +650,9 @@
             "format" : "uuid",
             "type" : "string"
           },
+          "selfAsserted" : {
+            "type" : "boolean"
+          },
           "status" : {
             "enum" : [ "PASSED", "FAILED", "PENDING" ],
             "type" : "string"
@@ -662,7 +665,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "annotations", "compliant", "createdAt", "externalUrls", "id", "status", "trailId", "type" ],
+        "required" : [ "annotations", "compliant", "createdAt", "externalUrls", "id", "selfAsserted", "status", "trailId", "type" ],
         "type" : "object"
       },
       "AuditEventPage" : {
@@ -3213,6 +3216,12 @@
       },
       "FlowView" : {
         "properties" : {
+          "acceptedSelfAssertedTypes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "archivedAt" : {
             "format" : "date-time",
             "type" : "string"
@@ -3233,6 +3242,9 @@
           },
           "orgSlug" : {
             "type" : "string"
+          },
+          "rejectSelfAsserted" : {
+            "type" : "boolean"
           },
           "requiredApproverRoles" : {
             "items" : {
@@ -3269,7 +3281,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "createdAt", "description", "id", "name", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags", "updatedAt" ],
+        "required" : [ "acceptedSelfAssertedTypes", "createdAt", "description", "id", "name", "rejectSelfAsserted", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags", "updatedAt" ],
         "type" : "object"
       },
       "FrameworkResponse" : {

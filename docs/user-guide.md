@@ -304,25 +304,25 @@ mkdir -p reports
 printf '<testsuite name="unit" tests="247" failures="0" errors="0"><testcase name="ok"/></testsuite>\n' > reports/junit.xml
 printf '{"vulnerabilities": []}\n' > reports/snyk.json
 
-JUNIT_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+JUNIT_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "type": "junit", "details": "Unit tests" }' | jq -r .id)
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$JUNIT_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$JUNIT_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@./reports/junit.xml" | jq .
 
-SNYK_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+SNYK_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "type": "snyk", "details": "Dependency scan" }' | jq -r .id)
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$SNYK_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$SNYK_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@./reports/snyk.json" | jq .
 
 # Both are now PASSED, decided by the server from the reports
-curl -s "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
-  -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq -e 'all(.items[]; .status == "PASSED")'
+curl -s "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq -e 'all(.[]; .status == "PASSED")'
 ```
 
 ### Step 5: Assert Compliance
@@ -1377,7 +1377,7 @@ This applies to every way evidence arrives: `/api/v1` and `/api/v2` attestations
 **Self-asserted evidence** counts towards compliance by default, but it is labelled: the assert response lists it in `selfAssertedAttestationTypes` and its `details` say so, and a gate decision lists it in `self_asserted`. A flow can refuse it with `"rejectSelfAsserted": true`, naming any types it still accepts in `acceptedSelfAssertedTypes`; refused evidence is reported as missing and listed in `rejectedSelfAssertedAttestationTypes` (assert) or `rejected_self_asserted` (gate).
 
 ```bash
-curl -s -X PUT "$BASE_URL/api/v1/flows/$FLOW_ID" \
+curl -s -X PUT "$BASE_URL/api/v2/flows/$FLOW_ID" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "rejectSelfAsserted": true, "acceptedSelfAssertedTypes": ["manual-sign-off"] }' | jq .
@@ -1385,7 +1385,7 @@ curl -s -X PUT "$BASE_URL/api/v1/flows/$FLOW_ID" \
 
 ### Attestation Type Processors
 
-When you upload an evidence file to an attestation of certain types, OpenFactstore **automatically parses the content** and sets `PASSED` or `FAILED`. For these types the evidence is the only way to reach `PASSED`. Evidence is uploaded as a multipart file to `POST /api/v1/trails/{trailId}/attestations/{attestationId}/evidence`.
+When you upload an evidence file to an attestation of certain types, OpenFactstore **automatically parses the content** and sets `PASSED` or `FAILED`. For these types the evidence is the only way to reach `PASSED`. Evidence is uploaded as a multipart file to `POST /api/v2/trails/{trailId}/attestations/{attestationId}/evidence`.
 
 #### JUnit XML → `junit` attestations
 
