@@ -27,40 +27,51 @@ Factstore accepts any string as an attestation type. Use a consistent naming con
 
 ## Record an attestation
 
+`TRAIL_ID` is the trail from [Part 5](./05-trails.md).
+
 ### JUnit test results
 
+Keep the attestation's `id`; the evidence upload below attaches a file to it:
+
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "type": "junit",
     "status": "PASSED",
     "details": "156 tests passed, 0 failed, 2 skipped"
-  }'
+  }' | jq -r .id)
+echo "$ATTESTATION_ID"
 ```
 
 ### Snyk security scan
 
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "type": "snyk",
     "status": "PASSED",
     "details": "No critical or high vulnerabilities found"
-  }'
+  }' | jq .
 ```
 
 ### Failed attestation
 
+A gate that failed is recorded the same way, with `"status": "FAILED"`. (Not run here: it would make this tutorial's trail non-compliant.)
+
+<!-- docs-e2e:skip -->
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "type": "snyk",
     "status": "FAILED",
     "details": "3 critical vulnerabilities found in lodash@4.17.20"
-  }'
+  }' | jq .
 ```
 
 **Response:**
@@ -84,11 +95,12 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
 You can attach a file (e.g. an XML test report, a JSON scan output, a PDF) as evidence for an attestation:
 
 ```bash
-ATTESTATION_ID=d4e5f6a7-0000-0000-0000-000000000004
+mkdir -p test-results
+printf '<testsuite name="unit" tests="156" failures="0" errors="0" skipped="2"/>\n' > test-results/junit-report.xml
 
-curl -s -X POST \
-  "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTESTATION_ID/evidence" \
-  -F "file=@./test-results/junit-report.xml"
+curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTESTATION_ID/evidence" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  -F "file=@./test-results/junit-report.xml" | jq .
 ```
 
 **Response:**
@@ -98,43 +110,50 @@ curl -s -X POST \
   "id": "e5f6a7b8-0000-0000-0000-000000000005",
   "attestationId": "d4e5f6a7-0000-0000-0000-000000000004",
   "fileName": "junit-report.xml",
+  "sha256Hash": "f9e2f4b4eda9314261f98bf3488d873343d34ea1ecf9154b9de4a981ac83e327",
+  "fileSizeBytes": 73,
   "contentType": "application/xml",
-  "sizeBytes": 48210,
-  "sha256Hash": "3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b",
-  "createdAt": "2026-03-11T10:16:00Z"
+  "storedAt": "2026-03-11T10:16:00Z",
+  "externalUrl": null
 }
 ```
 
-The evidence file is stored in the **Evidence Vault** and addressed by its SHA-256 hash, making it tamper-evident.
+The evidence file is stored in the **Evidence Vault** and addressed by its SHA-256 hash, making it tamper-evident. For a `junit` attestation the XML is also parsed: the attestation's `details` become the counts (`{"tests":156,"failures":0,...}`) and its status follows the failures.
 
 ## List attestations for a Trail
 
 ```bash
-curl -s "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" | jq '.items[] | {type, status}'
 ```
+
+The list is paginated: `items`, plus `page`, `size`, `totalItems` and `totalPages`.
 
 ## Checking compliance
 
-After recording attestations, ask Factstore whether the Trail is compliant with its Flow's requirements:
+After recording attestations, ask Factstore whether the artifact (`DIGEST` from [Part 6](./06-artifacts.md)) meets its Flow's requirements. `trailId` is optional: without it, the most recent trail carrying the digest decides. `jq -e` makes the command fail unless the answer is `COMPLIANT`, so it works as a deployment gate as written:
 
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/assert" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-    \"trailId\": \"$TRAIL_ID\",
-    \"artifactSha256\": \"sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f\"
-  }"
+    \"flowId\": \"$FLOW_ID\",
+    \"sha256Digest\": \"$DIGEST\",
+    \"trailId\": \"$TRAIL_ID\"
+  }" | jq -e '.status == "COMPLIANT"'
 ```
 
 **Compliant response:**
 
 ```json
 {
-  "compliant": true,
+  "sha256Digest": "sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f",
+  "flowId": "a1b2c3d4-0000-0000-0000-000000000001",
   "trailId": "b2c3d4e5-0000-0000-0000-000000000002",
-  "artifactSha256": "sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f",
+  "status": "COMPLIANT",
   "missingAttestationTypes": [],
-  "failedAttestationTypes": []
+  "failedAttestationTypes": [],
+  "details": "All required attestations passed"
 }
 ```
 
@@ -142,11 +161,13 @@ curl -s -X POST "$BASE_URL/api/v1/assert" \
 
 ```json
 {
-  "compliant": false,
+  "sha256Digest": "sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f",
+  "flowId": "a1b2c3d4-0000-0000-0000-000000000001",
   "trailId": "b2c3d4e5-0000-0000-0000-000000000002",
-  "artifactSha256": "sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f",
+  "status": "NON_COMPLIANT",
   "missingAttestationTypes": ["snyk"],
-  "failedAttestationTypes": ["junit"]
+  "failedAttestationTypes": ["junit"],
+  "details": "Missing required attestations: snyk; failed: junit"
 }
 ```
 

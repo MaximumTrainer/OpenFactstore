@@ -21,15 +21,17 @@ Approvals close the gap between CI/CD automation and human governance — sign-o
 
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/approvals" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "trailId": "'$TRAIL_ID'",
     "requiredApprovers": ["security-team", "qa-lead"],
-    "newestCommit": "e67f2f2b121f9325ebf166b7b3c707f73cb48b14",
-    "oldestCommit": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
-    "targetEnvironment": "production",
+    "comments": "Release 1.4.2 to production",
     "deadline": "2026-03-12T10:00:00Z"
   }'
 ```
+
+`trailId` must be present in the body (the trail in the URL takes precedence). `requiredApprovers`, `comments` and `deadline` are optional.
 
 Store the returned `id` as `APPROVAL_ID`.
 
@@ -39,6 +41,7 @@ Store the returned `id` as `APPROVAL_ID`.
 
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/approvals/$APPROVAL_ID/approve" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "approverIdentity": "jane@example.com",
@@ -52,6 +55,7 @@ curl -s -X POST "$BASE_URL/api/v1/approvals/$APPROVAL_ID/approve" \
 
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/approvals/$APPROVAL_ID/reject" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "approverIdentity": "bob@example.com",
@@ -64,7 +68,7 @@ curl -s -X POST "$BASE_URL/api/v1/approvals/$APPROVAL_ID/reject" \
 ## List pending approvals
 
 ```bash
-curl -s "$BASE_URL/api/v1/approvals?status=PENDING_APPROVAL"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/approvals?status=PENDING_APPROVAL"
 ```
 
 ---
@@ -72,7 +76,7 @@ curl -s "$BASE_URL/api/v1/approvals?status=PENDING_APPROVAL"
 ## Get approval details
 
 ```bash
-curl -s "$BASE_URL/api/v1/approvals/$APPROVAL_ID"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/approvals/$APPROVAL_ID"
 ```
 
 ---
@@ -82,7 +86,8 @@ curl -s "$BASE_URL/api/v1/approvals/$APPROVAL_ID"
 When a [Deployment Policy](./09-policies.md) is created with `enforceApprovals: true`, the deployment gate blocks any artifact whose Trail has no `APPROVED` approval.
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/policies" \
+curl -s -X POST "$BASE_URL/api/v1/deployment-policies" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "prod-requirements",
