@@ -45,11 +45,25 @@ export function read(file, root = REPO_ROOT) {
 
 const ENTITIES = { '&lt;': '<', '&gt;': '>', '&amp;': '&', '&quot;': '"', '&#39;': "'", '&apos;': "'" }
 
+/**
+ * Removes HTML tags, repeating until none is left so that removing one tag cannot assemble
+ * another. The result is only ever compared as text, never rendered.
+ */
+export function stripTags(html, tag = /<[^>]+>/g) {
+  let previous
+  let text = html
+  do {
+    previous = text
+    text = text.replace(tag, '')
+  } while (text !== previous)
+  return text
+}
+
 /** <pre> blocks of an HTML page, with tags stripped and entities decoded. */
 function htmlCodeBlocks(html) {
   const blocks = []
   for (const m of html.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/g)) {
-    const body = m[1].replace(/<[^>]+>/g, '').replace(/&(lt|gt|amp|quot|#39|apos);/g, (e) => ENTITIES[e])
+    const body = stripTags(m[1]).replace(/&(lt|gt|amp|quot|#39|apos);/g, (e) => ENTITIES[e])
     blocks.push({ lang: '', line: html.slice(0, m.index).split('\n').length - 1, body })
   }
   return blocks
@@ -447,7 +461,7 @@ export function requestSchemaName(operation) {
 /** Text of a document as a reader sees it: HTML tags stripped and entities decoded, lines kept. */
 export function plainText(text) {
   if (!/^\s*<(!doctype|html)/i.test(text)) return text
-  return text.replace(/<[^>\n]+>/g, '').replace(/&(lt|gt|amp|quot|#39|apos);/g, (e) => ENTITIES[e])
+  return stripTags(text, /<[^>\n]+>/g).replace(/&(lt|gt|amp|quot|#39|apos);/g, (e) => ENTITIES[e])
 }
 
 /** The anchors GitHub generates for a Markdown document's headings. */

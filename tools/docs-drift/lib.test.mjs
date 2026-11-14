@@ -1,7 +1,7 @@
 // Unit tests for the extraction the drift tests rely on (#249).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { kotlinRequiredFields, curlCommands, endpointMentions, tableEndpoints, httpBlockRequests, pathMatches, parseJsonBody, codeBlocks, unknownBodyFields } from './lib.mjs'
+import { kotlinRequiredFields, curlCommands, endpointMentions, tableEndpoints, httpBlockRequests, pathMatches, parseJsonBody, codeBlocks, unknownBodyFields, stripTags } from './lib.mjs'
 
 const md = (s) => s.replace(/^\n/, '')
 
@@ -93,4 +93,9 @@ test('unknown body fields are found in nested objects and arrays too', () => {
   const op = (name) => ({ requestBody: { content: { 'application/json': { schema: { $ref: `#/components/schemas/${name}` } } } } })
   assert.deepEqual(unknownBodyFields(openapi, op('Snap'), { recordedBy: 'x', artifacts: [{ artifactSha256: 'a', sha256: 'b' }], extra: 1 }), ['artifacts[].sha256', 'extra'])
   assert.deepEqual(unknownBodyFields(openapi, op('Open'), { anything: 'x' }), [])
+})
+
+test('stripping tags repeats until no tag is left', () => {
+  assert.equal(stripTags('<span>a</span><scr<b>ipt>b'), 'aipt>b')
+  assert.equal(stripTags('<<i>script>x'), 'script>x')
 })
