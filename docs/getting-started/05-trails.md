@@ -25,22 +25,13 @@ TRAIL_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails" \
 echo "$TRAIL_ID"
 ```
 
-**Response:**
+**Response** (a `/api/v2` write says what was created; read the record back with `GET` `/api/v2/trails/$TRAIL_ID`):
 
 ```json
 {
   "id": "b2c3d4e5-0000-0000-0000-000000000002",
-  "flowId": "a1b2c3d4-0000-0000-0000-000000000001",
-  "gitCommitSha": "e67f2f2b121f9325ebf166b7b3c707f73cb48b14",
-  "gitBranch": "main",
-  "gitAuthor": "Jane Smith",
-  "gitAuthorEmail": "jane@example.com",
-  "pullRequestId": "42",
-  "pullRequestReviewer": "bob@example.com",
-  "deploymentActor": "ci-runner@github",
-  "status": "PENDING",
-  "createdAt": "2026-03-11T10:05:00Z",
-  "updatedAt": "2026-03-11T10:05:00Z"
+  "status": "created",
+  "timestamp": "2026-03-11T10:10:00Z"
 }
 ```
 
@@ -89,10 +80,11 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/trails?flo
 
 ## List Trails for a specific Flow
 
-This one is paginated (`items`, `page`, `size`, `totalItems`, `totalPages`):
+Long lists can be paged: pass `page` (from 0) and `size`, and the `X-Total-Count` header gives the full count:
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows/$FLOW_ID/trails" | jq .totalItems
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows/$FLOW_ID/trails" | jq length
+curl -s -D - -o /dev/null -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows/$FLOW_ID/trails?page=0&size=10" | grep -i x-total-count
 ```
 
 ## Get a Trail by ID

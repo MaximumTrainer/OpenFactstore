@@ -1759,9 +1759,13 @@
       "CreateFlowCommand" : {
         "properties" : {
           "description" : {
+            "maxLength" : 2048,
+            "minLength" : 0,
             "type" : "string"
           },
           "name" : {
+            "maxLength" : 255,
+            "minLength" : 0,
             "type" : "string"
           },
           "orgSlug" : {
@@ -2150,9 +2154,13 @@
             "type" : "string"
           },
           "gitAuthor" : {
+            "minLength" : 1,
             "type" : "string"
           },
           "gitAuthorEmail" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "pattern" : "^[^\\s@]+@[^\\s@]+\\.[^\\s@.]+$",
             "type" : "string"
           },
           "gitBranch" : {
@@ -4638,9 +4646,11 @@
       "ReportArtifactRequest" : {
         "properties" : {
           "imageName" : {
+            "minLength" : 1,
             "type" : "string"
           },
           "imageTag" : {
+            "minLength" : 1,
             "type" : "string"
           },
           "orgSlug" : {
@@ -4653,6 +4663,8 @@
             "type" : "string"
           },
           "sha256Digest" : {
+            "minLength" : 1,
+            "pattern" : "sha256:[a-fA-F0-9]{64}",
             "type" : "string"
           },
           "tags" : {

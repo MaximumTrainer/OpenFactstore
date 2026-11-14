@@ -1,5 +1,8 @@
 package com.factstore.dto.command
 
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Pattern
+import jakarta.validation.constraints.Size
 import java.util.UUID
 
 /**
@@ -14,7 +17,10 @@ import java.util.UUID
 // ── Flow Commands ──────────────────────────────────────────────────────────────
 
 data class CreateFlowCommand(
+    @field:NotBlank(message = "name is required")
+    @field:Size(max = 255)
     val name: String,
+    @field:Size(max = 2048)
     val description: String = "",
     val requiredAttestationTypes: List<String> = emptyList(),
     val tags: Map<String, String> = emptyMap(),
@@ -62,7 +68,14 @@ data class CreateTrailCommand(
     val flowId: UUID,
     val gitCommitSha: String? = null,
     val gitBranch: String? = null,
+    @field:NotBlank(message = "gitAuthor is required")
     val gitAuthor: String,
+    /** The author email as git reports it; the same wide rule as v1 (bot addresses are allowed). */
+    @field:Pattern(
+        regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@.]+$",
+        message = "gitAuthorEmail must be an address of the form local@domain.tld"
+    )
+    @field:Size(max = 255)
     val gitAuthorEmail: String,
     val pullRequestId: String? = null,
     val pullRequestReviewer: String? = null,
@@ -80,8 +93,12 @@ data class CreateTrailCommand(
 
 /** JSON body for POST /api/v2/trails/{trailId}/artifacts — `trailId` comes from the path. */
 data class ReportArtifactRequest(
+    @field:NotBlank(message = "imageName is required")
     val imageName: String,
+    @field:NotBlank(message = "imageTag is required")
     val imageTag: String,
+    @field:NotBlank(message = "sha256Digest is required")
+    @field:Pattern(regexp = "sha256:[a-fA-F0-9]{64}", message = "sha256Digest must be in format sha256:<64 hex chars>")
     val sha256Digest: String,
     val registry: String? = null,
     val reportedBy: String,

@@ -21,18 +21,13 @@ curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/artifacts" \
   }" | jq .
 ```
 
-**Response:**
+**Response** (a `/api/v2` write says what was created; read the record back with `GET` `/api/v2/trails/$TRAIL_ID/artifacts`):
 
 ```json
 {
   "id": "c3d4e5f6-0000-0000-0000-000000000003",
-  "trailId": "b2c3d4e5-0000-0000-0000-000000000002",
-  "imageName": "my-org/backend",
-  "imageTag": "v1.4.2",
-  "sha256Digest": "sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f",
-  "registry": "ghcr.io",
-  "reportedBy": "github-actions",
-  "createdAt": "2026-03-11T10:10:00Z"
+  "status": "created",
+  "timestamp": "2026-03-11T10:10:00Z"
 }
 ```
 

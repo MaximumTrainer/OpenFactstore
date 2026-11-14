@@ -105,7 +105,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import client from '../api/client'
+import { getFlows } from '../api/flows'
+import { getTrails } from '../api/trails'
 import { getLiveArtifactsByRepo } from '../api/compliancePosture'
 import type { Flow, Trail } from '../types'
 import type { LiveArtifactByRepo } from '../api/compliancePosture'
@@ -151,8 +152,8 @@ const flowStats = computed<FlowStat[]>(() => {
 onMounted(async () => {
   try {
     const [flowsRes, trailsRes, liveRes] = await Promise.all([
-      client.get<Flow[]>('/flows'),
-      client.get<Trail[]>('/trails'),
+      getFlows(),
+      getTrails(),
       getLiveArtifactsByRepo()
     ])
     flows.value = flowsRes.data

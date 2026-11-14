@@ -3,6 +3,7 @@ package com.factstore.application.command
 import com.factstore.application.ActorResolver
 import com.factstore.application.CustomAttestationTypeRules
 import com.factstore.application.TenantScope
+import com.factstore.application.attestation.AttestationTypeProcessor
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.AuditEventType
@@ -42,7 +43,8 @@ class AttestationCommandHandler(
     private val actorResolver: ActorResolver,
     customAttestationTypeRepository: ICustomAttestationTypeRepository,
     objectMapper: ObjectMapper,
-    private val tenantScope: TenantScope = TenantScope.UNSCOPED
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
+    private val processors: List<AttestationTypeProcessor> = emptyList()
 ) : IAttestationCommandHandler {
 
     private val customTypes = CustomAttestationTypeRules(customAttestationTypeRepository, objectMapper)
@@ -140,14 +142,28 @@ class AttestationCommandHandler(
         attestation.evidenceFileHash = evidenceFile.sha256Hash
         attestation.evidenceFileName = evidenceFile.fileName
         attestation.evidenceFileSizeBytes = evidenceFile.fileSizeBytes
+        // A typed report (e.g. JUnit XML) sets the attestation's details and status, as on v1.
+        val processor = processors.firstOrNull { it.typeName.equals(attestation.type, ignoreCase = true) }
+        processor?.process(command.content, attestation)
         attestationRepository.save(attestation)
+        if (processor != null) {
+            if (attestation.status == AttestationStatus.FAILED) markTrailNonCompliant(attestation.trailId)
+            eventPublisher.publish(SupplyChainEvent.AttestationProcessedEvent(
+                attestationId = attestation.id.toString(),
+                type = attestation.type,
+                status = attestation.status.name,
+                details = attestation.details
+            ))
+        }
         eventAppender.append(DomainEvent.EvidenceUploaded(
             aggregateId = attestation.id,
             trailId = attestation.trailId,
             fileName = evidenceFile.fileName,
             contentType = command.contentType,
             sha256Hash = evidenceFile.sha256Hash,
-            fileSizeBytes = evidenceFile.fileSizeBytes
+            fileSizeBytes = evidenceFile.fileSizeBytes,
+            status = attestation.status.name,
+            details = attestation.details
         ))
         log.info("Uploaded evidence for attestation: ${command.attestationId} hash=${evidenceFile.sha256Hash}")
         return CommandResult(id = attestation.id, status = "created")

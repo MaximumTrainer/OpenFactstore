@@ -172,6 +172,18 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v2
       </p>
       <pre><code>X-Factstore-Dry-Run: true</code></pre>
 
+      <h3>Deprecated Endpoints</h3>
+      <p>
+        The <code>/api/v1</code> endpoints for flows, trails, artifacts and attestations that have a
+        <code>/api/v2</code> twin are deprecated and may be removed after 2027-05-14. They keep working
+        until then, and every response carries <code>Deprecation</code>, <code>Sunset</code> and a
+        <code>Link</code> header with <code>rel="successor-version"</code>. See
+        <a href="https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/upgrading/api-deprecations.md">API deprecations</a>.
+      </p>
+      <pre><code>Deprecation: @1794614400
+Sunset: Fri, 14 May 2027 00:00:00 GMT
+Link: &lt;/api/v2/flows&gt;; rel="successor-version"</code></pre>
+
       <h3>Error Responses</h3>
       <p>All errors follow a consistent JSON structure:</p>
       <pre><code>{

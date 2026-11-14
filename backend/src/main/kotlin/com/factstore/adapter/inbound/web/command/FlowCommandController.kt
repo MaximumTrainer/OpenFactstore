@@ -28,7 +28,7 @@ class FlowCommandController(private val commandHandler: IFlowCommandHandler) {
     @PostMapping
     @Operation(summary = "Create a new flow")
     fun createFlow(
-        @RequestBody command: CreateFlowCommand,
+        @jakarta.validation.Valid @RequestBody command: CreateFlowCommand,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {
         if (DryRunContext.isDryRun(httpRequest)) {

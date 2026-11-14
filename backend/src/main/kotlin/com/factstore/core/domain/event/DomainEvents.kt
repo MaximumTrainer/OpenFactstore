@@ -132,7 +132,10 @@ sealed class DomainEvent {
         val fileName: String,
         val contentType: String,
         val sha256Hash: String,
-        val fileSizeBytes: Long
+        val fileSizeBytes: Long,
+        /** The attestation's status and details after its type processed the file, if it did (#250). */
+        val status: String? = null,
+        val details: String? = null
     ) : DomainEvent() {
         override val aggregateType: String = "Attestation"
     }

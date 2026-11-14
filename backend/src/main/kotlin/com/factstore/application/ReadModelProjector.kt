@@ -207,6 +207,8 @@ class ReadModelProjector(
         attestation.evidenceFileHash = event.sha256Hash
         attestation.evidenceFileName = event.fileName
         attestation.evidenceFileSizeBytes = event.fileSizeBytes
+        event.status?.let { attestation.status = com.factstore.core.domain.AttestationStatus.valueOf(it) }
+        event.details?.let { attestation.details = it }
         attestationRepository.save(attestation)
         log.debug("Projected EvidenceUploaded: {}", event.aggregateId)
     }

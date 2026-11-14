@@ -812,6 +812,20 @@ Rows highlighted in green represent newly deployed images; rows in red are image
 
 These features are driven through the HTTP API. Every example sends `Authorization: Bearer $FACTSTORE_TOKEN` and uses `$BASE_URL` for the command service; see [Setup & Installation](#3-setup--installation).
 
+### API versions and deprecated endpoints
+
+Flows, trails, artifacts and attestations are created and read through `/api/v2`. Each `/api/v1`
+endpoint with a `/api/v2` twin of the same method and path is **deprecated** and may be removed after
+2027-05-14 (#250). Until then it keeps working, and every response from it carries `Deprecation`,
+`Sunset` and a `Link: <…>; rel="successor-version"` header naming the endpoint to call instead.
+
+A `/api/v2` write answers with `{"id", "status", "timestamp"}` rather than the whole record; read the
+record back with the matching `GET`. The v2 lists return JSON arrays, take `page` and `size`
+(the full count is then in `X-Total-Count`), and hide archived flows and trails unless
+`includeArchived=true`. [API deprecations](./upgrading/api-deprecations.md) lists what else differs,
+and the [endpoint inventory](./api-inventory.md) lists every endpoint with the decision taken on each
+duplicate.
+
 ### Flow Tags
 
 Flows support arbitrary key-value tags for filtering, reporting, and multi-team organisation.

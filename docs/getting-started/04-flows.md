@@ -18,18 +18,18 @@ FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v2/flows" \
 echo "$FLOW_ID"
 ```
 
-Keep `FLOW_ID`: the next parts use it. The full response:
+Keep `FLOW_ID`: the next parts use it. Like every `/api/v2` write, the response says what was
+created, not the whole record:
 
 ```json
 {
   "id": "a1b2c3d4-0000-0000-0000-000000000001",
-  "name": "backend-ci",
-  "description": "CI pipeline for the backend service",
-  "requiredAttestationTypes": ["junit", "snyk"],
-  "createdAt": "2026-03-11T10:00:00Z",
-  "updatedAt": "2026-03-11T10:00:00Z"
+  "status": "created",
+  "timestamp": "2026-03-11T10:00:00Z"
 }
 ```
+
+Read the flow back with `GET /api/v2/flows/$FLOW_ID` (below).
 
 ### Flow fields
 
@@ -63,7 +63,9 @@ curl -s -X PUT "$BASE_URL/api/v2/flows/$FLOW_ID" \
   -H "Content-Type: application/json" \
   -d '{
     "description": "CI + security scan pipeline for backend"
-  }' | jq .description
+  }' | jq .status
+
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows/$FLOW_ID" | jq .description
 ```
 
 ## Delete a Flow

@@ -74,19 +74,13 @@ curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   }' | jq .
 ```
 
-**Response:**
+**Response** (a `/api/v2` write says what was created; the attestation itself is in the list below):
 
 ```json
 {
   "id": "d4e5f6a7-0000-0000-0000-000000000004",
-  "trailId": "b2c3d4e5-0000-0000-0000-000000000002",
-  "type": "snyk",
-  "status": "FAILED",
-  "evidenceFileHash": null,
-  "evidenceFileName": null,
-  "evidenceFileSizeBytes": null,
-  "details": "3 critical vulnerabilities found in lodash@4.17.20",
-  "createdAt": "2026-03-11T10:15:00Z"
+  "status": "created",
+  "timestamp": "2026-03-11T10:15:00Z"
 }
 ```
 
@@ -107,26 +101,21 @@ curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$ATTESTATION_ID/
 
 ```json
 {
-  "id": "e5f6a7b8-0000-0000-0000-000000000005",
-  "attestationId": "d4e5f6a7-0000-0000-0000-000000000004",
-  "fileName": "junit-report.xml",
-  "sha256Hash": "f9e2f4b4eda9314261f98bf3488d873343d34ea1ecf9154b9de4a981ac83e327",
-  "fileSizeBytes": 73,
-  "contentType": "application/xml",
-  "storedAt": "2026-03-11T10:16:00Z",
-  "externalUrl": null
+  "id": "d4e5f6a7-0000-0000-0000-000000000004",
+  "status": "created",
+  "timestamp": "2026-03-11T10:16:00Z"
 }
 ```
 
-The evidence file is stored in the **Evidence Vault** and addressed by its SHA-256 hash, making it tamper-evident. For a `junit` attestation the XML is also parsed: the attestation's `details` become the counts (`{"tests":156,"failures":0,...}`) and its status follows the failures.
+The file's hash, name and size are recorded on the attestation (`evidenceFileHash`, `evidenceFileName`, `evidenceFileSizeBytes` in the list below). The evidence file is stored in the **Evidence Vault** and addressed by its SHA-256 hash, making it tamper-evident. For a `junit` attestation the XML is also parsed: the attestation's `details` become the counts (`{"tests":156,"failures":0,...}`) and its status follows the failures.
 
 ## List attestations for a Trail
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" | jq '.items[] | {type, status}'
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" | jq '.[] | {type, status}'
 ```
 
-The list is paginated: `items`, plus `page`, `size`, `totalItems` and `totalPages`.
+The list is a JSON array. For long lists pass `page` (from 0) and `size`; the `X-Total-Count` header then gives the full count.
 
 ## Checking compliance
 

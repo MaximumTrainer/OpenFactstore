@@ -34,7 +34,7 @@ class ArtifactCommandController(
     @Operation(summary = "Report an artifact for a trail")
     fun reportArtifact(
         @PathVariable trailId: UUID,
-        @RequestBody request: ReportArtifactRequest,
+        @jakarta.validation.Valid @RequestBody request: ReportArtifactRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {
         if (DryRunContext.isDryRun(httpRequest)) {
