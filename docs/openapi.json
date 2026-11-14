@@ -663,7 +663,7 @@
           },
           "eventType" : {
             "type" : "string",
-            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "ENVIRONMENT_ARCHIVED", "ENVIRONMENT_UNARCHIVED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
+            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "ENVIRONMENT_ARCHIVED", "ENVIRONMENT_UNARCHIVED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "RETENTION_POLICY_SET", "RETENTION_POLICY_REMOVED", "RETENTION_BATCH_APPLIED", "LEGAL_HOLD_PLACED", "LEGAL_HOLD_RELEASED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
           },
           "id" : {
             "format" : "uuid",
@@ -3599,6 +3599,44 @@
         "required" : [ "enabled", "healthy", "message", "totalEntries", "type" ],
         "type" : "object"
       },
+      "LegalHoldResponse" : {
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "placedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "placedBy" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "releasedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "releasedBy" : {
+            "type" : "string"
+          },
+          "scopeId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "scopeType" : {
+            "enum" : [ "TRAIL", "FLOW" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "active", "id", "placedAt", "placedBy", "reason", "scopeId", "scopeType" ],
+        "type" : "object"
+      },
       "LiveArtifactByRepoResponse" : {
         "properties" : {
           "deployments" : {
@@ -4169,6 +4207,23 @@
         "required" : [ "entries", "page", "size", "totalElements", "totalPages" ],
         "type" : "object"
       },
+      "PlaceLegalHoldRequest" : {
+        "properties" : {
+          "reason" : {
+            "type" : "string"
+          },
+          "scopeId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "scopeType" : {
+            "enum" : [ "TRAIL", "FLOW" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "reason", "scopeId", "scopeType" ],
+        "type" : "object"
+      },
       "PolicyAttachmentResponse" : {
         "properties" : {
           "createdAt" : {
@@ -4600,6 +4655,108 @@
         "required" : [ "tool" ],
         "type" : "object"
       },
+      "RetentionBatch" : {
+        "properties" : {
+          "action" : {
+            "enum" : [ "SHRED", "ARCHIVE", "PRUNE" ],
+            "type" : "string"
+          },
+          "applied" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "cutoff" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "dataClass" : {
+            "enum" : [ "FACT_CONTENT", "ENVIRONMENT_SNAPSHOTS", "NOTIFICATIONS" ],
+            "type" : "string"
+          },
+          "eligible" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "skippedForLegalHold" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "tenant" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "action", "applied", "cutoff", "dataClass", "eligible", "skippedForLegalHold", "tenant" ],
+        "type" : "object"
+      },
+      "RetentionDataClassResponse" : {
+        "properties" : {
+          "action" : {
+            "enum" : [ "SHRED", "ARCHIVE", "PRUNE" ],
+            "type" : "string"
+          },
+          "dataClass" : {
+            "enum" : [ "FACT_CONTENT", "ENVIRONMENT_SNAPSHOTS", "NOTIFICATIONS" ],
+            "type" : "string"
+          },
+          "minimumDays" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "action", "dataClass", "minimumDays" ],
+        "type" : "object"
+      },
+      "RetentionPolicyResponse" : {
+        "properties" : {
+          "action" : {
+            "enum" : [ "SHRED", "ARCHIVE", "PRUNE" ],
+            "type" : "string"
+          },
+          "dataClass" : {
+            "enum" : [ "FACT_CONTENT", "ENVIRONMENT_SNAPSHOTS", "NOTIFICATIONS" ],
+            "type" : "string"
+          },
+          "minimumDays" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "retainDays" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "tenant" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "updatedBy" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "action", "dataClass", "minimumDays", "retainDays", "tenant", "updatedAt", "updatedBy" ],
+        "type" : "object"
+      },
+      "RetentionRunReport" : {
+        "properties" : {
+          "batches" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RetentionBatch"
+            },
+            "type" : "array"
+          },
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "ranAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "batches", "dryRun", "ranAt" ],
+        "type" : "object"
+      },
       "RotateApiKeyRequest" : {
         "properties" : {
           "overlapHours" : {
@@ -4962,6 +5119,16 @@
           }
         },
         "required" : [ "absoluteExpiresAt", "createdAt", "current", "expiresAt", "lastSeenAt", "provider", "sessionId" ],
+        "type" : "object"
+      },
+      "SetRetentionPolicyRequest" : {
+        "properties" : {
+          "retainDays" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "retainDays" ],
         "type" : "object"
       },
       "SetSecurityThresholdRequest" : {
@@ -6198,6 +6365,151 @@
         "tags" : [ "Ledger proofs" ]
       }
     },
+    "/api/v1/admin/retention/data-classes" : {
+      "get" : {
+        "operationId" : "dataClasses",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/RetentionDataClassResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "The data classes a retention policy can govern, with their action and minimum period",
+        "tags" : [ "Retention" ]
+      }
+    },
+    "/api/v1/admin/retention/policies" : {
+      "get" : {
+        "operationId" : "listPolicies_2",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/RetentionPolicyResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "List retention policies",
+        "tags" : [ "Retention" ]
+      }
+    },
+    "/api/v1/admin/retention/policies/{tenant}/{dataClass}" : {
+      "delete" : {
+        "operationId" : "removePolicy",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tenant",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "dataClass",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "FACT_CONTENT", "ENVIRONMENT_SNAPSHOTS", "NOTIFICATIONS" ],
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "summary" : "Remove a retention policy; the data class is then kept indefinitely",
+        "tags" : [ "Retention" ]
+      },
+      "put" : {
+        "description" : "tenant is an organisation slug, or 'default' for data that belongs to no organisation. retainDays must be at least the data class's minimum; shorter is a 400.",
+        "operationId" : "setPolicy",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tenant",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "dataClass",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "FACT_CONTENT", "ENVIRONMENT_SNAPSHOTS", "NOTIFICATIONS" ],
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SetRetentionPolicyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RetentionPolicyResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Set how long an organisation keeps a class of data",
+        "tags" : [ "Retention" ]
+      }
+    },
+    "/api/v1/admin/retention/runs" : {
+      "post" : {
+        "description" : "Defaults to a dry run, which reports what would be shredded, archived or pruned and changes nothing.",
+        "operationId" : "run",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "dryRun",
+          "required" : false,
+          "schema" : {
+            "default" : true,
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RetentionRunReport"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Run the retention job now",
+        "tags" : [ "Retention" ]
+      }
+    },
     "/api/v1/api-keys" : {
       "post" : {
         "description" : "The plain-text key is returned **once**. Scopes default to a read-only set; pass `preset: CI_PIPELINE` for the common pipeline case. A caller cannot grant scopes it does not itself hold, and the TTL is capped.",
@@ -6970,7 +7282,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "ENVIRONMENT_ARCHIVED", "ENVIRONMENT_UNARCHIVED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
+            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "ENVIRONMENT_ARCHIVED", "ENVIRONMENT_UNARCHIVED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "RETENTION_POLICY_SET", "RETENTION_POLICY_REMOVED", "RETENTION_BATCH_APPLIED", "LEGAL_HOLD_PLACED", "LEGAL_HOLD_RELEASED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
           }
         }, {
           "in" : "query",
@@ -9783,6 +10095,92 @@
         },
         "summary" : "Verify the integrity of a specific record",
         "tags" : [ "Ledger" ]
+      }
+    },
+    "/api/v1/legal-holds" : {
+      "get" : {
+        "operationId" : "listHolds",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "includeReleased",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/LegalHoldResponse"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "List legal holds; released holds only with includeReleased=true",
+        "tags" : [ "Retention" ]
+      },
+      "post" : {
+        "operationId" : "placeHold",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaceLegalHoldRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LegalHoldResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Place a legal hold on a trail or flow; retention skips everything it covers",
+        "tags" : [ "Retention" ]
+      }
+    },
+    "/api/v1/legal-holds/{id}/release" : {
+      "post" : {
+        "operationId" : "releaseHold",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LegalHoldResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Release a legal hold; the hold stays on record",
+        "tags" : [ "Retention" ]
       }
     },
     "/api/v1/logical-environments" : {
@@ -14702,6 +15100,9 @@
   }, {
     "description" : "Release approval workflow",
     "name" : "Approvals"
+  }, {
+    "description" : "Data retention policies, legal holds and the retention job (#251)",
+    "name" : "Retention"
   }, {
     "description" : "Single Sign-On (OIDC) configuration and login flow",
     "name" : "SSO"
