@@ -1,6 +1,7 @@
 package com.factstore.application
 
 import com.factstore.application.policy.PolicyParser
+import com.factstore.exception.BadRequestException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -127,5 +128,53 @@ class PolicyParserTest {
         assertTrue(result.artifactRules.provenanceRequired)
         assertTrue(result.artifactRules.trailComplianceRequired)
         assertEquals(2, result.artifactRules.requiredAttestations.size)
+    }
+
+    @Test
+    fun `validate rejects a syntactically invalid if condition naming the rule and position`() {
+        val yaml = """
+            artifacts:
+              attestations:
+                - name: junit
+                  type: junit
+                - name: security-scan
+                  type: snyk
+                  if: 'flow.name == "payments'
+        """.trimIndent()
+
+        val e = assertThrows(BadRequestException::class.java) { parser.validate(yaml) }
+        assertTrue(e.message!!.contains("security-scan"), e.message)
+        assertTrue(e.message!!.contains("artifacts.attestations[1]"), e.message)
+        assertTrue(e.message!!.contains("position 14"), e.message)
+    }
+
+    @Test
+    fun `validate rejects an if condition that references an unknown field`() {
+        val yaml = """
+            artifacts:
+              attestations:
+                - name: security-scan
+                  type: snyk
+                  if: 'flow.nmae == "payments"'
+        """.trimIndent()
+
+        val e = assertThrows(BadRequestException::class.java) { parser.validate(yaml) }
+        assertTrue(e.message!!.contains("flow.nmae"), e.message)
+    }
+
+    @Test
+    fun `validate accepts valid conditions`() {
+        parser.validate("""
+            artifacts:
+              attestations:
+                - name: security-scan
+                  type: snyk
+                  if: 'flow.name == "payments-service" or matches(artifact.name, "^backend.*")'
+        """.trimIndent())
+    }
+
+    @Test
+    fun `validate rejects YAML that cannot be parsed as a policy`() {
+        assertThrows(BadRequestException::class.java) { parser.validate("{ not valid yaml: [unclosed") }
     }
 }

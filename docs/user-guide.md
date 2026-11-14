@@ -875,13 +875,24 @@ artifacts:
 | Equality | `flow.name == "payments-service"` |
 | Inequality | `flow.name != "test-flow"` |
 | Regex match | `matches(artifact.name, "^backend.*")` |
-| Existence check | `exists(flow)` |
+| Existence check | `exists(flow)`, `exists(artifact)` |
 | List membership | `flow.name in ["svc-a", "svc-b"]` |
 | Logical AND | `exists(flow) and flow.name == "x"` |
 | Logical OR | `flow.name == "a" or flow.name == "b"` |
 | Negation | `not exists(flow)` |
+| Grouping | `(flow.name == "a" or flow.name == "b") and exists(artifact)` |
 
-Malformed expressions default to `false` (never throw an exception).
+Fields: `flow.name`, `flow.tags.<key>` or `flow.tags["<key>"]`, `artifact.name` and `artifact.fingerprint`. Values are quoted with `"` or `'`; a quoted value may contain ` and `, ` or ` or commas. The expression may be wrapped in `${{ }}`.
+
+Precedence, highest first: `not`, then `and`, then `or`, so `a == "x" and b == "y" or c == "z"` means `(a == "x" and b == "y") or c == "z"`. Use parentheses to group differently.
+
+**Conditions fail closed.** A condition is checked when the template or policy is uploaded (creating or updating a flow, creating a trail with `templateYaml`, publishing an organisation template, creating or updating a policy). A syntax error, an unknown field such as `flow.nmae`, an unknown function or an invalid regex is rejected with `400`, and the message names the attestation, where it is in the YAML and the position of the error:
+
+```
+templateYaml: invalid if: condition on attestation 'security-scan' at artifacts[0].attestations[1] (position 1): unknown field 'flow.nmae' at position 1; ...
+```
+
+A condition stored before this check existed that still cannot be evaluated at assert time makes its attestation **required**, and the assert response's `details` names the attestation and the error.
 
 ### Organisation Multi-tenancy
 
