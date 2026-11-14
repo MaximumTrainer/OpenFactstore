@@ -1,0 +1,249 @@
+{
+  "_comment": "Shared masking fixtures (#198, #238). Read by the Kotlin DataMaskingGoldenTest and the Go masking tests: both implementations must produce exactly these outputs and findings.",
+  "ruleset": "builtin-v1",
+  "cases": [
+    {
+      "name": "aws access key id",
+      "input": {
+        "log": "deploying with AKIAIOSFODNN7EXAMPLE now"
+      },
+      "output": {
+        "log": "deploying with [MASKED:aws-access-key-id] now"
+      },
+      "findings": [
+        {
+          "path": "/log",
+          "rule": "aws-access-key-id"
+        }
+      ]
+    },
+    {
+      "name": "github token",
+      "input": {
+        "log": "token ghp_0123456789abcdefghijABCDEFGHIJ012345 used"
+      },
+      "output": {
+        "log": "token [MASKED:github-token] used"
+      },
+      "findings": [
+        {
+          "path": "/log",
+          "rule": "github-token"
+        }
+      ]
+    },
+    {
+      "name": "slack token",
+      "input": {
+        "log": "token xoxb-1234567890-abcdefghijkl used"
+      },
+      "output": {
+        "log": "token [MASKED:slack-token] used"
+      },
+      "findings": [
+        {
+          "path": "/log",
+          "rule": "slack-token"
+        }
+      ]
+    },
+    {
+      "name": "private key",
+      "input": {
+        "log": "pem -----BEGIN RSA PRIVATE KEY-----MIIBOgIBAAJBAKj34-----END RSA PRIVATE KEY----- used"
+      },
+      "output": {
+        "log": "pem [MASKED:private-key] used"
+      },
+      "findings": [
+        {
+          "path": "/log",
+          "rule": "private-key"
+        }
+      ]
+    },
+    {
+      "name": "jwt",
+      "input": {
+        "log": "bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJlLXZhbHVl used"
+      },
+      "output": {
+        "log": "bearer [MASKED:jwt] used"
+      },
+      "findings": [
+        {
+          "path": "/log",
+          "rule": "jwt"
+        }
+      ]
+    },
+    {
+      "name": "factstore api key",
+      "input": {
+        "log": "key fsp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa used"
+      },
+      "output": {
+        "log": "key [MASKED:factstore-api-key] used"
+      },
+      "findings": [
+        {
+          "path": "/log",
+          "rule": "factstore-api-key"
+        }
+      ]
+    },
+    {
+      "name": "google api key",
+      "input": {
+        "log": "key AIzaSyA0123456789abcdefghijklmnopqrstuv used"
+      },
+      "output": {
+        "log": "key [MASKED:google-api-key] used"
+      },
+      "findings": [
+        {
+          "path": "/log",
+          "rule": "google-api-key"
+        }
+      ]
+    },
+    {
+      "name": "password assignment keeps its name",
+      "input": {
+        "log": "set password=hunter2-secret used"
+      },
+      "output": {
+        "log": "set password=[MASKED:password-assignment] used"
+      },
+      "findings": [
+        {
+          "path": "/log",
+          "rule": "password-assignment"
+        }
+      ]
+    },
+    {
+      "name": "email",
+      "input": {
+        "log": "contact alice@example.com used"
+      },
+      "output": {
+        "log": "contact [MASKED:email] used"
+      },
+      "findings": [
+        {
+          "path": "/log",
+          "rule": "email"
+        }
+      ]
+    },
+    {
+      "name": "nested arrays and several rules",
+      "input": {
+        "steps": [
+          {
+            "out": "ok"
+          },
+          {
+            "out": "AKIAIOSFODNN7EXAMPLE and bob@example.org"
+          }
+        ]
+      },
+      "output": {
+        "steps": [
+          {
+            "out": "ok"
+          },
+          {
+            "out": "[MASKED:aws-access-key-id] and [MASKED:email]"
+          }
+        ]
+      },
+      "findings": [
+        {
+          "path": "/steps/1/out",
+          "rule": "aws-access-key-id"
+        },
+        {
+          "path": "/steps/1/out",
+          "rule": "email"
+        }
+      ]
+    },
+    {
+      "name": "sensitive fields masked whole",
+      "sensitive": [
+        "/db/password",
+        "/items/*/token"
+      ],
+      "input": {
+        "db": {
+          "password": "correct horse"
+        },
+        "items": [
+          {
+            "token": "t1"
+          },
+          {
+            "token": "[MASKED:sensitive-field]"
+          }
+        ],
+        "count": 3
+      },
+      "output": {
+        "db": {
+          "password": "[MASKED:sensitive-field]"
+        },
+        "items": [
+          {
+            "token": "[MASKED:sensitive-field]"
+          },
+          {
+            "token": "[MASKED:sensitive-field]"
+          }
+        ],
+        "count": 3
+      },
+      "findings": [
+        {
+          "path": "/db/password",
+          "rule": "sensitive-field"
+        },
+        {
+          "path": "/items/0/token",
+          "rule": "sensitive-field"
+        }
+      ]
+    },
+    {
+      "name": "already masked values are left alone",
+      "input": {
+        "log": "key [MASKED:aws-access-key-id] used",
+        "user": "[MASKED:email]"
+      },
+      "output": {
+        "log": "key [MASKED:aws-access-key-id] used",
+        "user": "[MASKED:email]"
+      },
+      "findings": []
+    },
+    {
+      "name": "keys are not rewritten and clean payloads are untouched",
+      "input": {
+        "AKIAIOSFODNN7EXAMPLE": 1,
+        "tool": "junit",
+        "passed": 10,
+        "ok": true,
+        "none": null
+      },
+      "output": {
+        "AKIAIOSFODNN7EXAMPLE": 1,
+        "tool": "junit",
+        "passed": 10,
+        "ok": true,
+        "none": null
+      },
+      "findings": []
+    }
+  ]
+}

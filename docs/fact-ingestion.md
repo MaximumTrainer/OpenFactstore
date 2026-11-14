@@ -124,6 +124,18 @@ A match becomes `[MASKED:<rule>]`; for an assignment, only the value is replaced
 
 Every fact records the `masking_ruleset` it was checked against.
 
+## Sending facts from CI: `factstore fact push`
+
+The CLI does the masking and signing above for you (#238):
+
+```bash
+factstore fact push --tool junit-summary.json --schema-ref urn:schema:junit-summary:v1 --sha256 "$DIGEST" --repository org/service --signing-key runner.pem --key-id ci-runner-2026
+```
+
+1. It masks the `tool` payload with **the same ruleset as the server**. The CLI's `rules-v1.yaml` is a copy of the server's; a test fails if they differ, and both implementations run the shared fixtures in `cli/pkg/masking/testdata/golden.json`. It also masks fields the schema marks `x-sensitive`, if the key can read the schema (`policies:read`). Without that permission it masks by rules only, and the server's reject mode catches anything left.
+2. It builds the fact and serialises it once, then signs those exact bytes with the Ed25519 key. The key is PKCS#8 PEM, and `--signing-key`/`--key-id` can also come from `FACTSTORE_SIGNING_KEY_FILE` and `FACTSTORE_SIGNING_KEY_ID`.
+3. It sends the fact and prints the receipt (`fact_id`, `receipt_hash`, `ledger_index`). A refusal is reported with its error and every violation, and the command exits non-zero.
+
 ## Identity lineage
 
 Each fact is bound, by the server, to the identity verified when it arrived (#191). The request body cannot carry an identity: an `identity` field is an undefined envelope field and is refused with `invalid_envelope`.

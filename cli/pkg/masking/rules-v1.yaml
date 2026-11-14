@@ -1,0 +1,37 @@
+# Built-in masking rules for fact payloads (#198). Version: builtin-v1.
+#
+# Each rule finds a secret or a piece of PII inside a string value of a fact's `tool` payload.
+# The match (or the named group `value`, when the pattern has one) is replaced by
+# `[MASKED:<id>]`. CI runners apply the same rules before signing; Factstore applies them at the
+# ingestion boundary. Changing a rule is a new version: copy this file to rules-v2.yaml.
+#
+# Point factstore.masking.rules-file at your own copy to add organisation-specific rules.
+version: builtin-v1
+rules:
+  - id: private-key
+    category: secret
+    pattern: '-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)'
+  - id: jwt
+    category: secret
+    pattern: '\beyJ[A-Za-z0-9_-]{5,}\.eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{10,}'
+  - id: aws-access-key-id
+    category: secret
+    pattern: '\b(?:AKIA|ASIA)[0-9A-Z]{16}\b'
+  - id: github-token
+    category: secret
+    pattern: '\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{60,})\b'
+  - id: slack-token
+    category: secret
+    pattern: '\bxox[abprs]-[A-Za-z0-9-]{10,}'
+  - id: factstore-api-key
+    category: secret
+    pattern: '\bfs[ps]_[0-9a-f]{64}\b'
+  - id: google-api-key
+    category: secret
+    pattern: '\bAIza[0-9A-Za-z_-]{35}\b'
+  - id: password-assignment
+    category: secret
+    pattern: '(?i)\b(?:password|passwd|pwd|secret|api[_-]?key|token)\s*[=:]\s*(?<value>[^\s"'',;]+)'
+  - id: email
+    category: pii
+    pattern: '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
