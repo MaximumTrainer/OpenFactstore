@@ -261,11 +261,13 @@ multi-pipeline example.
 ```json
 {
   "type": "junit",
-  "status": "PASSED",
-  "description": "All 247 tests passed",
-  "metadata": { "total": 247, "failed": 0 }
+  "details": "Unit test run"
 }
 ```
+
+The server decides the status wherever it can evaluate the evidence (#240): for `junit`, `snyk`, `sonar` and `jira` the uploaded evidence file decides and the attestation is `PENDING` until then; a custom type with a `jqExpression` is decided by the expression on `attestationData`. A `status` sent for those types is ignored (a claimed `FAILED` is kept). For any other type the sent `status` is recorded and the response has `"selfAsserted": true`. The same applies to `POST /api/v1/evidence/collect`, whose `passed` is a claim; each result reports the stored `status` and `selfAsserted`.
+
+Assert responses list self-asserted evidence in `selfAssertedAttestationTypes`, and evidence the flow refuses in `rejectedSelfAssertedAttestationTypes`; gate decisions use `self_asserted` and `rejected_self_asserted`. A flow refuses self-asserted evidence with `rejectSelfAsserted: true` (create or update), except for the types in `acceptedSelfAssertedTypes`.
 
 **Pull request attestation — request body:**
 ```json

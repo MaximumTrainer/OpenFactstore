@@ -1,5 +1,6 @@
 package com.factstore
 
+import com.factstore.testsupport.recordWithEvidence
 import com.factstore.application.AttestationService
 import com.factstore.application.ArtifactService
 import com.factstore.application.DeploymentPolicyService
@@ -83,7 +84,7 @@ class DeploymentPolicyServiceTest {
             )
         )
         // Record a FAILED attestation — junit is missing as PASSED
-        attestationService.recordAttestation(trail.id, CreateAttestationRequest("snyk", AttestationStatus.FAILED))
+        attestationService.recordWithEvidence(trail.id, CreateAttestationRequest("snyk", AttestationStatus.FAILED))
 
         deploymentPolicyService.createPolicy(
             CreateDeploymentPolicyRequest(
@@ -114,8 +115,8 @@ class DeploymentPolicyServiceTest {
                 reportedBy = "ci"
             )
         )
-        attestationService.recordAttestation(trail.id, CreateAttestationRequest("junit", AttestationStatus.PASSED))
-        attestationService.recordAttestation(trail.id, CreateAttestationRequest("snyk", AttestationStatus.PASSED))
+        attestationService.recordWithEvidence(trail.id, CreateAttestationRequest("junit", AttestationStatus.PASSED))
+        attestationService.recordWithEvidence(trail.id, CreateAttestationRequest("snyk", AttestationStatus.PASSED))
 
         deploymentPolicyService.createPolicy(
             CreateDeploymentPolicyRequest(

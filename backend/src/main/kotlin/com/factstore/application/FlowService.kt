@@ -67,6 +67,8 @@ class FlowService(
             it.templateYaml = request.templateYaml ?: applied?.templateYaml
             it.requiresApproval = request.requiresApproval
             it.requiredApproverRoles = request.requiredApproverRoles
+            it.rejectSelfAsserted = request.rejectSelfAsserted ?: false
+            it.acceptedSelfAssertedTypes = request.acceptedSelfAssertedTypes.orEmpty()
             if (applied != null) {
                 it.templateId = templateIds.joinToString("+")
                 it.templateVersion = templateIds
@@ -147,6 +149,16 @@ class FlowService(
         request.requiresApproval?.let {
             if (it != flow.requiresApproval) changes["requiresApproval"] = diff(flow.requiresApproval, it)
             flow.requiresApproval = it
+        }
+        request.rejectSelfAsserted?.let {
+            if (it != flow.rejectSelfAsserted) changes["rejectSelfAsserted"] = diff(flow.rejectSelfAsserted, it)
+            flow.rejectSelfAsserted = it
+        }
+        request.acceptedSelfAssertedTypes?.let {
+            if (it != flow.acceptedSelfAssertedTypes) {
+                changes["acceptedSelfAssertedTypes"] = diff(flow.acceptedSelfAssertedTypes, it)
+            }
+            flow.acceptedSelfAssertedTypes = it
         }
         request.requiredApproverRoles?.let {
             if (it != flow.requiredApproverRoles) {
@@ -355,6 +367,8 @@ fun Flow.toResponse() = FlowResponse(
     updatedAt = updatedAt,
     requiresApproval = requiresApproval,
     requiredApproverRoles = requiredApproverRoles,
-    archivedAt = archivedAt
+    archivedAt = archivedAt,
+    rejectSelfAsserted = rejectSelfAsserted,
+    acceptedSelfAssertedTypes = acceptedSelfAssertedTypes
 )
 

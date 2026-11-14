@@ -76,7 +76,14 @@ class Attestation(
     var overridesAttestationId: UUID? = null,
 
     @Column(name = "justification", columnDefinition = "TEXT")
-    var justification: String? = null
+    var justification: String? = null,
+
+    /**
+     * #240: the status is the caller's claim, which the server had no evaluator to check.
+     * Shown in assert and gate output; a flow can refuse to count it.
+     */
+    @Column(name = "self_asserted", nullable = false)
+    var selfAsserted: Boolean = false
 ) {
     // Issue #127: computed property for external URLs list
     var externalUrls: List<String>

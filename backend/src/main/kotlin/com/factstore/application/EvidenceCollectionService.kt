@@ -30,7 +30,8 @@ class EvidenceCollectionService(
     private val trailRepository: ITrailRepository,
     private val flowRepository: IFlowRepository,
     private val attestationRepository: IAttestationRepository,
-    private val coverageReportRepository: ICoverageReportRepository
+    private val coverageReportRepository: ICoverageReportRepository,
+    private val verdicts: com.factstore.application.attestation.AttestationVerdictResolver
 ) : IEvidenceCollectionService {
 
     private val log = LoggerFactory.getLogger(EvidenceCollectionService::class.java)
@@ -164,22 +165,27 @@ class EvidenceCollectionService(
 
     private fun processBulkEvidenceItem(item: BulkEvidenceItem): BulkEvidenceResult {
         if (!trailRepository.existsById(item.trailId)) throw NotFoundException("Trail not found: ${item.trailId}")
-        val status = if (item.passed) AttestationStatus.PASSED else AttestationStatus.FAILED
+        // #240: `passed` is a claim; it decides nothing for a type the server can evaluate.
+        val claimed = if (item.passed) AttestationStatus.PASSED else AttestationStatus.FAILED
+        val verdict = verdicts.resolve(item.evidenceType, claimed, attestationData = null)
         val attestation = Attestation(
             trailId = item.trailId,
             type = item.evidenceType,
-            status = status,
+            status = verdict.status,
+            selfAsserted = verdict.selfAsserted,
             details = item.details ?: "Collected via bulk evidence pipeline (tool: ${item.tool})"
         )
         val saved = attestationRepository.save(attestation)
-        if (!item.passed) {
+        if (saved.status == AttestationStatus.FAILED) {
             markTrailNonCompliant(item.trailId)
         }
         return BulkEvidenceResult(
             trailId = item.trailId,
             evidenceType = item.evidenceType,
             attestationId = saved.id,
-            passed = item.passed
+            passed = saved.status == AttestationStatus.PASSED,
+            status = saved.status,
+            selfAsserted = saved.selfAsserted
         )
     }
 

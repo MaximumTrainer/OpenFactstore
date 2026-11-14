@@ -25,13 +25,15 @@ Factstore accepts any string as an attestation type. Use a consistent naming con
 | `FAILED` | The quality gate failed — Trail is non-compliant |
 | `PENDING` | Evidence has been received but not yet evaluated (default) |
 
+**Factstore decides the status from the evidence wherever it can.** For `junit`, `snyk`, `sonar` and `jira` the uploaded report decides: the attestation is `PENDING` until the report arrives, and a `"status": "PASSED"` sent with it is ignored. A custom type with a `jqExpression` is decided by that expression. For any other type the status you send is recorded as given and marked `"selfAsserted": true`, which assert and gate responses report and a flow can refuse (see the user guide's [Who decides pass or fail](../user-guide.md#who-decides-pass-or-fail)).
+
 ## Record an attestation
 
 `TRAIL_ID` is the trail from [Part 5](./05-trails.md).
 
 ### JUnit test results
 
-Keep the attestation's `id`; the evidence upload below attaches a file to it:
+Record the attestation and keep its `id`; the report you upload next decides whether it passed:
 
 ```bash
 ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
@@ -39,8 +41,7 @@ ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations
   -H "Content-Type: application/json" \
   -d '{
     "type": "junit",
-    "status": "PASSED",
-    "details": "156 tests passed, 0 failed, 2 skipped"
+    "details": "Unit test run"
   }' | jq -r .id)
 echo "$ATTESTATION_ID"
 ```
@@ -48,19 +49,38 @@ echo "$ATTESTATION_ID"
 ### Snyk security scan
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+SNYK_ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "type": "snyk",
+    "details": "Dependency scan"
+  }' | jq -r .id)
+
+printf '{"vulnerabilities": []}\n' > snyk-results.json
+curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$SNYK_ATTESTATION_ID/evidence" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  -F "file=@./snyk-results.json" | jq .
+```
+
+### A gate with no evaluator
+
+A type Factstore cannot evaluate takes the status you send, labelled as self-asserted:
+
+```bash
+curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "change-approval",
     "status": "PASSED",
-    "details": "No critical or high vulnerabilities found"
-  }' | jq .
+    "details": "Approved in CHANGE-42"
+  }' | jq -e '.selfAsserted == true'
 ```
 
 ### Failed attestation
 
-A gate that failed is recorded the same way, with `"status": "FAILED"`. (Not run here: it would make this tutorial's trail non-compliant.)
+A gate that failed is recorded the same way, with `"status": "FAILED"`, which is always kept. (Not run here: it would make this tutorial's trail non-compliant.)
 
 <!-- docs-e2e:skip -->
 ```bash
@@ -86,6 +106,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
   "evidenceFileName": null,
   "evidenceFileSizeBytes": null,
   "details": "3 critical vulnerabilities found in lodash@4.17.20",
+  "selfAsserted": false,
   "createdAt": "2026-03-11T10:15:00Z"
 }
 ```

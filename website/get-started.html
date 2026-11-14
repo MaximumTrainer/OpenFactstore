@@ -222,6 +222,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/artifacts" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{ \"flowId\": \"$FLOW_ID\", \"sha256Digest\": \"$DIGEST\" }" | jq .</code></pre>
+            <p>A type the server cannot evaluate, like <code>security-scan</code> here, is recorded as you sent it and labelled <code>selfAsserted</code>. For <code>junit</code>, <code>snyk</code>, <code>sonar</code> and <code>jira</code> the status comes from the uploaded report instead; see the user guide's <a href="https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/user-guide.md#who-decides-pass-or-fail">Who decides pass or fail</a>.</p>
             <p>When every required attestation type has a <code>PASSED</code> attestation, the response shows <code>"status": "COMPLIANT"</code> and the artifact is cleared for deployment; otherwise <code>NON_COMPLIANT</code> with the missing and failed types.</p>
           </div>
         </div>

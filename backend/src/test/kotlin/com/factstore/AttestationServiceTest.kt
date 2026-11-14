@@ -56,11 +56,12 @@ class AttestationServiceTest {
     }
 
     @Test
-    fun `record PASSED attestation succeeds`() {
+    fun `record PASSED attestation of an unevaluated type succeeds as self-asserted`() {
         val trailId = setupTrail()
-        val resp = attestationService.recordAttestation(trailId, CreateAttestationRequest("junit", AttestationStatus.PASSED))
-        assertEquals("junit", resp.type)
+        val resp = attestationService.recordAttestation(trailId, CreateAttestationRequest("code-review", AttestationStatus.PASSED))
+        assertEquals("code-review", resp.type)
         assertEquals(AttestationStatus.PASSED, resp.status)
+        assertTrue(resp.selfAsserted)
         assertEquals(trailId, resp.trailId)
     }
 
@@ -291,7 +292,8 @@ class AttestationServiceTest {
             CreateArtifactAttestationRequest("snyk", AttestationStatus.PASSED)
         )
         assertEquals("snyk", resp.type)
-        assertEquals(AttestationStatus.PASSED, resp.status)
+        // #240: snyk is evaluated from its report, so the claim leaves it PENDING.
+        assertEquals(AttestationStatus.PENDING, resp.status)
         assertEquals(artifactId, resp.artifactId)
         assertEquals(trailId, resp.trailId)
         assertNotNull(resp.artifactFingerprint)

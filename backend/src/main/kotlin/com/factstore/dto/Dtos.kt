@@ -68,7 +68,11 @@ data class CreateFlowRequest(
     /** Apply a hub template at creation; its YAML is copied onto the flow (#162). */
     val templateId: String? = null,
     /** Apply several templates combined, e.g. a service type plus a regulatory framework. */
-    val templateIds: List<String> = emptyList()
+    val templateIds: List<String> = emptyList(),
+    /** #240: do not count self-asserted attestations towards compliance (optional, default false)... */
+    val rejectSelfAsserted: Boolean? = null,
+    /** ...except for these types (optional, default none). */
+    val acceptedSelfAssertedTypes: List<String>? = null
 )
 
 /** Blast radius of a change to a flow definition (#160). */
@@ -88,7 +92,9 @@ data class UpdateFlowRequest(
     val tags: Map<String, String>? = null,
     val templateYaml: String? = null,
     val requiresApproval: Boolean? = null,
-    val requiredApproverRoles: List<String>? = null
+    val requiredApproverRoles: List<String>? = null,
+    val rejectSelfAsserted: Boolean? = null,
+    val acceptedSelfAssertedTypes: List<String>? = null
 )
 
 data class RenameFlowRequest(
@@ -112,7 +118,9 @@ data class FlowResponse(
     val updatedAt: Instant,
     val requiresApproval: Boolean = false,
     val requiredApproverRoles: List<String> = emptyList(),
-    val archivedAt: Instant? = null
+    val archivedAt: Instant? = null,
+    val rejectSelfAsserted: Boolean = false,
+    val acceptedSelfAssertedTypes: List<String> = emptyList()
 )
 
 // Trail DTOs
@@ -219,7 +227,9 @@ data class AttestationResponse(
     val gitRepoUrl: String? = null,
     val artifactId: UUID? = null,
     val overridesAttestationId: UUID? = null,
-    val justification: String? = null
+    val justification: String? = null,
+    /** True when the status is the caller's unchecked claim (#240). */
+    val selfAsserted: Boolean = false
 )
 
 // Artifact DTOs
@@ -496,7 +506,14 @@ data class AssertResponse(
     val missingAttestationNames: List<String> = emptyList(),
     val failedAttestationNames: List<String> = emptyList(),
     /** The trail the verdict was computed from; null only when no trail could be resolved. */
-    val trailId: UUID? = null
+    val trailId: UUID? = null,
+    /**
+     * #240: required attestations (types, or names under a template) that passed only on the
+     * caller's word: the server had no evaluator for them. Counted, but labelled.
+     */
+    val selfAssertedAttestationTypes: List<String> = emptyList(),
+    /** #240: required attestations whose only passing evidence is self-asserted, which this flow refuses. */
+    val rejectedSelfAssertedAttestationTypes: List<String> = emptyList()
 )
 
 enum class ComplianceStatus { COMPLIANT, NON_COMPLIANT }
@@ -1257,7 +1274,10 @@ data class BulkEvidenceResult(
     val trailId: UUID,
     val evidenceType: String,
     val attestationId: UUID,
-    val passed: Boolean
+    /** Whether the recorded attestation is PASSED; a claim the server overrides is reported as it was stored (#240). */
+    val passed: Boolean,
+    val status: AttestationStatus = if (passed) AttestationStatus.PASSED else AttestationStatus.FAILED,
+    val selfAsserted: Boolean = false
 )
 
 data class BulkEvidenceResponse(
