@@ -25,6 +25,7 @@ import java.util.UUID
 @Tag(name = "Flows", description = "Flow management")
 class FlowController(private val flowService: IFlowService) {
 
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/flows")
     @PostMapping
     @PreAuthorize("hasAuthority('SCOPE_flows:write')")
     @Operation(summary = "Create a new flow")
@@ -53,6 +54,7 @@ class FlowController(private val flowService: IFlowService) {
     }
 
     @PreAuthorize("@authz.has('flows:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/flows")
     @GetMapping
     @Operation(summary = "List all flows")
     fun listFlows(
@@ -61,17 +63,20 @@ class FlowController(private val flowService: IFlowService) {
         ResponseEntity.ok(flowService.listFlows(includeArchived))
 
     @PreAuthorize("@authz.has('flows:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/flows/{id}")
     @GetMapping("/{id}")
     @Operation(summary = "Get flow by ID")
     fun getFlow(@PathVariable id: UUID): ResponseEntity<FlowResponse> =
         ResponseEntity.ok(flowService.getFlow(id))
 
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/flows/{id}")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('SCOPE_flows:write')")
     @Operation(summary = "Update a flow")
     fun updateFlow(@PathVariable id: UUID, @RequestBody request: UpdateFlowRequest): ResponseEntity<FlowResponse> =
         ResponseEntity.ok(flowService.updateFlow(id, request))
 
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/flows/{id}")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('SCOPE_flows:write')")
     @Operation(
@@ -108,6 +113,7 @@ class FlowController(private val flowService: IFlowService) {
         ResponseEntity.ok(flowService.getTemplateDrift(id))
 
     @PreAuthorize("@authz.has('flows:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/flows/{id}/template")
     @GetMapping("/{id}/template")
     @Operation(summary = "Get flow template")
     fun getFlowTemplate(@PathVariable id: UUID): ResponseEntity<FlowTemplateResponse> =

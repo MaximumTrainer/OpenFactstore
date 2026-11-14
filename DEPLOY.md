@@ -338,7 +338,7 @@ One-liner verification:
 
 ```bash
 echo "--- UI ---"        && curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8080/
-echo "--- Flows API ---" && curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v1/flows
+echo "--- Flows API ---" && curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v2/flows
 echo "--- OpenAPI ---"   && curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api-docs | grep -o '"openapi":"[^"]*"'
 ```
 

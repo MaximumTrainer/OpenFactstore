@@ -29,5 +29,15 @@ fun Attestation.toView() = AttestationView(
     compliant = status == AttestationStatus.PASSED,
     orgSlug = orgSlug,
     artifactFingerprint = artifactFingerprint,
-    createdAt = createdAt
+    createdAt = createdAt,
+    attestationData = attestationData,
+    externalUrls = externalUrls,
+    annotations = annotations.toMap(),
+    gitCommitSha = gitCommitSha,
+    gitBranch = gitBranch,
+    gitRepoUrl = gitRepoUrl,
+    artifactId = artifactId,
+    overridesAttestationId = overridesAttestationId,
+    justification = justification,
+    selfAsserted = selfAsserted
 )

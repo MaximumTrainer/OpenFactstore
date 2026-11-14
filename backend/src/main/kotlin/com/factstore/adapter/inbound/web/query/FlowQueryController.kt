@@ -5,6 +5,7 @@ import com.factstore.core.port.inbound.query.IFlowQueryHandler
 import com.factstore.dto.query.FlowTemplateView
 import com.factstore.dto.query.FlowView
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -17,9 +18,12 @@ class FlowQueryController(private val queryHandler: IFlowQueryHandler) {
 
     @PreAuthorize("@authz.has('flows:read')")
     @GetMapping
-    @Operation(summary = "List all flows")
-    fun listFlows(): ResponseEntity<List<FlowView>> =
-        ResponseEntity.ok(queryHandler.listFlows())
+    @Operation(summary = "List flows; archived flows are hidden by default")
+    fun listFlows(
+        @Parameter(description = "Include archived records (default false)") @RequestParam(defaultValue = "false") includeArchived: Boolean,
+        @RequestParam(required = false) page: Int?,
+        @RequestParam(required = false) size: Int?
+    ): ResponseEntity<List<FlowView>> = Paging.page(queryHandler.listFlows(includeArchived), page, size)
 
     @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/{id}")

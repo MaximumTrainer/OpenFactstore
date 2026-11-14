@@ -1,10 +1,12 @@
 package com.factstore.application.command
 
+import com.factstore.application.HubService
 import com.factstore.core.domain.Flow
 import com.factstore.core.domain.event.DomainEvent
 import com.factstore.core.port.inbound.command.IFlowCommandHandler
 import com.factstore.core.port.outbound.IFlowRepository
 import com.factstore.core.port.outbound.ITrailRepository
+import com.factstore.dto.ComposeTemplateRequest
 import com.factstore.dto.command.CommandResult
 import com.factstore.dto.command.CreateFlowCommand
 import com.factstore.dto.command.DeleteFlowCommand
@@ -32,7 +34,8 @@ import java.time.Instant
 class FlowCommandHandler(
     private val flowRepository: IFlowRepository,
     private val trailRepository: ITrailRepository,
-    private val eventAppender: EventAppender
+    private val eventAppender: EventAppender,
+    private val hubService: HubService
 ) : IFlowCommandHandler {
 
     private val log = LoggerFactory.getLogger(FlowCommandHandler::class.java)
@@ -44,6 +47,11 @@ class FlowCommandHandler(
         }
         validateTags(command.tags)
         command.templateYaml?.let { templateParser.validate(it) }
+        // A template is copied onto the flow at creation, never linked live (#162), as on v1.
+        val templateIds = (listOfNotNull(command.templateId) + command.templateIds.orEmpty()).distinct()
+        val applied = templateIds.takeIf { it.isNotEmpty() }?.let {
+            hubService.compose(ComposeTemplateRequest(templateIds = it, orgSlug = command.orgSlug))
+        }
         val flow = Flow(
             name = command.name,
             description = command.description,
@@ -51,9 +59,13 @@ class FlowCommandHandler(
         ).also {
             it.requiredAttestationTypes = command.requiredAttestationTypes
             it.tags = command.tags.toMutableMap()
-            it.templateYaml = command.templateYaml
+            it.templateYaml = command.templateYaml ?: applied?.templateYaml
             it.requiresApproval = command.requiresApproval
             it.requiredApproverRoles = command.requiredApproverRoles
+            if (applied != null) {
+                it.templateId = templateIds.joinToString("+")
+                it.templateVersion = templateIds.joinToString("+") { id -> hubService.getTemplate(id, command.orgSlug).version }
+            }
             it.rejectSelfAsserted = command.rejectSelfAsserted ?: false
             it.acceptedSelfAssertedTypes = command.acceptedSelfAssertedTypes.orEmpty()
         }
@@ -67,7 +79,9 @@ class FlowCommandHandler(
             tags = saved.tags.toMap(),
             templateYaml = saved.templateYaml,
             requiresApproval = saved.requiresApproval,
-            requiredApproverRoles = saved.requiredApproverRoles
+            requiredApproverRoles = saved.requiredApproverRoles,
+            templateId = saved.templateId,
+            templateVersion = saved.templateVersion
         ))
         log.info("Created flow: ${saved.id} - ${saved.name}")
         return CommandResult(id = saved.id, status = "created")

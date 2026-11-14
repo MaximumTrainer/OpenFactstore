@@ -161,7 +161,7 @@ export BASE_URL=http://localhost:8080     # command service: send every write he
 export QUERY_URL=http://localhost:8081    # query service: reads, eventually consistent
 export FACTSTORE_TOKEN="$(grep '^SECURITY_BOOTSTRAP_API_KEY=' .env | cut -d= -f2-)"
 
-curl -s "$BASE_URL/api/v1/flows" -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq .
+curl -s "$BASE_URL/api/v2/flows" -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq .
 ```
 <!-- docs-e2e:end -->
 
@@ -235,7 +235,7 @@ It assumes the stack from [Setup & Installation](#3-setup--installation) is runn
 A Flow defines the attestation types your artifact must satisfy. Keep its `id`:
 
 ```bash
-FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v1/flows" \
+FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v2/flows" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -263,7 +263,7 @@ The response is the new flow, for example:
 A Trail represents a single build. Attach it to your Flow and record Git metadata:
 
 ```bash
-TRAIL_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails" \
+TRAIL_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -283,7 +283,7 @@ Register the container image this build produced, by its SHA-256 digest:
 ```bash
 DIGEST="sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/artifacts" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/artifacts" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -304,25 +304,25 @@ mkdir -p reports
 printf '<testsuite name="unit" tests="247" failures="0" errors="0"><testcase name="ok"/></testsuite>\n' > reports/junit.xml
 printf '{"vulnerabilities": []}\n' > reports/snyk.json
 
-JUNIT_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+JUNIT_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "type": "junit", "details": "Unit tests" }' | jq -r .id)
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$JUNIT_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$JUNIT_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@./reports/junit.xml" | jq .
 
-SNYK_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+SNYK_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "type": "snyk", "details": "Dependency scan" }' | jq -r .id)
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$SNYK_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$SNYK_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@./reports/snyk.json" | jq .
 
 # Both are now PASSED, decided by the server from the reports
-curl -s "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
-  -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq -e 'all(.items[]; .status == "PASSED")'
+curl -s "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq -e 'all(.[]; .status == "PASSED")'
 ```
 
 ### Step 5: Assert Compliance
@@ -823,13 +823,27 @@ Rows highlighted in green represent newly deployed images; rows in red are image
 
 These features are driven through the HTTP API. Every example sends `Authorization: Bearer $FACTSTORE_TOKEN` and uses `$BASE_URL` for the command service; see [Setup & Installation](#3-setup--installation).
 
+### API versions and deprecated endpoints
+
+Flows, trails, artifacts and attestations are created and read through `/api/v2`. Each `/api/v1`
+endpoint with a `/api/v2` twin of the same method and path is **deprecated** and may be removed after
+2027-05-14 (#250). Until then it keeps working, and every response from it carries `Deprecation`,
+`Sunset` and a `Link: <…>; rel="successor-version"` header naming the endpoint to call instead.
+
+A `/api/v2` write answers with `{"id", "status", "timestamp"}` rather than the whole record; read the
+record back with the matching `GET`. The v2 lists return JSON arrays, take `page` and `size`
+(the full count is then in `X-Total-Count`), and hide archived flows and trails unless
+`includeArchived=true`. [API deprecations](./upgrading/api-deprecations.md) lists what else differs,
+and the [endpoint inventory](./api-inventory.md) lists every endpoint with the decision taken on each
+duplicate.
+
 ### Flow Tags
 
 Flows support arbitrary key-value tags for filtering, reporting, and multi-team organisation.
 
 ```bash
 # Create a flow with tags
-curl -s -X POST "$BASE_URL/api/v1/flows" \
+curl -s -X POST "$BASE_URL/api/v2/flows" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -850,7 +864,7 @@ Use tags to group flows for dashboards, notifications, and policy rules. Tags do
 Define a flow's requirements as a YAML template, kept in your repository, and send it as `templateYaml` when you create or update the flow. Read back the template a flow carries, and the effective template after any catalogue templates are combined:
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows/$FLOW_ID/template" | jq .
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows/$FLOW_ID/template" | jq .
 # { "flowId": "...", "templateYaml": "version: 1\n...", "effectiveTemplate": ... }
 ```
 
@@ -1151,7 +1165,7 @@ curl -s -X POST "$BASE_URL/api/v1/organisations/acme-corp/scm-integrations" \
 **Step 2 — Record a PR attestation:**
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/pull-request" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/pull-request" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1363,7 +1377,7 @@ This applies to every way evidence arrives: `/api/v1` and `/api/v2` attestations
 **Self-asserted evidence** counts towards compliance by default, but it is labelled: the assert response lists it in `selfAssertedAttestationTypes` and its `details` say so, and a gate decision lists it in `self_asserted`. A flow can refuse it with `"rejectSelfAsserted": true`, naming any types it still accepts in `acceptedSelfAssertedTypes`; refused evidence is reported as missing and listed in `rejectedSelfAssertedAttestationTypes` (assert) or `rejected_self_asserted` (gate).
 
 ```bash
-curl -s -X PUT "$BASE_URL/api/v1/flows/$FLOW_ID" \
+curl -s -X PUT "$BASE_URL/api/v2/flows/$FLOW_ID" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "rejectSelfAsserted": true, "acceptedSelfAssertedTypes": ["manual-sign-off"] }' | jq .
@@ -1371,7 +1385,7 @@ curl -s -X PUT "$BASE_URL/api/v1/flows/$FLOW_ID" \
 
 ### Attestation Type Processors
 
-When you upload an evidence file to an attestation of certain types, OpenFactstore **automatically parses the content** and sets `PASSED` or `FAILED`. For these types the evidence is the only way to reach `PASSED`. Evidence is uploaded as a multipart file to `POST /api/v1/trails/{trailId}/attestations/{attestationId}/evidence`.
+When you upload an evidence file to an attestation of certain types, OpenFactstore **automatically parses the content** and sets `PASSED` or `FAILED`. For these types the evidence is the only way to reach `PASSED`. Evidence is uploaded as a multipart file to `POST /api/v2/trails/{trailId}/attestations/{attestationId}/evidence`.
 
 #### JUnit XML → `junit` attestations
 
@@ -1379,12 +1393,12 @@ Upload JUnit XML test results — OpenFactstore counts `failures` and `errors` a
 
 ```bash
 # Record a junit attestation and upload XML evidence
-ATTEST_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+ATTEST_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"type": "junit", "details": "Unit test results"}' | jq -r .id)
 
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@target/surefire-reports/TEST-results.xml" | jq .
 # → status auto-set to PASSED (0 failures) or FAILED (failures/errors > 0)
@@ -1396,7 +1410,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTEST_ID/evide
 Upload a Snyk JSON output or any SARIF-format file.
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@snyk-results.json" | jq .
 # → PASSED if vulnerabilities == 0, FAILED otherwise
@@ -1411,7 +1425,7 @@ Upload the SonarQube quality gate API response (`/api/qualitygates/project_statu
 # Fetch quality gate status from SonarQube and submit as evidence
 curl -s -u "$SONAR_TOKEN:" "$SONAR_HOST/api/qualitygates/project_status?projectKey=my-service" > sonar-status.json
 
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@sonar-status.json;type=application/json" | jq .
 # → PASSED if projectStatus.status == "OK", FAILED otherwise
@@ -1425,14 +1439,14 @@ Submit a Jira issue key (e.g. `PROJ-123`) or a JSON body with `issueRef`.
 ```bash
 # Plain issue key
 printf 'PROJ-123' > jira-ref.txt
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@jira-ref.txt;type=text/plain" | jq .
 # → PASSED (matches [A-Z]+-\d+ pattern), FAILED otherwise
 # → details: {"issueRef":"PROJ-123"}
 
 # JSON: {"issueRef": "PROJ-123", "status": "Done"}
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$ATTEST_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@jira-ref.json;type=application/json" | jq .
 ```
@@ -1446,7 +1460,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTEST_ID/evide
 ```yaml
 - name: Create Factstore trail
   run: |
-    curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v1/trails" \
+    curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v2/trails" \
       -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
       -H "Content-Type: application/json" \
       -H "X-Factstore-CI-Context: github-actions" \
@@ -1512,7 +1526,7 @@ jobs:
       - name: Create build trail
         id: trail
         run: |
-          TRAIL_ID=$(curl -sf -X POST "${{ secrets.FACTSTORE_URL }}/api/v1/trails" \
+          TRAIL_ID=$(curl -sf -X POST "${{ secrets.FACTSTORE_URL }}/api/v2/trails" \
             -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
@@ -1707,7 +1721,7 @@ After bootstrapping, use `terraform output` to feed resource IDs into your CI pi
 
 - name: Create trail
   run: |
-    curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v1/trails" \
+    curl -s -X POST "${{ vars.FACTSTORE_BASE_URL }}/api/v2/trails" \
       -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
       -H "Content-Type: application/json" \
       -d '{
@@ -2100,7 +2114,7 @@ A **fact** (attestation) is an immutable evidence record attached to a Trail tha
 Create a trail at the very beginning of the CI build, before any tests run.
 
 ```http
-POST /api/v1/trails
+POST /api/v2/trails
 {
   "flowId":         "<flow-uuid>",
   "gitCommitSha":   "a1b2c3d4",
@@ -2117,7 +2131,7 @@ The response's `id` is the trail's UUID. The trail starts in **`PENDING`** statu
 After the container image is built, record its SHA-256 digest.
 
 ```http
-POST /api/v1/trails/<trailId>/artifacts
+POST /api/v2/trails/<trailId>/artifacts
 {
   "imageName":    "myapp",
   "imageTag":     "v2.4.1",
@@ -2132,7 +2146,7 @@ POST /api/v1/trails/<trailId>/artifacts
 For each quality gate in the flow, record an attestation on the trail.
 
 ```http
-POST /api/v1/trails/<trailId>/attestations
+POST /api/v2/trails/<trailId>/attestations
 {
   "type":        "unit-tests",
   "status":      "PASSED",
@@ -2158,7 +2172,7 @@ POST /api/v1/trails/<trailId>/attestations
 Binary evidence files (JUnit XML, SARIF, PDF) can be attached via multipart upload:
 
 ```http
-POST /api/v1/trails/<trailId>/attestations/<attestationId>/evidence
+POST /api/v2/trails/<trailId>/attestations/<attestationId>/evidence
 Content-Type: multipart/form-data
 
 file=@junit-results.xml
@@ -2236,7 +2250,7 @@ Each build creates a new Trail. Trails are immutable once created — you can on
 To see the history of compliance for an artifact, search by its SHA-256 digest:
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/artifacts?sha256=sha256:e3b0c44..." | jq .
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/artifacts?sha256=sha256:e3b0c44..." | jq .
 ```
 
 To get the full chain of custody for an artifact:
@@ -2363,13 +2377,13 @@ To produce a complete compliance package for a single build (`<trailId>`):
 
 ```http
 # 1. Trail details (commit SHA, branch, author, timestamp)
-GET /api/v1/trails/<trailId>
+GET /api/v2/trails/<trailId>
 
 # 2. All attestations and their statuses
-GET /api/v1/trails/<trailId>/attestations
+GET /api/v2/trails/<trailId>/attestations
 
 # 3. All audit events scoped to this trail
-GET /api/v1/trails/<trailId>/audit
+GET /api/v2/trails/<trailId>/audit
 
 # 4. Download each evidence file
 GET /api/v1/evidence/<sha256Hash>
@@ -2388,7 +2402,7 @@ factstore trails list --flow-id <flow-id> --json \
   | jq '[.[] | select(.status == "NON_COMPLIANT")]'
 
 # Export all audit events for a trail as JSON
-curl "$FACTSTORE_HOST/api/v1/trails/<trailId>/audit" \
+curl "$FACTSTORE_HOST/api/v2/trails/<trailId>/audit" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   | jq '.' > trail-audit.json
 
@@ -2431,7 +2445,7 @@ This is expected on a fresh install. The database starts empty. Use the CLI or A
 
 ```bash
 # Create your first Flow
-curl -X POST "$BASE_URL/api/v1/flows" \
+curl -X POST "$BASE_URL/api/v2/flows" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"my-service","description":"Example flow","requiredAttestationTypes":["junit"]}'

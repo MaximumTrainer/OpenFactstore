@@ -157,7 +157,7 @@ npm run dev             <span class="code-comment"># Starts on http://localhost:
             <pre><code>export BASE_URL=http://localhost:8080
 export FACTSTORE_TOKEN="$(grep '^SECURITY_BOOTSTRAP_API_KEY=' .env | cut -d= -f2-)"
 
-FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v1/flows" \
+FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v2/flows" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -173,7 +173,7 @@ FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v1/flows" \
           <div class="step-content">
             <h3>Start a Trail</h3>
             <p>A Trail is a per-release evidence collection; report the artifact (e.g., a container image) it built by digest.</p>
-            <pre><code>TRAIL_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails" \
+            <pre><code>TRAIL_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -185,7 +185,7 @@ FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v1/flows" \
   }" | jq -r .id)
 
 DIGEST="sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/artifacts" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/artifacts" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -202,7 +202,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/artifacts" \
           <div class="step-content">
             <h3>Record an Attestation</h3>
             <p>Attestations are individual evidence records. Record your security scan result:</p>
-            <pre><code>curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+            <pre><code>curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -259,7 +259,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/artifacts" \
         <code>X-Factstore-Dry-Run: true</code> header. The API will validate the request and simulate the
         result without making any changes:
       </p>
-      <pre><code>curl -s -X POST "$BASE_URL/api/v1/trails" \
+      <pre><code>curl -s -X POST "$BASE_URL/api/v2/trails" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -H "X-Factstore-Dry-Run: true" \

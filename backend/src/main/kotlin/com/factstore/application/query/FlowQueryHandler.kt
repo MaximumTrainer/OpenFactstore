@@ -27,7 +27,8 @@ class FlowQueryHandler(
     override fun getFlow(id: UUID): FlowView =
         tenantScope.require(flowReadRepository.findById(id), { it.orgSlug }) { "Flow not found: $id" }
 
-    override fun listFlows(): List<FlowView> = flowReadRepository.findAll().filter { tenantScope.visible(it.orgSlug) }
+    override fun listFlows(includeArchived: Boolean): List<FlowView> =
+        flowReadRepository.findAll().filter { tenantScope.visible(it.orgSlug) && (includeArchived || it.archivedAt == null) }
 
     override fun listFlowsByOrg(orgSlug: String): List<FlowView> =
         flowReadRepository.findAllByOrgSlug(orgSlug).filter { tenantScope.visible(it.orgSlug) }

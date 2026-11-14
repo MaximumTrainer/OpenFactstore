@@ -26,7 +26,9 @@ sealed class DomainEvent {
         val tags: Map<String, String> = emptyMap(),
         val templateYaml: String? = null,
         val requiresApproval: Boolean = false,
-        val requiredApproverRoles: List<String> = emptyList()
+        val requiredApproverRoles: List<String> = emptyList(),
+        val templateId: String? = null,
+        val templateVersion: String? = null
     ) : DomainEvent() {
         override val aggregateType: String = "Flow"
     }
@@ -73,7 +75,8 @@ sealed class DomainEvent {
         val buildUrl: String? = null,
         val name: String? = null,
         /** Stable release identifier, unique per flow (#164). */
-        val externalId: String? = null
+        val externalId: String? = null,
+        val tags: Map<String, String> = emptyMap()
     ) : DomainEvent() {
         override val aggregateType: String = "Trail"
     }
@@ -90,7 +93,8 @@ sealed class DomainEvent {
         val sha256Digest: String,
         val registry: String? = null,
         val reportedBy: String,
-        val orgSlug: String? = null
+        val orgSlug: String? = null,
+        val tags: Map<String, String> = emptyMap()
     ) : DomainEvent() {
         override val aggregateType: String = "Artifact"
     }
@@ -109,7 +113,13 @@ sealed class DomainEvent {
         val evidenceUrl: String? = null,
         val orgSlug: String? = null,
         val artifactFingerprint: String? = null,
-        val flowName: String? = null
+        val flowName: String? = null,
+        val attestationData: String? = null,
+        val externalUrls: List<String> = emptyList(),
+        val annotations: Map<String, String> = emptyMap(),
+        val gitCommitSha: String? = null,
+        val gitBranch: String? = null,
+        val gitRepoUrl: String? = null
     ) : DomainEvent() {
         override val aggregateType: String = "Attestation"
     }
@@ -122,7 +132,10 @@ sealed class DomainEvent {
         val fileName: String,
         val contentType: String,
         val sha256Hash: String,
-        val fileSizeBytes: Long
+        val fileSizeBytes: Long,
+        /** The attestation's status and details after its type processed the file, if it did (#250). */
+        val status: String? = null,
+        val details: String? = null
     ) : DomainEvent() {
         override val aggregateType: String = "Attestation"
     }

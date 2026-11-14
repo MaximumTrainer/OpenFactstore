@@ -26,7 +26,7 @@ class TrailCommandController(private val commandHandler: ITrailCommandHandler) {
     @PostMapping("/api/v2/trails")
     @Operation(summary = "Create/begin a trail")
     fun createTrail(
-        @RequestBody command: CreateTrailCommand,
+        @jakarta.validation.Valid @RequestBody command: CreateTrailCommand,
         @RequestHeader(value = "X-Factstore-CI-Context", required = false) ciContext: String?,
         httpRequest: HttpServletRequest
     ): ResponseEntity<*> {

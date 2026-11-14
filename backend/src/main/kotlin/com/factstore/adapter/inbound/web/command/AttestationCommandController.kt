@@ -66,7 +66,13 @@ class AttestationCommandController(
             evidenceUrl = request.evidenceUrl,
             orgSlug = request.orgSlug,
             artifactFingerprint = request.artifactFingerprint,
-            flowName = request.flowName
+            flowName = request.flowName,
+            attestationData = request.attestationData,
+            externalUrls = request.externalUrls,
+            annotations = request.annotations,
+            gitCommitSha = request.gitCommitSha,
+            gitBranch = request.gitBranch,
+            gitRepoUrl = request.gitRepoUrl
         )
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(commandHandler.recordAttestation(command))

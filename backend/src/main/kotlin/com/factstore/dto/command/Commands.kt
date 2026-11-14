@@ -1,5 +1,8 @@
 package com.factstore.dto.command
 
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Pattern
+import jakarta.validation.constraints.Size
 import java.util.UUID
 
 /**
@@ -14,7 +17,10 @@ import java.util.UUID
 // ── Flow Commands ──────────────────────────────────────────────────────────────
 
 data class CreateFlowCommand(
+    @field:NotBlank(message = "name is required")
+    @field:Size(max = 255)
     val name: String,
+    @field:Size(max = 2048)
     val description: String = "",
     val requiredAttestationTypes: List<String> = emptyList(),
     val tags: Map<String, String> = emptyMap(),
@@ -22,6 +28,10 @@ data class CreateFlowCommand(
     val templateYaml: String? = null,
     val requiresApproval: Boolean = false,
     val requiredApproverRoles: List<String> = emptyList(),
+    /** Apply a hub template at creation; its YAML is copied onto the flow (#162, #250). */
+    val templateId: String? = null,
+    /** Apply several hub templates combined. */
+    val templateIds: List<String>? = null,
     /** #240: see `Flow.rejectSelfAsserted`. Optional, default false. */
     val rejectSelfAsserted: Boolean? = null,
     val acceptedSelfAssertedTypes: List<String>? = null
@@ -65,7 +75,14 @@ data class CreateTrailCommand(
     val flowId: UUID,
     val gitCommitSha: String? = null,
     val gitBranch: String? = null,
+    @field:NotBlank(message = "gitAuthor is required")
     val gitAuthor: String,
+    /** The author email as git reports it; the same wide rule as v1 (bot addresses are allowed). */
+    @field:Pattern(
+        regexp = "^[^\\s@]+@[^\\s@]+\\.[^\\s@.]+$",
+        message = "gitAuthorEmail must be an address of the form local@domain.tld"
+    )
+    @field:Size(max = 255)
     val gitAuthorEmail: String,
     val pullRequestId: String? = null,
     val pullRequestReviewer: String? = null,
@@ -75,19 +92,25 @@ data class CreateTrailCommand(
     val buildUrl: String? = null,
     val name: String? = null,
     /** Stable release identifier; makes trail creation idempotent per flow (#164). */
-    val externalId: String? = null
+    val externalId: String? = null,
+    val tags: Map<String, String>? = null
 )
 
 // ── Artifact Commands ──────────────────────────────────────────────────────────
 
 /** JSON body for POST /api/v2/trails/{trailId}/artifacts — `trailId` comes from the path. */
 data class ReportArtifactRequest(
+    @field:NotBlank(message = "imageName is required")
     val imageName: String,
+    @field:NotBlank(message = "imageTag is required")
     val imageTag: String,
+    @field:NotBlank(message = "sha256Digest is required")
+    @field:Pattern(regexp = "sha256:[a-fA-F0-9]{64}", message = "sha256Digest must be in format sha256:<64 hex chars>")
     val sha256Digest: String,
     val registry: String? = null,
     val reportedBy: String,
-    val orgSlug: String? = null
+    val orgSlug: String? = null,
+    val tags: Map<String, String>? = null
 )
 
 data class ReportArtifactCommand(
@@ -97,7 +120,8 @@ data class ReportArtifactCommand(
     val sha256Digest: String,
     val registry: String? = null,
     val reportedBy: String,
-    val orgSlug: String? = null
+    val orgSlug: String? = null,
+    val tags: Map<String, String>? = null
 )
 
 // ── Attestation Commands ───────────────────────────────────────────────────────
@@ -111,7 +135,15 @@ data class RecordAttestationRequest(
     val evidenceUrl: String? = null,
     val orgSlug: String? = null,
     val artifactFingerprint: String? = null,
-    val flowName: String? = null
+    val flowName: String? = null,
+    /** Structured result data, checked against the type's schema when it is a custom type. */
+    val attestationData: String? = null,
+    /** Links to the evidence; defaults to `evidenceUrl` when empty. */
+    val externalUrls: List<String>? = null,
+    val annotations: Map<String, String>? = null,
+    val gitCommitSha: String? = null,
+    val gitBranch: String? = null,
+    val gitRepoUrl: String? = null
 )
 
 data class RecordAttestationCommand(
@@ -123,7 +155,15 @@ data class RecordAttestationCommand(
     val evidenceUrl: String? = null,
     val orgSlug: String? = null,
     val artifactFingerprint: String? = null,
-    val flowName: String? = null
+    val flowName: String? = null,
+    /** Structured result data, checked against the type's schema when it is a custom type. */
+    val attestationData: String? = null,
+    /** Links to the evidence; defaults to `evidenceUrl` when empty. */
+    val externalUrls: List<String>? = null,
+    val annotations: Map<String, String>? = null,
+    val gitCommitSha: String? = null,
+    val gitBranch: String? = null,
+    val gitRepoUrl: String? = null
 )
 
 data class UploadEvidenceCommand(

@@ -375,12 +375,18 @@
           "sha256Digest" : {
             "type" : "string"
           },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
           "trailId" : {
             "format" : "uuid",
             "type" : "string"
           }
         },
-        "required" : [ "id", "imageName", "imageTag", "provenanceStatus", "reportedAt", "reportedBy", "sha256Digest", "trailId" ],
+        "required" : [ "id", "imageName", "imageTag", "provenanceStatus", "reportedAt", "reportedBy", "sha256Digest", "tags", "trailId" ],
         "type" : "object"
       },
       "AssertRequest" : {
@@ -573,7 +579,20 @@
       },
       "AttestationView" : {
         "properties" : {
+          "annotations" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
           "artifactFingerprint" : {
+            "type" : "string"
+          },
+          "artifactId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "attestationData" : {
             "type" : "string"
           },
           "compliant" : {
@@ -599,8 +618,26 @@
           "evidenceUrl" : {
             "type" : "string"
           },
+          "externalUrls" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "gitBranch" : {
+            "type" : "string"
+          },
+          "gitCommitSha" : {
+            "type" : "string"
+          },
+          "gitRepoUrl" : {
+            "type" : "string"
+          },
           "id" : {
             "format" : "uuid",
+            "type" : "string"
+          },
+          "justification" : {
             "type" : "string"
           },
           "name" : {
@@ -608,6 +645,13 @@
           },
           "orgSlug" : {
             "type" : "string"
+          },
+          "overridesAttestationId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "selfAsserted" : {
+            "type" : "boolean"
           },
           "status" : {
             "enum" : [ "PASSED", "FAILED", "PENDING" ],
@@ -621,7 +665,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "compliant", "createdAt", "id", "status", "trailId", "type" ],
+        "required" : [ "annotations", "compliant", "createdAt", "externalUrls", "id", "selfAsserted", "status", "trailId", "type" ],
         "type" : "object"
       },
       "AuditEventPage" : {
@@ -1734,9 +1778,13 @@
             "type" : "array"
           },
           "description" : {
+            "maxLength" : 2048,
+            "minLength" : 0,
             "type" : "string"
           },
           "name" : {
+            "maxLength" : 255,
+            "minLength" : 0,
             "type" : "string"
           },
           "orgSlug" : {
@@ -1765,6 +1813,15 @@
               "type" : "string"
             },
             "type" : "object"
+          },
+          "templateId" : {
+            "type" : "string"
+          },
+          "templateIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "templateYaml" : {
             "type" : "string"
@@ -2128,9 +2185,13 @@
             "type" : "string"
           },
           "gitAuthor" : {
+            "minLength" : 1,
             "type" : "string"
           },
           "gitAuthorEmail" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "pattern" : "^[^\\s@]+@[^\\s@]+\\.[^\\s@.]+$",
             "type" : "string"
           },
           "gitBranch" : {
@@ -2150,6 +2211,12 @@
           },
           "pullRequestReviewer" : {
             "type" : "string"
+          },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
           },
           "templateYaml" : {
             "type" : "string"
@@ -3149,6 +3216,16 @@
       },
       "FlowView" : {
         "properties" : {
+          "acceptedSelfAssertedTypes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "archivedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
           "createdAt" : {
             "format" : "date-time",
             "type" : "string"
@@ -3165,6 +3242,9 @@
           },
           "orgSlug" : {
             "type" : "string"
+          },
+          "rejectSelfAsserted" : {
+            "type" : "boolean"
           },
           "requiredApproverRoles" : {
             "items" : {
@@ -3187,6 +3267,12 @@
             },
             "type" : "object"
           },
+          "templateId" : {
+            "type" : "string"
+          },
+          "templateVersion" : {
+            "type" : "string"
+          },
           "templateYaml" : {
             "type" : "string"
           },
@@ -3195,7 +3281,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "createdAt", "description", "id", "name", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags", "updatedAt" ],
+        "required" : [ "acceptedSelfAssertedTypes", "createdAt", "description", "id", "name", "rejectSelfAsserted", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags", "updatedAt" ],
         "type" : "object"
       },
       "FrameworkResponse" : {
@@ -4448,7 +4534,16 @@
       },
       "RecordAttestationRequest" : {
         "properties" : {
+          "annotations" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
           "artifactFingerprint" : {
+            "type" : "string"
+          },
+          "attestationData" : {
             "type" : "string"
           },
           "details" : {
@@ -4457,7 +4552,22 @@
           "evidenceUrl" : {
             "type" : "string"
           },
+          "externalUrls" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "flowName" : {
+            "type" : "string"
+          },
+          "gitBranch" : {
+            "type" : "string"
+          },
+          "gitCommitSha" : {
+            "type" : "string"
+          },
+          "gitRepoUrl" : {
             "type" : "string"
           },
           "name" : {
@@ -4652,9 +4762,11 @@
       "ReportArtifactRequest" : {
         "properties" : {
           "imageName" : {
+            "minLength" : 1,
             "type" : "string"
           },
           "imageTag" : {
+            "minLength" : 1,
             "type" : "string"
           },
           "orgSlug" : {
@@ -4667,7 +4779,15 @@
             "type" : "string"
           },
           "sha256Digest" : {
+            "minLength" : 1,
+            "pattern" : "sha256:[a-fA-F0-9]{64}",
             "type" : "string"
+          },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
           }
         },
         "required" : [ "imageName", "imageTag", "reportedBy", "sha256Digest" ],
@@ -5815,6 +5935,10 @@
       },
       "TrailView" : {
         "properties" : {
+          "archivedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
           "buildUrl" : {
             "type" : "string"
           },
@@ -5864,6 +5988,12 @@
             "enum" : [ "PENDING", "COMPLIANT", "NON_COMPLIANT" ],
             "type" : "string"
           },
+          "tags" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
           "templateYaml" : {
             "type" : "string"
           },
@@ -5872,7 +6002,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "createdAt", "flowId", "gitAuthor", "gitAuthorEmail", "gitBranch", "gitCommitSha", "id", "status", "updatedAt" ],
+        "required" : [ "createdAt", "flowId", "gitAuthor", "gitAuthorEmail", "gitBranch", "gitCommitSha", "id", "status", "tags", "updatedAt" ],
         "type" : "object"
       },
       "UpdateCustomAttestationTypeRequest" : {
@@ -6853,6 +6983,8 @@
     },
     "/api/v1/artifacts" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/artifacts` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "findBySha256_1",
         "parameters" : [ {
           "in" : "query",
@@ -7009,6 +7141,8 @@
     },
     "/api/v1/artifacts/{sha256}/provenance" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/artifacts/{sha256}/provenance` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "getProvenanceBySha256_1",
         "parameters" : [ {
           "in" : "path",
@@ -8933,6 +9067,8 @@
     },
     "/api/v1/flows" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/flows` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "listFlows_1",
         "parameters" : [ {
           "in" : "query",
@@ -8962,6 +9098,8 @@
         "tags" : [ "Flows" ]
       },
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/flows` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "createFlow_1",
         "requestBody" : {
           "content" : {
@@ -9053,6 +9191,8 @@
     },
     "/api/v1/flows/{flowId}/trails" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/flows/{flowId}/trails` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "listTrailsForFlow_1",
         "parameters" : [ {
           "in" : "path",
@@ -9107,7 +9247,8 @@
     },
     "/api/v1/flows/{id}" : {
       "delete" : {
-        "description" : "Refused with 409 when trails are still attached, unless force=true. Archiving retires a flow without losing its history.",
+        "deprecated" : true,
+        "description" : "Refused with 409 when trails are still attached, unless force=true. Archiving retires a flow without losing its history.\n\n**Deprecated** since 2026-11-14; use `/api/v2/flows/{id}` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "deleteFlow_1",
         "parameters" : [ {
           "in" : "path",
@@ -9135,6 +9276,8 @@
         "tags" : [ "Flows" ]
       },
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/flows/{id}` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "getFlow_1",
         "parameters" : [ {
           "in" : "path",
@@ -9161,6 +9304,8 @@
         "tags" : [ "Flows" ]
       },
       "put" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/flows/{id}` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "updateFlow_1",
         "parameters" : [ {
           "in" : "path",
@@ -9294,6 +9439,8 @@
     },
     "/api/v1/flows/{id}/template" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/flows/{id}/template` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "getFlowTemplate_1",
         "parameters" : [ {
           "in" : "path",
@@ -12853,6 +13000,8 @@
     },
     "/api/v1/trails" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "listTrails_1",
         "parameters" : [ {
           "in" : "query",
@@ -12890,6 +13039,8 @@
         "tags" : [ "Trails" ]
       },
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "createTrail_1",
         "parameters" : [ {
           "in" : "header",
@@ -13034,6 +13185,8 @@
         "tags" : [ "Trails" ]
       },
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{id}` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "getTrail_1",
         "parameters" : [ {
           "in" : "path",
@@ -13091,6 +13244,8 @@
     },
     "/api/v1/trails/{id}/audit" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{id}/audit` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "getTrailAuditEvents_1",
         "parameters" : [ {
           "in" : "path",
@@ -13243,6 +13398,8 @@
     },
     "/api/v1/trails/{trailId}/artifacts" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/artifacts` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "listArtifacts_1",
         "parameters" : [ {
           "in" : "path",
@@ -13272,6 +13429,8 @@
         "tags" : [ "Artifacts" ]
       },
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/artifacts` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "reportArtifact_1",
         "parameters" : [ {
           "in" : "path",
@@ -13310,6 +13469,8 @@
     },
     "/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "getProvenance_1",
         "parameters" : [ {
           "in" : "path",
@@ -13344,6 +13505,8 @@
         "tags" : [ "Artifacts" ]
       },
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "recordProvenance_1",
         "parameters" : [ {
           "in" : "path",
@@ -13390,6 +13553,8 @@
     },
     "/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance/verify" : {
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance/verify` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "verifyProvenance_1",
         "parameters" : [ {
           "in" : "path",
@@ -13464,6 +13629,8 @@
     },
     "/api/v1/trails/{trailId}/attestations" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/attestations` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "listAttestations_1",
         "parameters" : [ {
           "in" : "path",
@@ -13509,7 +13676,7 @@
       },
       "post" : {
         "deprecated" : true,
-        "description" : "⚠️ Deprecated: use the v2 endpoint POST /api/v2/attestations/{org}/{flow}/{trail}/{artifactFingerprint} instead.",
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/attestations` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "recordAttestation_2",
         "parameters" : [ {
           "in" : "path",
@@ -13548,6 +13715,8 @@
     },
     "/api/v1/trails/{trailId}/attestations/pull-request" : {
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/attestations/pull-request` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "attestPullRequest_1",
         "parameters" : [ {
           "in" : "path",
@@ -13586,6 +13755,8 @@
     },
     "/api/v1/trails/{trailId}/attestations/{attestationId}/evidence" : {
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/attestations/{attestationId}/evidence` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "uploadEvidence_1",
         "parameters" : [ {
           "in" : "path",
@@ -14331,6 +14502,32 @@
     "/api/v2/flows" : {
       "get" : {
         "operationId" : "listFlows",
+        "parameters" : [ {
+          "description" : "Include archived records (default false)",
+          "in" : "query",
+          "name" : "includeArchived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
         "responses" : {
           "200" : {
             "content" : {
@@ -14346,7 +14543,7 @@
             "description" : "OK"
           }
         },
-        "summary" : "List all flows",
+        "summary" : "List flows; archived flows are hidden by default",
         "tags" : [ "Flows – Queries" ]
       },
       "post" : {
@@ -14388,6 +14585,31 @@
             "format" : "uuid",
             "type" : "string"
           }
+        }, {
+          "description" : "Include archived records (default false)",
+          "in" : "query",
+          "name" : "includeArchived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -14404,7 +14626,7 @@
             "description" : "OK"
           }
         },
-        "summary" : "List trails for a flow",
+        "summary" : "List trails for a flow; archived trails are hidden by default",
         "tags" : [ "Trails – Queries" ]
       }
     },
@@ -14539,6 +14761,31 @@
             "format" : "uuid",
             "type" : "string"
           }
+        }, {
+          "description" : "Include archived records (default false)",
+          "in" : "query",
+          "name" : "includeArchived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -14555,7 +14802,7 @@
             "description" : "OK"
           }
         },
-        "summary" : "List trails, optionally filter by flowId",
+        "summary" : "List trails, optionally filter by flowId; archived trails are hidden by default",
         "tags" : [ "Trails – Queries" ]
       },
       "post" : {
@@ -14846,6 +15093,22 @@
           "schema" : {
             "format" : "uuid",
             "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         } ],
         "responses" : {

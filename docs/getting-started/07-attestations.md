@@ -36,7 +36,7 @@ Factstore accepts any string as an attestation type. Use a consistent naming con
 Record the attestation and keep its `id`; the report you upload next decides whether it passed:
 
 ```bash
-ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -49,7 +49,7 @@ echo "$ATTESTATION_ID"
 ### Snyk security scan
 
 ```bash
-SNYK_ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+SNYK_ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -58,24 +58,28 @@ SNYK_ATTESTATION_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attesta
   }' | jq -r .id)
 
 printf '{"vulnerabilities": []}\n' > snyk-results.json
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$SNYK_ATTESTATION_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$SNYK_ATTESTATION_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@./snyk-results.json" | jq .
 ```
 
 ### A gate with no evaluator
 
-A type Factstore cannot evaluate takes the status you send, labelled as self-asserted:
+A type Factstore cannot evaluate takes the status you send, labelled as self-asserted in the attestation list:
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+APPROVAL_ID=$(curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "type": "change-approval",
     "status": "PASSED",
     "details": "Approved in CHANGE-42"
-  }' | jq -e '.selfAsserted == true'
+  }' | jq -r .id)
+
+curl -s "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  | jq -e --arg id "$APPROVAL_ID" '.[] | select(.id == $id) | .selfAsserted == true'
 ```
 
 ### Failed attestation
@@ -84,7 +88,7 @@ A gate that failed is recorded the same way, with `"status": "FAILED"`, which is
 
 <!-- docs-e2e:skip -->
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -94,7 +98,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
   }' | jq .
 ```
 
-**Response:**
+**Response** (a `/api/v2` write says what was created; the attestation itself is in the list below):
 
 ```json
 {
@@ -119,7 +123,7 @@ You can attach a file (e.g. an XML test report, a JSON scan output, a PDF) as ev
 mkdir -p test-results
 printf '<testsuite name="unit" tests="156" failures="0" errors="0" skipped="2"/>\n' > test-results/junit-report.xml
 
-curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTESTATION_ID/evidence" \
+curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations/$ATTESTATION_ID/evidence" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -F "file=@./test-results/junit-report.xml" | jq .
 ```
@@ -128,26 +132,21 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$ATTESTATION_ID/
 
 ```json
 {
-  "id": "e5f6a7b8-0000-0000-0000-000000000005",
-  "attestationId": "d4e5f6a7-0000-0000-0000-000000000004",
-  "fileName": "junit-report.xml",
-  "sha256Hash": "f9e2f4b4eda9314261f98bf3488d873343d34ea1ecf9154b9de4a981ac83e327",
-  "fileSizeBytes": 73,
-  "contentType": "application/xml",
-  "storedAt": "2026-03-11T10:16:00Z",
-  "externalUrl": null
+  "id": "d4e5f6a7-0000-0000-0000-000000000004",
+  "status": "created",
+  "timestamp": "2026-03-11T10:16:00Z"
 }
 ```
 
-The evidence file is stored in the **Evidence Vault** and addressed by its SHA-256 hash, making it tamper-evident. For a `junit` attestation the XML is also parsed: the attestation's `details` become the counts (`{"tests":156,"failures":0,...}`) and its status follows the failures.
+The file's hash, name and size are recorded on the attestation (`evidenceFileHash`, `evidenceFileName`, `evidenceFileSizeBytes` in the list below). The evidence file is stored in the **Evidence Vault** and addressed by its SHA-256 hash, making it tamper-evident. For a `junit` attestation the XML is also parsed: the attestation's `details` become the counts (`{"tests":156,"failures":0,...}`) and its status follows the failures.
 
 ## List attestations for a Trail
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" | jq '.items[] | {type, status}'
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" | jq '.[] | {type, status}'
 ```
 
-The list is paginated: `items`, plus `page`, `size`, `totalItems` and `totalPages`.
+The list is a JSON array. For long lists pass `page` (from 0) and `size`; the `X-Total-Count` header then gives the full count.
 
 ## Checking compliance
 

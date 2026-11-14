@@ -1,10 +1,11 @@
 import client from './client'
-import type { Flow, FlowImpact, TemplateDrift } from '../types'
+import { v2 } from './v2'
+import type { CommandResult, Flow, FlowImpact, TemplateDrift } from '../types'
 
 export const getFlows = (includeArchived = false) =>
-  client.get<Flow[]>(`/flows?includeArchived=${includeArchived}`)
+  client.get<Flow[]>(`/flows?includeArchived=${includeArchived}`, v2)
 
-export const getFlow = (id: string) => client.get<Flow>(`/flows/${id}`)
+export const getFlow = (id: string) => client.get<Flow>(`/flows/${id}`, v2)
 
 export const createFlow = (data: {
   name: string
@@ -16,7 +17,7 @@ export const createFlow = (data: {
   requiredApproverRoles?: string[]
   /** Apply hub templates at creation; their YAML is copied onto the flow. */
   templateIds?: string[]
-}) => client.post<Flow>('/flows', data)
+}) => client.post<CommandResult>('/flows', data, v2).then((r) => getFlow(r.data.id))
 
 /**
  * Updates a flow definition. Every field is optional and only what is sent is changed.
@@ -35,8 +36,9 @@ export interface UpdateFlowPayload {
   requiredApproverRoles?: string[]
 }
 
+/** v2 answers a write with `{ id, status }`, so the updated flow is read back. */
 export const updateFlow = (id: string, data: UpdateFlowPayload) =>
-  client.put<Flow>(`/flows/${id}`, data)
+  client.put<CommandResult>(`/flows/${id}`, data, v2).then(() => getFlow(id))
 
 /** How much existing evidence a change to this flow would affect. */
 export const getFlowImpact = (id: string) => client.get<FlowImpact>(`/flows/${id}/impact`)

@@ -12,7 +12,7 @@
       ],
       "request": {
         "method": "GET",
-        "path": "/api/v1/flows"
+        "path": "/api/v2/flows"
       },
       "response": {
         "body": [
@@ -239,19 +239,12 @@
           }
         },
         "method": "POST",
-        "path": "/api/v1/trails"
+        "path": "/api/v2/trails"
       },
       "response": {
         "body": {
-          "createdAt": "2024-01-01T00:00:00Z",
-          "flowId": "7f3f2b99-0000-0000-0000-000000000001",
-          "gitAuthor": "developer",
-          "gitAuthorEmail": "dev@example.com",
-          "gitBranch": "main",
-          "gitCommitSha": "abc123def456",
           "id": "8a4e3c00-0000-0000-0000-000000000001",
-          "status": "PENDING",
-          "updatedAt": "2024-01-01T00:00:00Z"
+          "status": "created"
         },
         "headers": {
           "Content-Type": "application/json"
@@ -259,54 +252,6 @@
         "matchingRules": {
           "body": {
             "$": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.createdAt": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.flowId": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.gitAuthor": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.gitAuthorEmail": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.gitBranch": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.gitCommitSha": {
               "combine": "AND",
               "matchers": [
                 {
@@ -323,14 +268,6 @@
               ]
             },
             "$.status": {
-              "combine": "AND",
-              "matchers": [
-                {
-                  "match": "type"
-                }
-              ]
-            },
-            "$.updatedAt": {
               "combine": "AND",
               "matchers": [
                 {

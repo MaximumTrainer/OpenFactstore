@@ -96,6 +96,8 @@ class ReadModelProjector(
             it.templateYaml = event.templateYaml
             it.requiresApproval = event.requiresApproval
             it.requiredApproverRoles = event.requiredApproverRoles
+            it.templateId = event.templateId
+            it.templateVersion = event.templateVersion
         }
         flowRepository.save(flow)
         log.debug("Projected FlowCreated: {}", event.aggregateId)
@@ -151,6 +153,7 @@ class ReadModelProjector(
             createdAt = event.occurredAt,
             updatedAt = event.occurredAt
         )
+        trail.tags = event.tags.toMutableMap()
         trailRepository.save(trail)
         log.debug("Projected TrailCreated: {}", event.aggregateId)
     }
@@ -167,6 +170,7 @@ class ReadModelProjector(
             orgSlug = event.orgSlug,
             reportedAt = event.occurredAt
         )
+        artifact.tags = event.tags.toMutableMap()
         artifactRepository.save(artifact)
         log.debug("Projected ArtifactReported: {}", event.aggregateId)
     }
@@ -182,8 +186,14 @@ class ReadModelProjector(
             evidenceUrl = event.evidenceUrl,
             orgSlug = event.orgSlug,
             artifactFingerprint = event.artifactFingerprint,
-            createdAt = event.occurredAt
+            createdAt = event.occurredAt,
+            attestationData = event.attestationData,
+            gitCommitSha = event.gitCommitSha,
+            gitBranch = event.gitBranch,
+            gitRepoUrl = event.gitRepoUrl
         )
+        attestation.externalUrls = event.externalUrls
+        attestation.annotations.putAll(event.annotations)
         attestationRepository.save(attestation)
         log.debug("Projected AttestationRecorded: {}", event.aggregateId)
     }
@@ -197,10 +207,14 @@ class ReadModelProjector(
         attestation.evidenceFileHash = event.sha256Hash
         attestation.evidenceFileName = event.fileName
         attestation.evidenceFileSizeBytes = event.fileSizeBytes
+        event.status?.let { attestation.status = com.factstore.core.domain.AttestationStatus.valueOf(it) }
+        event.details?.let { attestation.details = it }
         attestationRepository.save(attestation)
         log.debug("Projected EvidenceUploaded: {}", event.aggregateId)
-    }
-
+    }
+
+
+
     private fun applyFactIngested(event: DomainEvent.FactIngested) {
         if (factRepository.existsById(event.aggregateId)) {
             log.debug("Fact {} already exists — skipping projection", event.aggregateId)

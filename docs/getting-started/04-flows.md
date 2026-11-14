@@ -7,7 +7,7 @@ Every Trail (a single pipeline execution) belongs to exactly one Flow.
 ## Create a Flow
 
 ```bash
-FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v1/flows" \
+FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v2/flows" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -18,18 +18,18 @@ FLOW_ID=$(curl -s -X POST "$BASE_URL/api/v1/flows" \
 echo "$FLOW_ID"
 ```
 
-Keep `FLOW_ID`: the next parts use it. The full response:
+Keep `FLOW_ID`: the next parts use it. Like every `/api/v2` write, the response says what was
+created, not the whole record:
 
 ```json
 {
   "id": "a1b2c3d4-0000-0000-0000-000000000001",
-  "name": "backend-ci",
-  "description": "CI pipeline for the backend service",
-  "requiredAttestationTypes": ["junit", "snyk"],
-  "createdAt": "2026-03-11T10:00:00Z",
-  "updatedAt": "2026-03-11T10:00:00Z"
+  "status": "created",
+  "timestamp": "2026-03-11T10:00:00Z"
 }
 ```
+
+Read the flow back with `GET /api/v2/flows/$FLOW_ID` (below).
 
 ### Flow fields
 
@@ -44,13 +44,13 @@ Keep `FLOW_ID`: the next parts use it. The full response:
 ## List all Flows
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows"
 ```
 
 ## Get a Flow by ID
 
 ```bash
-curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows/$FLOW_ID" | jq .
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows/$FLOW_ID" | jq .
 ```
 
 ## Update a Flow
@@ -58,12 +58,14 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows/$FLO
 `PUT` changes only the fields you send: here the description. `requiredAttestationTypes`, `tags` and `requiresApproval` work the same way; `GET /api/v1/flows/{id}/impact` shows how much existing evidence a change to the requirements would affect first. To rename a flow, use `POST /api/v1/flows/{id}/rename`, which keeps the old name forwarding.
 
 ```bash
-curl -s -X PUT "$BASE_URL/api/v1/flows/$FLOW_ID" \
+curl -s -X PUT "$BASE_URL/api/v2/flows/$FLOW_ID" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "description": "CI + security scan pipeline for backend"
-  }' | jq .description
+  }' | jq .status
+
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v2/flows/$FLOW_ID" | jq .description
 ```
 
 ## Delete a Flow
@@ -71,12 +73,12 @@ curl -s -X PUT "$BASE_URL/api/v1/flows/$FLOW_ID" \
 This example deletes a scratch flow, so `FLOW_ID` stays usable for the next parts:
 
 ```bash
-SCRATCH_ID=$(curl -s -X POST "$BASE_URL/api/v1/flows" \
+SCRATCH_ID=$(curl -s -X POST "$BASE_URL/api/v2/flows" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "name": "scratch-flow" }' | jq -r .id)
 
-curl -s -o /dev/null -w "%{http_code}\n" -X DELETE "$BASE_URL/api/v1/flows/$SCRATCH_ID" \
+curl -s -o /dev/null -w "%{http_code}\n" -X DELETE "$BASE_URL/api/v2/flows/$SCRATCH_ID" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN"
 # 204
 ```

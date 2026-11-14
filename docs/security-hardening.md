@@ -134,7 +134,7 @@ The backend refuses to start when the key is unset (outside the `dev` and `local
 ## 6. Audit Logging & Monitoring
 
 - [ ] **Verify the audit log is active**  
-  Each mutating API call should produce a corresponding entry retrievable via `GET /api/v1/trails/{id}/audit`. Test after deployment.
+  Each mutating API call should produce a corresponding entry retrievable via `GET /api/v2/trails/{id}/audit`. Test after deployment.
 
 - [ ] **Ship logs to a centralised SIEM**  
   Forward application logs (stdout/stderr) and audit events to Splunk, Elastic SIEM, or equivalent. Set a minimum retention of 1 year (SOC2/PCI-DSS requirement).

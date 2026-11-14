@@ -1,6 +1,9 @@
 package com.factstore.application.command
 
 import com.factstore.application.ActorResolver
+import com.factstore.application.CustomAttestationTypeRules
+import com.factstore.application.TenantScope
+import com.factstore.application.attestation.AttestationVerdictResolver
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.AuditEventType
@@ -10,6 +13,7 @@ import com.factstore.core.port.inbound.command.IAttestationCommandHandler
 import com.factstore.core.port.inbound.IAuditService
 import com.factstore.core.port.inbound.IEvidenceVaultService
 import com.factstore.core.port.outbound.IAttestationRepository
+import com.factstore.core.port.outbound.ICustomAttestationTypeRepository
 import com.factstore.core.port.outbound.IEventPublisher
 import com.factstore.core.port.outbound.IFlowRepository
 import com.factstore.core.port.outbound.IOrganisationRepository
@@ -19,6 +23,7 @@ import com.factstore.dto.command.CommandResult
 import com.factstore.dto.command.RecordAttestationCommand
 import com.factstore.dto.command.UploadEvidenceCommand
 import com.factstore.exception.NotFoundException
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -36,8 +41,13 @@ class AttestationCommandHandler(
     private val eventPublisher: IEventPublisher,
     private val eventAppender: EventAppender,
     private val actorResolver: ActorResolver,
-    private val verdicts: com.factstore.application.attestation.AttestationVerdictResolver
+    customAttestationTypeRepository: ICustomAttestationTypeRepository,
+    objectMapper: ObjectMapper,
+    private val verdicts: AttestationVerdictResolver,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : IAttestationCommandHandler {
+
+    private val customTypes = CustomAttestationTypeRules(customAttestationTypeRepository, objectMapper)
 
     private val log = LoggerFactory.getLogger(AttestationCommandHandler::class.java)
 
@@ -51,9 +61,13 @@ class AttestationCommandHandler(
                 throw NotFoundException("Flow '${command.flowName}' not found for organisation '${command.orgSlug}'")
             }
         }
-        if (!trailRepository.existsById(command.trailId)) throw NotFoundException("Trail not found: ${command.trailId}")
+        // Another organisation's trail is "not found" (#155 FR-5.2), as on v1.
+        tenantScope.require(trailRepository.findById(command.trailId), { it.orgSlug ?: flowRepository.findById(it.flowId)?.orgSlug }) {
+            "Trail not found: ${command.trailId}"
+        }
+        customTypes.validate(command.type, command.attestationData)
         // #240: the server decides pass/fail wherever it can evaluate the evidence.
-        val verdict = verdicts.resolve(command.type, command.status, attestationData = null)
+        val verdict = verdicts.resolve(command.type, command.status, command.attestationData)
         val attestation = Attestation(
             trailId = command.trailId,
             type = command.type,
@@ -63,8 +77,14 @@ class AttestationCommandHandler(
             name = command.name,
             evidenceUrl = command.evidenceUrl,
             orgSlug = command.orgSlug,
-            artifactFingerprint = command.artifactFingerprint
+            artifactFingerprint = command.artifactFingerprint,
+            attestationData = command.attestationData,
+            gitCommitSha = command.gitCommitSha,
+            gitBranch = command.gitBranch,
+            gitRepoUrl = command.gitRepoUrl
         )
+        attestation.externalUrls = command.externalUrls?.takeIf { it.isNotEmpty() } ?: listOfNotNull(command.evidenceUrl)
+        attestation.annotations.putAll(command.annotations.orEmpty())
         val saved = attestationRepository.save(attestation)
         eventAppender.append(DomainEvent.AttestationRecorded(
             aggregateId = saved.id,
@@ -76,7 +96,13 @@ class AttestationCommandHandler(
             evidenceUrl = saved.evidenceUrl,
             orgSlug = saved.orgSlug,
             artifactFingerprint = saved.artifactFingerprint,
-            flowName = command.flowName
+            flowName = command.flowName,
+            attestationData = saved.attestationData,
+            externalUrls = saved.externalUrls,
+            annotations = saved.annotations.toMap(),
+            gitCommitSha = saved.gitCommitSha,
+            gitBranch = saved.gitBranch,
+            gitRepoUrl = saved.gitRepoUrl
         ))
         eventPublisher.publish(
             SupplyChainEvent.AttestationRecorded(
@@ -119,17 +145,26 @@ class AttestationCommandHandler(
         attestation.evidenceFileName = evidenceFile.fileName
         attestation.evidenceFileSizeBytes = evidenceFile.fileSizeBytes
         // The evidence decides the status for types with a processor (#240), as on /api/v1.
-        if (verdicts.applyEvidence(attestation, command.content) && attestation.status == AttestationStatus.FAILED) {
-            markTrailNonCompliant(attestation.trailId)
-        }
+        val processed = verdicts.applyEvidence(attestation, command.content)
         attestationRepository.save(attestation)
+        if (processed) {
+            if (attestation.status == AttestationStatus.FAILED) markTrailNonCompliant(attestation.trailId)
+            eventPublisher.publish(SupplyChainEvent.AttestationProcessedEvent(
+                attestationId = attestation.id.toString(),
+                type = attestation.type,
+                status = attestation.status.name,
+                details = attestation.details
+            ))
+        }
         eventAppender.append(DomainEvent.EvidenceUploaded(
             aggregateId = attestation.id,
             trailId = attestation.trailId,
             fileName = evidenceFile.fileName,
             contentType = command.contentType,
             sha256Hash = evidenceFile.sha256Hash,
-            fileSizeBytes = evidenceFile.fileSizeBytes
+            fileSizeBytes = evidenceFile.fileSizeBytes,
+            status = attestation.status.name,
+            details = attestation.details
         ))
         log.info("Uploaded evidence for attestation: ${command.attestationId} hash=${evidenceFile.sha256Hash}")
         return CommandResult(id = attestation.id, status = "created")

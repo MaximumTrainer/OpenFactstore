@@ -47,5 +47,6 @@ fun Artifact.toView(provenanceStatus: ProvenanceStatus = ProvenanceStatus.NO_PRO
     reportedAt = reportedAt,
     reportedBy = reportedBy,
     orgSlug = orgSlug,
-    provenanceStatus = provenanceStatus
+    provenanceStatus = provenanceStatus,
+    tags = tags.toMap()
 )
