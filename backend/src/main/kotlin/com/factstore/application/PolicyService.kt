@@ -26,6 +26,7 @@ class PolicyService(
 ) : IPolicyService {
 
     private val log = LoggerFactory.getLogger(PolicyService::class.java)
+    private val policyParser = com.factstore.application.policy.PolicyParser()
 
     /** Another organisation's policy is "not found" (#207). */
     private fun requireVisiblePolicy(id: UUID): Policy =
@@ -35,7 +36,10 @@ class PolicyService(
         if (policyRepository.existsByName(request.name)) {
             throw ConflictException("Policy with name '${request.name}' already exists")
         }
-        request.policyYaml?.let { PolicyYamlValidator.validate(it) }
+        request.policyYaml?.let {
+            PolicyYamlValidator.validate(it)
+            policyParser.validate(it)
+        }
         val policy = Policy(
             name = request.name,
             enforceProvenance = request.enforceProvenance,
@@ -60,7 +64,10 @@ class PolicyService(
 
     override fun updatePolicy(id: UUID, request: UpdatePolicyRequest): PolicyResponse {
         val policy = requireVisiblePolicy(id)
-        request.policyYaml?.let { PolicyYamlValidator.validate(it) }
+        request.policyYaml?.let {
+            PolicyYamlValidator.validate(it)
+            policyParser.validate(it)
+        }
 
         // Snapshot current state before updating
         val snapshot = policy.snapshot()

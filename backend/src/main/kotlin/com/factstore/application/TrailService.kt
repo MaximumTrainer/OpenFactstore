@@ -29,6 +29,7 @@ class TrailService(
 ) : ITrailService {
 
     private val log = LoggerFactory.getLogger(TrailService::class.java)
+    private val templateParser = com.factstore.application.template.TemplateParser()
 
     /** A trail's organisation is its own, or its flow's when it was created without one. */
     private fun orgOf(trail: Trail): String? =
@@ -58,6 +59,7 @@ class TrailService(
         if (!flowRepository.existsById(request.flowId)) {
             throw NotFoundException("Flow not found: ${request.flowId}")
         }
+        request.templateYaml?.let { templateParser.validate(it) }
         request.externalId?.takeIf { it.isNotBlank() }?.let { externalId ->
             trailRepository.findByFlowIdAndExternalId(request.flowId, externalId)?.let { existing ->
                 log.info("Reusing trail ${existing.id} for flow ${request.flowId} externalId '$externalId'")

@@ -21,7 +21,7 @@ import com.factstore.dto.CreateOrgTemplateRequest
 import com.factstore.dto.CreatePolicyRequest
 import com.factstore.dto.CreateTrailRequest
 import com.factstore.dto.UpdatePolicyRequest
-import com.factstore.dto.command.UpdateFlowRequest
+import com.factstore.dto.UpdateFlowRequest
 import com.factstore.exception.BadRequestException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -110,6 +110,7 @@ class ConditionFailClosedTest {
     }
 
     @Test
+    @org.springframework.security.test.context.support.WithMockUser(authorities = ["SCOPE_flows:write"])
     fun `POST flows with an invalid condition returns 400 naming the rule`() {
         val body = mapOf("name" to unique("f"), "description" to "d", "templateYaml" to typoTemplate)
         mockMvc.post("/api/v1/flows") {
@@ -165,7 +166,7 @@ class ConditionFailClosedTest {
         )
         attestationService.recordAttestation(trail.id, CreateAttestationRequest(type = "junit", name = "unit-tests", status = AttestationStatus.PASSED))
         val digest = "sha256:" + (UUID.randomUUID().toString() + UUID.randomUUID().toString()).replace("-", "")
-        artifactService.reportArtifact(trail.id, CreateArtifactRequest("img", "1", digest, "ci"))
+        artifactService.reportArtifact(trail.id, CreateArtifactRequest(imageName = "img", imageTag = "1", sha256Digest = digest, reportedBy = "ci"))
 
         val result = assertService.assertCompliance(AssertRequest(digest, flow.id))
 
@@ -191,5 +192,21 @@ class ConditionFailClosedTest {
             """flow.name in ["svc-a", "svc-b"]""",
             "not exists(flow)"
         ).forEach { evaluator.validate(it) }
+    }
+}
+
+class TemplateComposerConditionTest {
+    @Test
+    fun `composing keeps an if condition containing quotes intact and valid`() {
+        val parser = TemplateParser()
+        val composer = com.factstore.application.TemplateComposer(parser)
+        val condition = """flow.tags["pci-scope"] == "true" and flow.name != "it's""""
+        val source = com.factstore.core.domain.HubTemplate(
+            id = "t", name = "t", description = "", framework = "", version = "1",
+            yaml = "version: 1\ntrail:\n  attestations:\n    - name: scan\n      type: snyk\n      if: '${condition.replace("'", "''")}'\n"
+        )
+        val composed = composer.compose(listOf(source)).templateYaml
+        parser.validate(composed)
+        assertEquals(condition, parser.parse(composed)!!.trailAttestations.single().ifCondition)
     }
 }
