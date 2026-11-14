@@ -64,7 +64,7 @@ function prefixOf(path) {
   return m ? `/api/${m[1]}` : 'other'
 }
 
-const cell = (s) => String(s).replace(/\|/g, '\\|')
+const cell = (s) => String(s).replace(/\\/g, '\\\\').replace(/\|/g, '\\|')
 
 export function renderInventory(openapi, decisions) {
   const ops = operations(openapi)
