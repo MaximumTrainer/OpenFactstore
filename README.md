@@ -30,7 +30,7 @@ docker compose up --build
 
 | Guide | Description |
 |-------|-------------|
-| **[USER_GUIDE.md](./USER_GUIDE.md)** | Comprehensive guide: setup, tutorial, all features, security |
+| **[docs/user-guide.md](./docs/user-guide.md)** | The user guide: setup, tutorial, web UI, all features, CI/CD, security |
 | **[docs/API_REFERENCE.md](./docs/API_REFERENCE.md)** | Full REST API reference (200+ endpoints) |
 | **[docs/ci-integration.md](./docs/ci-integration.md)** | CI/CD integration: GitHub Actions, GitLab, Jenkins, CircleCI, Azure DevOps |
 | **[docs/flow-templates.md](./docs/flow-templates.md)** | Flow templates: the service-type catalogue, combining templates, drift, publishing your own |
@@ -88,7 +88,7 @@ When a software artifact is built, a **trail** captures provenance metadata (Git
 - **Allow-list Third-party Artifacts** — Exclude platform-managed images from drift alerts.
 - **Organisation Multi-tenancy** — Isolate flows, users, and integrations per organisation.
 - **Regulatory Compliance Framework** — Map flows to SOX, PCI-DSS, GDPR, ISO 27001 controls; generate audit reports.
-- **Dry-run Safe Mode** — Preview any mutating operation without persisting data (`X-Dry-Run: true`).
+- **Dry-run Safe Mode** — Preview any mutating operation without persisting data (`X-Factstore-Dry-Run: true`).
 - **CI/CD Integration** — Native support for GitHub Actions, GitLab CI, Jenkins, CircleCI, Azure DevOps via `X-Factstore-CI-Context` header.
 - **Event Sourcing** — Append-only event log captures every state change as an immutable domain event (`FlowCreated`, `TrailCreated`, `ArtifactReported`, …). Supports full and incremental replay for rebuilding read-model projections.
 - **Immutable Audit Trail** — Full chain of custody linking artifacts → trails → flows → attestations → evidence, backed by the event log.

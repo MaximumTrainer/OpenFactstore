@@ -12,26 +12,30 @@ A policy can require:
 ## Create a deployment policy
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/policies" \
+curl -s -X POST "$BASE_URL/api/v1/deployment-policies" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "prod-requirements",
     "description": "Production deployment requirements",
     "flowId": "'$FLOW_ID'",
+    "environmentId": "'$ENV_ID'",
     "enforceProvenance": true,
     "enforceApprovals": true,
     "requiredAttestationTypes": ["snyk", "junit", "pull-request"]
   }'
 ```
 
-Store the returned `id` as `POLICY_ID`.
+`flowId` is required; `environmentId` is optional (leave it out to apply the policy to every environment). Store the returned `id` as `POLICY_ID`.
+
+> Rego/YAML policies that you attach to environments live under `/api/v1/policies` and `/api/v1/policy-attachments`; see the [user guide](../user-guide.md#deployment-gate--policy-engine). The deployment gate below evaluates deployment policies.
 
 ---
 
 ## List policies
 
 ```bash
-curl -s "$BASE_URL/api/v1/policies"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/deployment-policies"
 ```
 
 ---
@@ -39,7 +43,8 @@ curl -s "$BASE_URL/api/v1/policies"
 ## Update a policy
 
 ```bash
-curl -s -X PUT "$BASE_URL/api/v1/policies/$POLICY_ID" \
+curl -s -X PUT "$BASE_URL/api/v1/deployment-policies/$POLICY_ID" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "requiredAttestationTypes": ["snyk", "junit", "pull-request", "owasp-zap"],
@@ -57,6 +62,7 @@ The **deployment gate** is the active enforcement point. Before an artifact is d
 
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/gate/evaluate" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "artifactSha256": "sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f",

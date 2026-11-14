@@ -1,76 +1,74 @@
 # Part 3: Authentication
 
-Factstore uses **API key authentication** for all API requests. Every request must include your API key in the `Authorization` header as a bearer token.
+Authentication is enforced: every API request must carry a credential, or it is refused with `401`. API clients send an **API key** as a bearer token in the `Authorization` header:
 
 ```bash
-curl -H "Authorization: Bearer <your-api-key>" \
-  "$BASE_URL/api/v1/flows"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows" | jq length
 ```
+
+Until now `FACTSTORE_TOKEN` has been the bootstrap admin key from `.env` ([Part 2](./02-setup.md)). It exists for first use: create the identities and keys you need with it, then revoke it. People sign in to the web UI instead; see [docs/authentication.md](../authentication.md).
 
 ---
 
 ## Service Accounts
 
-A **service account** is a machine identity designed for non-human callers such as CI/CD pipelines and deployment scripts. Each service account has one or more API keys and is scoped to an organisation.
+A **service account** is a machine identity for non-human callers such as CI/CD pipelines and deployment scripts. Each service account has one or more API keys.
 
 ### Create a service account
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/service-accounts" \
+SA_ID=$(curl -s -X POST "$BASE_URL/api/v1/service-accounts" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "ci-pipeline",
-    "description": "GitHub Actions deployment pipeline",
-    "orgSlug": "my-org"
-  }'
+    "description": "GitHub Actions deployment pipeline"
+  }' | jq -r .id)
+echo "$SA_ID"
 ```
 
-The response includes the service account's `id`. Use the `id` to create API keys.
+### Create an API key for the service account
 
-### Create an API key for a service account
+A key is created with a scope **preset**. `CI_PIPELINE` lets a pipeline record trails, artifacts and attestations and run assertions:
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v1/service-accounts/$SA_ID/api-keys" \
+CI_KEY=$(curl -s -X POST "$BASE_URL/api/v1/api-keys" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "name": "primary-key" }'
+  -d "{
+    \"ownerId\": \"$SA_ID\",
+    \"ownerType\": \"SERVICE_ACCOUNT\",
+    \"label\": \"primary-key\",
+    \"preset\": \"CI_PIPELINE\",
+    \"ttlDays\": 90
+  }" | jq -r .plainTextKey)
 ```
 
-**Save the `key` value from the response immediately** — it is only shown once.
+**Store `plainTextKey` from the response immediately** (for example as a CI secret): it is only returned once. The response also carries the key's `id`, its `scopes` and `expiresAt`. `GET /api/v1/api-keys/scopes` lists every scope and preset.
+
+### Use the key
+
+```bash
+curl -s -H "Authorization: Bearer $CI_KEY" "$BASE_URL/api/v1/flows" | jq length
+```
 
 ### List service accounts
 
 ```bash
-curl -s "$BASE_URL/api/v1/service-accounts"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/service-accounts" | jq '.[].name'
 ```
 
-### Delete an API key (rotation)
+### Rotate and revoke
 
-To rotate a key with zero downtime:
-
-1. Create a new key: `POST /api/v1/service-accounts/$SA_ID/api-keys`
-2. Update all callers to use the new key value.
-3. Delete the old key: `DELETE /api/v1/service-accounts/$SA_ID/api-keys/$KEY_ID`
+To rotate a key with zero downtime, call `POST /api/v1/api-keys/{id}/rotate`: it returns a new key and keeps the old one working for an overlap window, so you can update every caller before it stops. Revoke a key with `DELETE /api/v1/api-keys/{id}/revoke`.
 
 ---
 
 ## Personal API Keys
 
-A **personal API key** is tied to a human user account and carries the same permissions as that user. Use personal keys for local development and testing; use service account keys for automated pipelines.
+A **personal API key** belongs to a person and carries no more than that person's role. Use personal keys for local development; use service account keys for pipelines. Create one in the web UI under **Settings → API Keys**, or with `POST /api/v1/api-keys` and `"ownerType": "USER"`.
 
-Personal keys are managed through the same API key endpoint scoped to your user's service account, or through the Factstore UI under **Settings → API Keys**.
-
----
-
-## Using an API key
-
-Include the key as a bearer token in every request:
-
-```bash
-export FACTSTORE_API_KEY="fs_live_xxxxxxxxxxxx"
-
-curl -H "Authorization: Bearer $FACTSTORE_API_KEY" \
-  "$BASE_URL/api/v1/flows"
-```
+Scopes, presets, expiry and the full key lifecycle are in [docs/api-authorisation.md](../api-authorisation.md).
 
 ---
 

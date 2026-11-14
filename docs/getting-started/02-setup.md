@@ -1,39 +1,47 @@
 # Part 2: Setup & Access
 
-Factstore is a Kotlin Spring Boot application backed by an H2 in-memory database (PostgreSQL support is on the roadmap — see [Issue #12](https://github.com/MaximumTrainer/Factstore/issues/12)).
+Factstore runs as two Spring Boot services (Kotlin, PostgreSQL): a **command service** on port 8080 that takes every write, and a **query service** on port 8081 that serves reads from its own read model, fed by events over RabbitMQ. Docker Compose starts both, with their databases, RabbitMQ and Vault. The [user guide's architecture section](../user-guide.md#2-architecture) shows how they fit together.
 
-> **Note:** Factstore ships a Go-based CLI (`cli/`). All examples in this guide also work as plain HTTP calls using `curl`.
+> **Note:** Factstore ships a CLI (`cli/`). All examples in this guide are plain HTTP calls with `curl` and `jq`.
 
 ## Prerequisites
 
-- **Java 21+** (for running from source)
-- **Docker** (optional, for containerised setup)
-- `curl` or any HTTP client (Postman, httpie, etc.)
+- **Docker** with Docker Compose
+- `curl` and `jq`
+- **Java 21+**, only to run the backend from source
 
 ## Running Factstore locally
 
-### From source
-
+<!-- docs-e2e:skip -->
 ```bash
-git clone https://github.com/MaximumTrainer/Factstore.git
-cd Factstore/backend
-./gradlew bootRun
+git clone https://github.com/MaximumTrainer/OpenFactstore.git
+cd OpenFactstore
+
+# Once: a session secret, a bootstrap admin API key and the Prometheus scrape key, in .env
+scripts/bootstrap-env.sh
+
+docker compose up -d --build
 ```
 
-The server starts on **http://localhost:8080** by default.
+| Service | URL |
+|---|---|
+| Command API (writes, and reads) | http://localhost:8080 |
+| Query API (reads only) | http://localhost:8081 |
 
-### Via Docker
+## Credentials and base URL
+
+Authentication is enforced: a request without a credential is refused with `401`. `scripts/bootstrap-env.sh` wrote a bootstrap admin key to `.env`; use it for this guide, and see [Part 3](./03-authentication.md) for creating keys of your own. Every example assumes these variables, set from the repository root:
 
 ```bash
-docker build -t factstore-backend ./backend
-docker run -p 8080:8080 factstore-backend
+export BASE_URL=http://localhost:8080
+export FACTSTORE_TOKEN="$(grep '^SECURITY_BOOTSTRAP_API_KEY=' .env | cut -d= -f2-)"
 ```
 
 ## Verifying the server is running
 
 ```bash
-curl http://localhost:8080/api/v1/flows
-# Expected: []  (empty list on a fresh instance)
+curl -s "$BASE_URL/api/v1/flows" -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq length
+# A number: 0 on a fresh instance
 ```
 
 ## Swagger / OpenAPI
@@ -41,43 +49,26 @@ curl http://localhost:8080/api/v1/flows
 Factstore publishes an interactive API explorer at:
 
 ```
-http://localhost:8080/swagger-ui/index.html
+http://localhost:8080/swagger-ui.html
 ```
 
-The raw OpenAPI spec is available at:
+The raw OpenAPI spec is available at `http://localhost:8080/api-docs`. Both need a credential, like the rest of the API (sign in to the web UI first for Swagger UI):
 
-```
-http://localhost:8080/v3/api-docs
+```bash
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api-docs" | jq -r .info.title
 ```
 
-Use the Swagger UI to explore all available endpoints, inspect request/response schemas, and try out calls directly in your browser.
+The same document is committed as [`docs/openapi.json`](../openapi.json), and CI fails when it differs from the served API.
 
 ## Configuration
 
-The default configuration (`backend/src/main/resources/application.properties`) runs with an in-memory H2 database. Data is **lost on restart** until PostgreSQL support is implemented.
+`docker-compose.yml` configures both services through environment variables; the full list is in the [user guide](../user-guide.md#environment-variables). The ones you are most likely to change:
 
-| Property | Default | Description |
+| Variable | Default | Description |
 |---|---|---|
-| `server.port` | `8080` | HTTP port |
-| `spring.datasource.url` | `jdbc:h2:mem:factstore` | In-memory database |
-
-## Base URL
-
-All API endpoints in this guide assume:
-
-```
-BASE_URL=http://localhost:8080
-```
-
-Set this variable in your shell to copy-paste the examples directly:
-
-```bash
-export BASE_URL=http://localhost:8080
-```
-
-## Authentication
-
-> 🚧 **Not yet implemented.** Factstore currently has no authentication — all API endpoints are publicly accessible. Adding API key authentication is a planned feature. See [Part 3: Authentication](./03-authentication.md) and [Issue #XX](https://github.com/MaximumTrainer/Factstore/issues) for details.
+| `SECURITY_ENFORCE_AUTH` | `true` | Refuse requests without a valid credential |
+| `SECURITY_BOOTSTRAP_API_KEY` | from `.env` | Admin key for first use |
+| `DB_HOST` / `DB_NAME` | per service | Each service has its own PostgreSQL database |
 
 ---
 

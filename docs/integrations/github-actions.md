@@ -136,7 +136,8 @@ jobs:
               \"flowId\": \"${{ vars.FACTSTORE_FLOW_ID }}\",
               \"gitCommitSha\": \"${{ github.sha }}\",
               \"gitBranch\": \"${{ github.ref_name }}\",
-              \"gitAuthor\": \"${{ github.actor }}\"
+              \"gitAuthor\": \"${{ github.actor }}\",
+              \"gitAuthorEmail\": \"${{ github.actor }}@users.noreply.github.com\"
             }")
           echo "trail-id=$(echo $TRAIL | jq -r '.id')" >> $GITHUB_OUTPUT
 

@@ -106,6 +106,7 @@ That is how `verify-factstore.yml` would contribute its `integration-tests` atte
     OUTCOME: ${{ steps.personas.outcome }}
   run: |
     TRAIL_ID=$(curl -sf "${FACTSTORE_URL}/api/v1/trails/lookup?flowId=${FLOW_ID}&externalId=${RELEASE_ID}" \
+      -H "Authorization: Bearer ${{ secrets.FACTSTORE_API_TOKEN }}" \
       | jq -r .id)
     factstore attest generic --trail-id "$TRAIL_ID" \
       --type integration-tests --name integration-tests \

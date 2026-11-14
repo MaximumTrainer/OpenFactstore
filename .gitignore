@@ -8,6 +8,8 @@ frontend/dist/
 frontend/node_modules/
 frontend/playwright-report/
 frontend/test-results/
+# written by the getting-started tutorials (tools/docs-drift/run-tutorials.mjs)
+/test-results/
 
 # CLI build artifacts
 cli/node_modules/

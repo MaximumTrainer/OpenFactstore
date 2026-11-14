@@ -6,10 +6,11 @@ Trails are uniquely identified within a Flow. Typically you use the Git commit S
 
 ## Begin a Trail
 
-```bash
-FLOW_ID=a1b2c3d4-0000-0000-0000-000000000001
+`FLOW_ID` is the flow you created in [Part 4](./04-flows.md). Keep the new trail's `id` as `TRAIL_ID`:
 
-curl -s -X POST "$BASE_URL/api/v1/trails" \
+```bash
+TRAIL_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
     \"flowId\": \"$FLOW_ID\",
@@ -20,7 +21,8 @@ curl -s -X POST "$BASE_URL/api/v1/trails" \
     \"pullRequestId\": \"42\",
     \"pullRequestReviewer\": \"bob@example.com\",
     \"deploymentActor\": \"ci-runner@github\"
-  }"
+  }" | jq -r .id)
+echo "$TRAIL_ID"
 ```
 
 **Response:**
@@ -36,7 +38,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails" \
   "pullRequestId": "42",
   "pullRequestReviewer": "bob@example.com",
   "deploymentActor": "ci-runner@github",
-  "status": "IN_PROGRESS",
+  "status": "PENDING",
   "createdAt": "2026-03-11T10:05:00Z",
   "updatedAt": "2026-03-11T10:05:00Z"
 }
@@ -47,8 +49,8 @@ curl -s -X POST "$BASE_URL/api/v1/trails" \
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `flowId` | UUID | ✅ | The Flow this Trail belongs to |
-| `gitCommitSha` | string | ✅ | Full SHA-1 of the triggering commit |
-| `gitBranch` | string | ✅ | Branch name (e.g. `main`, `feature/my-feature`) |
+| `gitCommitSha` | string | — | Full SHA-1 of the triggering commit |
+| `gitBranch` | string | — | Branch name (e.g. `main`, `feature/my-feature`) |
 | `gitAuthor` | string | ✅ | Display name of the commit author |
 | `gitAuthorEmail` | string | ✅ | Email of the commit author |
 | `pullRequestId` | string | — | PR/MR number if this run was triggered by a pull request |
@@ -61,7 +63,7 @@ A Trail's `status` field reflects its lifecycle:
 
 | Status | Meaning |
 |---|---|
-| `IN_PROGRESS` | Trail has been created; attestations are still being recorded |
+| `PENDING` | Trail has been created; attestations are still being recorded |
 | `COMPLIANT` | All required attestations are present and passed |
 | `NON_COMPLIANT` | One or more required attestations are missing or failed |
 
@@ -76,36 +78,32 @@ You decide what constitutes a single Trail execution. Common patterns:
 ## List all Trails
 
 ```bash
-curl -s "$BASE_URL/api/v1/trails"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails" | jq length
 ```
 
 Filter by Flow:
 
 ```bash
-curl -s "$BASE_URL/api/v1/trails?flowId=$FLOW_ID"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails?flowId=$FLOW_ID" | jq length
 ```
 
 ## List Trails for a specific Flow
 
+This one is paginated (`items`, `page`, `size`, `totalItems`, `totalPages`):
+
 ```bash
-curl -s "$BASE_URL/api/v1/flows/$FLOW_ID/trails"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows/$FLOW_ID/trails" | jq .totalItems
 ```
 
 ## Get a Trail by ID
 
 ```bash
-TRAIL_ID=b2c3d4e5-0000-0000-0000-000000000002
-
-curl -s "$BASE_URL/api/v1/trails/$TRAIL_ID"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/trails/$TRAIL_ID" | jq .
 ```
 
 ## Using the Trail ID in subsequent steps
 
-After creating a Trail you will use its `id` in every subsequent call to attach artifacts and attestations:
-
-```bash
-export TRAIL_ID=b2c3d4e5-0000-0000-0000-000000000002
-```
+Every later call that attaches artifacts and attestations uses the trail's `id`, so keep `TRAIL_ID` set for the next parts.
 
 ---
 

@@ -34,7 +34,7 @@
   <div class="page-inner">
 
     <h2 style="font-size:32px; margin-bottom:8px;">API Documentation</h2>
-    <p style="color:var(--text-muted); margin-bottom:32px;">RESTful JSON API · Base URL: <code>http://localhost:8080/api/v1</code></p>
+    <p style="color:var(--text-muted); margin-bottom:32px;">RESTful JSON API · Command service <code>http://localhost:8080/api/v1</code> (writes and reads) · Query service <code>http://localhost:8081/api/v1</code> (reads)</p>
 
     <!-- Overview -->
     <section id="overview" style="padding:0; border:none; margin-bottom:40px;">
@@ -53,7 +53,7 @@
         <span class="callout-icon">ℹ️</span>
         <div>
           The OpenAPI specification (JSON) is available at
-          <code>http://localhost:8080/v3/api-docs</code> and can be imported into Postman,
+          <code>http://localhost:8080/api-docs</code> and can be imported into Postman,
           Insomnia, or any OpenAPI-compatible tool.
         </div>
       </div>
@@ -63,17 +63,17 @@
     <section id="auth" style="padding:0; border:none; margin-bottom:40px;">
       <h2>Authentication</h2>
       <p>
-        The current version does not require authentication. All API endpoints are publicly
-        accessible. API key support is planned for a future release.
+        Authentication is enforced by default. Every request needs a credential, sent as
+        <code>Authorization: Bearer &lt;key&gt;</code>; without one the API answers <code>401</code>.
+        <code>scripts/bootstrap-env.sh</code> writes a bootstrap admin key to <code>.env</code>
+        (<code>SECURITY_BOOTSTRAP_API_KEY</code>) for first use; create service-account keys for CI
+        and revoke the bootstrap key afterwards.
       </p>
-      <div class="callout callout-warning">
-        <span class="callout-icon">⚠️</span>
-        <div>
-          Do not expose the API directly to the internet without a reverse proxy providing
-          authentication. See <a href="known-issues.html">Known Issues</a> for production
-          hardening guidance.
-        </div>
-      </div>
+      <pre><code>export FACTSTORE_TOKEN="$(grep '^SECURITY_BOOTSTRAP_API_KEY=' .env | cut -d= -f2-)"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v1/flows | jq .</code></pre>
+      <p>
+        Keys, scopes and rotation: <a href="https://github.com/MaximumTrainer/OpenFactstore/blob/main/docs/api-authorisation.md" target="_blank" rel="noopener">docs/api-authorisation.md</a>.
+      </p>
     </section>
 
     <!-- Resources -->
@@ -167,10 +167,10 @@
       <h3>Dry-run Header</h3>
       <p>
         All write operations (<code>POST</code>, <code>PUT</code>, <code>DELETE</code>) support
-        a dry-run mode. Add the <code>X-Dry-Run: true</code> header to validate and simulate
+        a dry-run mode. Add the <code>X-Factstore-Dry-Run: true</code> header to validate and simulate
         without persisting:
       </p>
-      <pre><code>X-Dry-Run: true</code></pre>
+      <pre><code>X-Factstore-Dry-Run: true</code></pre>
 
       <h3>Error Responses</h3>
       <p>All errors follow a consistent JSON structure:</p>
@@ -187,34 +187,35 @@
       <h2>Example Requests</h2>
 
       <h3>List all Flows</h3>
-      <pre><code>curl -s http://localhost:8080/api/v1/flows | jq .</code></pre>
+      <pre><code>curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v1/flows | jq .</code></pre>
 
       <h3>Create an Attestation</h3>
       <pre><code>curl -s -X POST http://localhost:8080/api/v1/trails/&lt;trail-id&gt;/attestations \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     <span class="code-key">"type"</span>: <span class="code-string">"security-scan"</span>,
-    <span class="code-key">"passed"</span>: <span class="code-value">true</span>,
-    <span class="code-key">"details"</span>: <span class="code-string">"Trivy: 0 critical findings"</span>,
-    <span class="code-key">"attestedBy"</span>: <span class="code-string">"ci-pipeline"</span>
+    <span class="code-key">"status"</span>: <span class="code-string">"PASSED"</span>,
+    <span class="code-key">"details"</span>: <span class="code-string">"Trivy: 0 critical findings"</span>
   }' | jq .</code></pre>
 
       <h3>Evaluate Deployment Gate</h3>
       <pre><code>curl -s -X POST http://localhost:8080/api/v1/gate/evaluate \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    <span class="code-key">"trailId"</span>: <span class="code-string">"&lt;trail-id&gt;"</span>,
-    <span class="code-key">"targetEnvironment"</span>: <span class="code-string">"production"</span>
+    <span class="code-key">"artifactSha256"</span>: <span class="code-string">"sha256:&lt;64 hex characters&gt;"</span>,
+    <span class="code-key">"environmentId"</span>: <span class="code-string">"&lt;environment-id&gt;"</span>
   }' | jq .</code></pre>
 
       <h3>Record a Security Scan</h3>
       <pre><code>curl -s -X POST http://localhost:8080/api/v1/trails/&lt;trail-id&gt;/security-scans \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     <span class="code-key">"tool"</span>: <span class="code-string">"trivy"</span>,
-    <span class="code-key">"passed"</span>: <span class="code-value">true</span>,
-    <span class="code-key">"criticalCount"</span>: <span class="code-value">0</span>,
-    <span class="code-key">"highCount"</span>: <span class="code-value">1</span>,
+    <span class="code-key">"criticalVulnerabilities"</span>: <span class="code-value">0</span>,
+    <span class="code-key">"highVulnerabilities"</span>: <span class="code-value">1</span>,
     <span class="code-key">"reportUrl"</span>: <span class="code-string">"https://ci.example.com/scans/build-42"</span>
   }' | jq .</code></pre>
     </section>
@@ -229,7 +230,7 @@
       </p>
       <pre><code>http://localhost:8080/swagger-ui.html</code></pre>
       <p>
-        The raw OpenAPI 3 specification is available at <code>/v3/api-docs</code> and can be
+        The raw OpenAPI 3 specification is available at <code>/api-docs</code> and can be
         imported into any OpenAPI-compatible client tool.
       </p>
     </section>

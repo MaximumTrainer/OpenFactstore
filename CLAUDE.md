@@ -203,12 +203,50 @@ TypeScript compilation errors are treated as build failures. Keep `npm run build
 
 ## CI Pipeline
 
-GitHub Actions runs two parallel jobs on every push to `main` or any `copilot/**` branch, and on every pull request targeting `main`:
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` or any `copilot/**` branch, and on every pull request targeting `main`. The jobs include:
 
 - **Backend Build & Test** — `./gradlew build` (compiles + runs all JUnit tests).
 - **Frontend Build** — `npm ci && npm run build` (installs deps + compiles TypeScript).
+- **Documentation drift** — `node --test tools/docs-drift/*.test.mjs` (see [Documentation](#documentation)).
+- **Documentation tutorials** — starts the `docker compose` stack with authentication enforced and runs the user guide's Hello World and the getting-started tutorials exactly as written.
 
-Both jobs must be green before a PR is merged.
+All jobs must be green before a PR is merged.
+
+---
+
+## Documentation
+
+**Every change must update the relevant documentation in the same pull request.** A change to an endpoint, request or response field, header, environment variable, port, CLI command or flag, or user-visible behaviour is not finished until the docs that describe it say the same thing.
+
+Where things are documented:
+
+| What changed | Update |
+|---|---|
+| Anything a user sees or calls | [`docs/user-guide.md`](docs/user-guide.md), the single canonical user guide (the root-level guide file and `website/user-guide.html` only point to it; never add a second guide) |
+| REST endpoints, headers, auth | `docs/API_REFERENCE.md`, `docs/openapi.json` (regenerate; `OpenApiSnapshotTest` checks it), `website/api-docs.html` |
+| Setup, compose, ports, env vars | `docs/getting-started/`, `docs/user-guide.md` §3, `website/get-started.html`, `DEPLOY.md` |
+| CLI commands and flags | `docs/user-guide.md` §23 and `cli/README.md` |
+| Architecture (command/query split, ports, event bus) | `docs/user-guide.md` §2 and `docs/adr/` |
+
+Every `curl` to `/api/` in the docs sends `Authorization: Bearer $FACTSTORE_TOKEN`; never document the legacy API-key header instead.
+
+**Drift tests** (`tools/docs-drift/`) check the docs against the code and fail CI when they disagree: documented endpoints exist in the OpenAPI spec, request bodies use only accepted fields and include every required DTO field, enum values and headers are real, the Swagger/OpenAPI paths, ports and environment variables match the configuration, CLI commands and flags exist, links and anchors resolve, and there is one user guide. Run them after every change:
+
+```bash
+node --test tools/docs-drift/*.test.mjs
+```
+
+The tutorials (Hello World in the user guide and `docs/getting-started/02`–`07`) are also executed end to end in CI. To run them locally against a running stack:
+
+```bash
+scripts/bootstrap-env.sh            # once, writes .env
+docker compose up -d --build backend-command backend-query
+node tools/docs-drift/run-tutorials.mjs          # --print shows the generated script
+```
+
+Shell blocks inside `<!-- docs-e2e:begin -->` / `<!-- docs-e2e:end -->` in those files are run in order; put `<!-- docs-e2e:skip -->` before a block that must not run (e.g. one that needs a real registry). When you add a tutorial step, capture ids from responses with `jq` rather than hard-coding them.
+
+If a drift test fails, fix the documentation (or the code, if the documentation describes the intended behaviour). Do not weaken the test to make it pass.
 
 ---
 
@@ -239,6 +277,7 @@ Before opening a pull request, verify each item:
 - [ ] New endpoints follow the existing REST conventions and return appropriate HTTP status codes.
 - [ ] New domain exceptions follow the existing exception pattern and are handled by `GlobalExceptionHandler`.
 - [ ] New TypeScript types are added to `frontend/src/types/index.ts`.
+- [ ] The documentation describing the change is updated, and `node --test tools/docs-drift/*.test.mjs` passes.
 - [ ] CI is green on the pull request.
 
 ## Shared agent skills

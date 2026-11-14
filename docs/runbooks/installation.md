@@ -51,7 +51,7 @@ The server starts on **http://localhost:8080**.
 Verify the API is responding:
 
 ```bash
-curl http://localhost:8080/api/v1/flows
+curl -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v1/flows
 # Expected: []
 ```
 
@@ -295,6 +295,7 @@ All settings can be overridden via environment variables.
 export BASE_URL=https://factstore.internal.example.com
 
 SA=$(curl -sf -X POST "$BASE_URL/api/v1/service-accounts" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "github-actions-pipeline",
@@ -309,6 +310,7 @@ echo "Service account ID: $SA_ID"
 
 ```bash
 KEY=$(curl -sf -X POST "$BASE_URL/api/v1/service-accounts/$SA_ID/api-keys" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"label": "primary-key"}')
 
@@ -354,7 +356,7 @@ curl -sf "$BASE_URL/actuator/health" | jq .
 TRAIL=$(curl -sf -X POST "$BASE_URL/api/v1/trails" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $API_KEY" \
-  -d "{\"flowId\": \"$FLOW_ID\", \"gitCommitSha\": \"abc123\", \"gitBranch\": \"main\", \"gitAuthor\": \"smoke-test\"}")
+  -d "{\"flowId\": \"$FLOW_ID\", \"gitCommitSha\": \"abc123\", \"gitBranch\": \"main\", \"gitAuthor\": \"smoke-test\", \"gitAuthorEmail\": \"smoke-test@example.com\"}")
 TRAIL_ID=$(echo "$TRAIL" | jq -r '.id')
 echo "Trail: $TRAIL_ID"
 

@@ -13,6 +13,7 @@ This answers questions like:
 
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/environments" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "production",
@@ -33,13 +34,15 @@ A snapshot is the list of artifacts running in the environment at a point in tim
 
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/environments/$ENV_ID/snapshots" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "recordedBy": "k8s-reporter",
     "artifacts": [
       {
-        "sha256": "sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f",
-        "name": "my-org/backend",
-        "tag": "v1.4.2",
+        "artifactSha256": "sha256:0f53b5b9e7c266defe6984deafe039b116295b2df4a409ba6288c403f2451a9f",
+        "artifactName": "my-org/backend",
+        "artifactTag": "v1.4.2",
         "instanceCount": 3
       }
     ]
@@ -51,7 +54,7 @@ curl -s -X POST "$BASE_URL/api/v1/environments/$ENV_ID/snapshots" \
 ## Get the latest snapshot
 
 ```bash
-curl -s "$BASE_URL/api/v1/environments/$ENV_ID/snapshots/latest"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/environments/$ENV_ID/snapshots/latest"
 ```
 
 ---
@@ -61,7 +64,7 @@ curl -s "$BASE_URL/api/v1/environments/$ENV_ID/snapshots/latest"
 Compare any two snapshots to identify unauthorised or unexpected changes:
 
 ```bash
-curl -s "$BASE_URL/api/v1/environments/$ENV_ID/diff?snapshotA=$SNAP_A&snapshotB=$SNAP_B"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/environments/$ENV_ID/diff?snapshotA=$SNAP_A&snapshotB=$SNAP_B"
 ```
 
 Response identifies:
@@ -72,7 +75,7 @@ Response identifies:
 Drift reports are automatically created and made available at:
 
 ```bash
-curl -s "$BASE_URL/api/v1/environments/$ENV_ID/drift"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/environments/$ENV_ID/drift"
 ```
 
 ---
@@ -85,10 +88,12 @@ Artifacts that are not tracked by Factstore (third-party images, approved base i
 
 ```bash
 curl -s -X POST "$BASE_URL/api/v1/environments/$ENV_ID/allowlist" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "sha256": "sha256:abc123...",
-    "justification": "Approved nginx base image — reviewed 2026-01-15",
+    "reason": "Approved nginx base image — reviewed 2026-01-15",
+    "approvedBy": "platform-team",
     "expiresAt": "2027-01-15T00:00:00Z"
   }'
 ```
@@ -96,7 +101,7 @@ curl -s -X POST "$BASE_URL/api/v1/environments/$ENV_ID/allowlist" \
 ### List allow-list entries
 
 ```bash
-curl -s "$BASE_URL/api/v1/environments/$ENV_ID/allowlist"
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/environments/$ENV_ID/allowlist"
 ```
 
 Allow-listed artifacts are automatically granted `ALLOWED` at the deployment gate, skipping all policy evaluation.

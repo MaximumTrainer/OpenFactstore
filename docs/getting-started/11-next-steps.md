@@ -86,7 +86,7 @@ If you find a bug or have a feature idea that is not already listed, open a new 
 ## Getting help
 
 - Browse all open issues: [github.com/MaximumTrainer/Factstore/issues](https://github.com/MaximumTrainer/Factstore/issues)
-- Explore the API interactively: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- Explore the API interactively: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) (sign in with your API key)
 
 ---
 

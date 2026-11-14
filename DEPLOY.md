@@ -332,14 +332,14 @@ After starting Factstore, verify the service is healthy:
 - [ ] **UI loads** — open [http://localhost:8080](http://localhost:8080) in a browser (or `curl -I http://localhost:8080` returns `200 OK`)
 - [ ] **REST API responds** — `curl -s http://localhost:8080/api/v1/flows` returns a JSON array (`[]` when empty)
 - [ ] **Swagger UI accessible** — open [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-- [ ] **OpenAPI spec available** — `curl -s http://localhost:8080/api-docs` returns a JSON document
+- [ ] **OpenAPI spec available** — `curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api-docs` returns a JSON document
 
 One-liner verification:
 
 ```bash
 echo "--- UI ---"        && curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8080/
-echo "--- Flows API ---" && curl -s http://localhost:8080/api/v1/flows
-echo "--- OpenAPI ---"   && curl -s http://localhost:8080/api-docs | grep -o '"openapi":"[^"]*"'
+echo "--- Flows API ---" && curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v1/flows
+echo "--- OpenAPI ---"   && curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api-docs | grep -o '"openapi":"[^"]*"'
 ```
 
 Expected output:
@@ -487,6 +487,7 @@ curl -fs http://localhost:8081/actuator/health
 
 # 3. Create a flow via command service and verify it appears on query service
 curl -X POST http://localhost:8080/api/v2/flows \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"name":"verify-cqrs","description":"Post-deployment verification"}'
 
@@ -494,7 +495,7 @@ curl -X POST http://localhost:8080/api/v2/flows \
 sleep 2
 
 # 4. Read the flow from query service
-curl -s http://localhost:8081/api/v2/flows | grep verify-cqrs
+curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8081/api/v2/flows | grep verify-cqrs
 
 # 5. Verify RabbitMQ is healthy
 curl -fs http://localhost:15672/api/healthchecks/node \

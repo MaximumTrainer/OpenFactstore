@@ -39,6 +39,59 @@ jobs:
         run: |
           docker run --rm -v "$PWD/monitoring:/etc/alertmanager:ro" --entrypoint amtool             prom/alertmanager:v0.27.0 check-config /etc/alertmanager/alertmanager.yml
 
+  # #249: the documentation must describe the code as it is. Static checks of every doc
+  # against the OpenAPI spec, the request DTOs, the CLI source and the compose file.
+  docs-drift:
+    name: Documentation drift
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Documentation drift tests
+        run: node --test tools/docs-drift/*.test.mjs
+
+  # #249: run the user guide's Hello World and the getting-started tutorials, as written,
+  # against the docker compose stack with authentication enforced.
+  docs-tutorials:
+    name: Documentation tutorials (docker compose)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate secrets
+        run: scripts/bootstrap-env.sh
+      - name: Start the command and query services
+        run: docker compose up -d --build backend-command backend-query
+      - name: Wait for both services to be healthy
+        run: |
+          for port in 8080 8081; do
+            for _ in $(seq 1 90); do
+              if curl -sf "http://localhost:$port/actuator/health" >/dev/null; then
+                echo "service on :$port is up"
+                continue 2
+              fi
+              sleep 5
+            done
+            echo "service on :$port did not become healthy" >&2
+            exit 1
+          done
+      - name: Run the tutorials
+        run: node tools/docs-drift/run-tutorials.mjs
+      - name: Service logs
+        if: failure()
+        run: docker compose logs backend-command backend-query --tail 300
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v
+
   backend:
     name: Backend Build & Test
     runs-on: ubuntu-latest

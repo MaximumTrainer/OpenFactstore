@@ -8,7 +8,22 @@ Interactive documentation is also available at **[http://localhost:8080/swagger-
 
 ## Authentication
 
-> ⚠️ **Current version:** The server accepts all requests without requiring authentication. API key infrastructure is implemented but not yet enforced. For production, place the API behind a proxy that validates the `X-Api-Key` header.
+Authentication is enforced by default: every request needs a credential, or it is refused with `401` and `WWW-Authenticate: Bearer`. API clients send an API key as a bearer token:
+
+```bash
+curl -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/flows"
+```
+
+`scripts/bootstrap-env.sh` writes a bootstrap admin key to `.env` for first use. Service accounts, scopes, rotation and the other accepted schemes are in [api-authorisation.md](./api-authorisation.md); signing in to the web UI is in [authentication.md](./authentication.md).
+
+## Services
+
+The API is served by two services (see the [user guide's architecture](./user-guide.md#2-architecture)):
+
+| Service | Local URL | Serves |
+|---------|-----------|--------|
+| Command | `http://localhost:8080` | Every write (`POST`, `PUT`, `PATCH`, `DELETE`), and reads |
+| Query | `http://localhost:8081` | Reads only; writes get `405`. Eventually consistent with the command service |
 
 ---
 
@@ -17,8 +32,8 @@ Interactive documentation is also available at **[http://localhost:8080/swagger-
 | Header | Description |
 |--------|-------------|
 | `Content-Type: application/json` | Required on all POST/PUT requests with a JSON body |
-| `X-Api-Key: <key>` | API key for service accounts (use in production) |
-| `X-Dry-Run: true` | Preview the result of any mutating request without persisting data |
+| `Authorization: Bearer <key>` | API key or session token; required on every request |
+| `X-Factstore-Dry-Run: true` | Preview the result of any mutating request without persisting data |
 | `X-Factstore-CI-Context: <system>` | On `POST /api/v1/trails` — auto-populate Git fields from CI environment variables. Values: `github-actions`, `gitlab-ci`, `jenkins`, `circleci`, `azure-devops` |
 
 ---
@@ -771,4 +786,4 @@ trail status and audit log always agree.
 
 ---
 
-*For a guided walkthrough of the API, see [USER_GUIDE.md](../USER_GUIDE.md). For CI/CD integration examples, see [ci-integration.md](./ci-integration.md).*
+*For a guided walkthrough of the API, see the [user guide](./user-guide.md). For CI/CD integration examples, see [ci-integration.md](./ci-integration.md).*

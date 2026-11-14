@@ -46,7 +46,7 @@ Gates are the critical read path, separate from the write path that CI agents lo
 
 ## Risk tiers
 
-Each environment has a `tier`, set with `POST` or `PUT /api/v1/environments`:
+Each environment has a `tier`, set with `POST /api/v1/environments` or `PUT /api/v1/environments/{id}`:
 
 | Tier | When the gate cannot evaluate | Use for |
 |---|---|---|
