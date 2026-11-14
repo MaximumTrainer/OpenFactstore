@@ -400,6 +400,15 @@ All standard Spring Boot properties can be passed as command-line flags or envir
 | `VAULT_ADDR` | Vault server address (e.g. `https://vault.example.com:8200`) |
 | `VAULT_TOKEN` | Vault access token |
 
+#### Data retention (#251)
+
+| Environment Variable | Description |
+|----------------------|-------------|
+| `FACTSTORE_RETENTION_ENABLED` | `true` runs the retention job on a schedule (default `false`). Policies are set per organisation over the API; with none, nothing is removed |
+| `FACTSTORE_RETENTION_DRY_RUN` | `true` makes the scheduled job only log what it would do |
+| `FACTSTORE_RETENTION_CRON` | When it runs (Spring cron, UTC; default `0 30 3 * * *`) |
+| `FACTSTORE_RETENTION_ARCHIVE_DIR` | Where archived snapshots are written; mount object storage here (default `./data/retention-archive`) |
+
 #### Grafana / monitoring
 
 | Environment Variable | Description |

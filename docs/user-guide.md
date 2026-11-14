@@ -210,6 +210,10 @@ The backend reads these environment variables at startup. `docker-compose.yml` s
 | `VAULT_ENABLED` | `false` | Enable HashiCorp Vault for evidence storage |
 | `VAULT_ADDR` | `http://localhost:8200` | Vault address |
 | `VAULT_TOKEN` | *(required if enabled)* | Vault root/app token |
+| `FACTSTORE_RETENTION_ENABLED` | `false` | Run the scheduled [data retention](#data-retention) job |
+| `FACTSTORE_RETENTION_DRY_RUN` | `false` | With the job enabled, only log what it would do |
+| `FACTSTORE_RETENTION_CRON` | `0 30 3 * * *` | When the job runs (Spring cron, UTC) |
+| `FACTSTORE_RETENTION_ARCHIVE_DIR` | `./data/retention-archive` | Where archived records are written, one JSON file each; mount object storage here to keep them off the host |
 | `SCM_ENCRYPTION_KEY` | `default-dev-key-32chars!!!!!!` | AES-256-GCM key for SCM token encryption. **Set to a strong random 32-char value in production.** |
 | `GF_SECURITY_ADMIN_PASSWORD` | `changeme` | Grafana admin password |
 
@@ -2227,11 +2231,44 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" "$BASE_URL/api/v1/reports/au
 
 #### Data Retention
 
-The current version does not implement automatic data pruning. For production:
+Retention is set per organisation and per data class (#251). With no policy, nothing is ever removed. Each data class has a fixed action and a minimum period, so a mistyped policy cannot throw evidence away:
 
-- PostgreSQL's native partitioning by `createdAt` month enables efficient pruning of old trails.
-- Archive trails older than your regulatory retention window (typically 7 years for SOX/PCI) to cold storage before deleting.
-- Evidence files in Vault can be soft-deleted via `DELETE /api/v1/evidence/{entityType}/{entityId}` and later purged.
+| Data class | Action | Minimum | What happens past the period |
+|---|---|---|---|
+| `FACT_CONTENT` | `SHRED` | 365 days | The tenant-month data key is shredded once the whole month is older than the period ([cryptographic shredding](data-lifecycle.md)). The ledger is untouched and still verifies. |
+| `ENVIRONMENT_SNAPSHOTS` | `ARCHIVE` | 90 days | The snapshot is written as JSON to the retention archive, then removed. An environment's latest snapshot, and any snapshot a drift baseline points at, is kept. |
+| `NOTIFICATIONS` | `PRUNE` | 30 days | In-app notifications and notification delivery records are removed. They belong to the instance, so only the `default` tenant's policy applies. |
+
+Ledger records and audit events are never touched by retention.
+
+Set a policy (the tenant is an organisation slug, or `default` for data that belongs to no organisation):
+
+```bash
+curl -s -X PUT "$BASE_URL/api/v1/admin/retention/policies/default/ENVIRONMENT_SNAPSHOTS" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"retainDays": 2555}' | jq .
+```
+
+Check what the job would do before it does it. `POST /api/v1/admin/retention/runs` is a dry run unless `dryRun=false`:
+
+```bash
+curl -s -X POST "$BASE_URL/api/v1/admin/retention/runs?dryRun=true" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq '.batches'
+```
+
+**Legal holds** suspend retention for everything connected to a trail, or to every trail of a flow: snapshots and fact content about the trail's artifacts, and notifications about the trail or flow. A hold is released, never deleted, so the record that it existed stays:
+
+```bash
+HOLD_ID=$(curl -s -X POST "$BASE_URL/api/v1/legal-holds" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"scopeType\": \"FLOW\", \"scopeId\": \"$FLOW_ID\", \"reason\": \"Litigation 2026-17\"}" | jq -r .id)
+curl -s -X POST "$BASE_URL/api/v1/legal-holds/$HOLD_ID/release" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq .
+```
+
+The scheduled job runs daily at 03:30 UTC when `FACTSTORE_RETENTION_ENABLED=true` (see [Environment Variables](#environment-variables)). Every batch it applies is audited as `RETENTION_BATCH_APPLIED` with its counts. It also adds to the Prometheus counters `factstore_retention_items_total{data_class,action}` and `factstore_retention_skipped_total{data_class,reason="legal_hold"}`. Policy changes are audited as `RETENTION_POLICY_SET` and `RETENTION_POLICY_REMOVED`, and holds as `LEGAL_HOLD_PLACED` and `LEGAL_HOLD_RELEASED`. All of this needs the `admin` scope.
 
 ---
 
