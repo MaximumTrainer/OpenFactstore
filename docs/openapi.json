@@ -1770,7 +1770,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "acceptedSelfAssertedTypes", "description", "name", "rejectSelfAsserted", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags" ],
+        "required" : [ "description", "name", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags" ],
         "type" : "object"
       },
       "CreateFlowRequest" : {
@@ -1831,7 +1831,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "acceptedSelfAssertedTypes", "description", "name", "rejectSelfAsserted", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags", "templateIds" ],
+        "required" : [ "description", "name", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags", "templateIds" ],
         "type" : "object"
       },
       "CreateFrameworkRequest" : {

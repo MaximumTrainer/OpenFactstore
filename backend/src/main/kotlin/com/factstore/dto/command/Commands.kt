@@ -22,9 +22,9 @@ data class CreateFlowCommand(
     val templateYaml: String? = null,
     val requiresApproval: Boolean = false,
     val requiredApproverRoles: List<String> = emptyList(),
-    /** #240: see `Flow.rejectSelfAsserted`. */
-    val rejectSelfAsserted: Boolean = false,
-    val acceptedSelfAssertedTypes: List<String> = emptyList()
+    /** #240: see `Flow.rejectSelfAsserted`. Optional, default false. */
+    val rejectSelfAsserted: Boolean? = null,
+    val acceptedSelfAssertedTypes: List<String>? = null
 )
 
 /** JSON body for PUT /api/v2/flows/{id} — `id` comes from the path variable. */

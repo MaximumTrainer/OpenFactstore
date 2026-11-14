@@ -317,7 +317,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$SNYK_ID/evidenc
 
 # Both are now PASSED, decided by the server from the reports
 curl -s "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
-  -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq -e 'all(.[]; .status == "PASSED")'
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq -e 'all(.items[]; .status == "PASSED")'
 ```
 
 ### Step 5: Assert Compliance

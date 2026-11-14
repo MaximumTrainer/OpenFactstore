@@ -69,10 +69,10 @@ data class CreateFlowRequest(
     val templateId: String? = null,
     /** Apply several templates combined, e.g. a service type plus a regulatory framework. */
     val templateIds: List<String> = emptyList(),
-    /** #240: do not count self-asserted attestations towards compliance... */
-    val rejectSelfAsserted: Boolean = false,
-    /** ...except for these types. */
-    val acceptedSelfAssertedTypes: List<String> = emptyList()
+    /** #240: do not count self-asserted attestations towards compliance (optional, default false)... */
+    val rejectSelfAsserted: Boolean? = null,
+    /** ...except for these types (optional, default none). */
+    val acceptedSelfAssertedTypes: List<String>? = null
 )
 
 /** Blast radius of a change to a flow definition (#160). */

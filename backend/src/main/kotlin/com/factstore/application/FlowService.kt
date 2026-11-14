@@ -66,8 +66,8 @@ class FlowService(
             it.templateYaml = request.templateYaml ?: applied?.templateYaml
             it.requiresApproval = request.requiresApproval
             it.requiredApproverRoles = request.requiredApproverRoles
-            it.rejectSelfAsserted = request.rejectSelfAsserted
-            it.acceptedSelfAssertedTypes = request.acceptedSelfAssertedTypes
+            it.rejectSelfAsserted = request.rejectSelfAsserted ?: false
+            it.acceptedSelfAssertedTypes = request.acceptedSelfAssertedTypes.orEmpty()
             if (applied != null) {
                 it.templateId = templateIds.joinToString("+")
                 it.templateVersion = templateIds
