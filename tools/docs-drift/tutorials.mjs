@@ -43,8 +43,9 @@ export function tutorialScript(files = TUTORIALS) {
   const parts = [
     'set -euo pipefail',
     // A step whose request fails must fail the run, as a reader would see it fail.
-    'curl() { command curl --fail-with-body --show-error "$@"; }',
-    ': "${BASE_URL:?set BASE_URL to the command API}" "${FACTSTORE_TOKEN:?set FACTSTORE_TOKEN to an admin API key}"'
+    'curl() { command curl --fail-with-body --show-error "$@"; }'
+    // No credentials are passed in: the tutorials' own setup steps read them from .env, so CI
+    // also proves those instructions work.
   ]
   for (const file of files) {
     for (const b of tutorialBlocks(file)) {

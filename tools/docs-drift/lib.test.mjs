@@ -1,7 +1,7 @@
 // Unit tests for the extraction the drift tests rely on (#249).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { curlCommands, endpointMentions, tableEndpoints, httpBlockRequests, pathMatches, parseJsonBody, codeBlocks } from './lib.mjs'
+import { kotlinRequiredFields, curlCommands, endpointMentions, tableEndpoints, httpBlockRequests, pathMatches, parseJsonBody, codeBlocks, unknownBodyFields } from './lib.mjs'
 
 const md = (s) => s.replace(/^\n/, '')
 
@@ -29,6 +29,11 @@ curl "$BASE_URL/api/v1/flows/$FLOW_ID"
 \`\`\`
 `))
   assert.deepEqual(calls.map((c) => [c.method, c.path, c.line]), [['POST', '/api/v1/flows', 2], ['GET', '/api/v1/flows/$FLOW_ID', 3]])
+})
+
+test('curl -G sends data as a query string, so it is a GET', () => {
+  const [c] = curlCommands('```\ncurl -G "$U/api/v1/flows" --data-urlencode "q=x"\n```\n')
+  assert.equal(c.method, 'GET')
 })
 
 test('curl in an HTML page', () => {
@@ -67,4 +72,25 @@ test('JSON bodies with shell variables parse; non-JSON does not', () => {
 
 test('code blocks keep their language and opening line', () => {
   assert.deepEqual(codeBlocks('a\n```bash\nx\n```\n').map((b) => [b.lang, b.line, b.body]), [['bash', 2, 'x']])
+})
+
+test('required DTO fields: non-null without a default, ignoring comments and annotation strings', () => {
+  // CreateTrailRequest has a long KDoc with commas and an @Pattern whose message contains `@`.
+  assert.deepEqual([...kotlinRequiredFields('CreateTrailRequest')].sort(), ['flowId', 'gitAuthor', 'gitAuthorEmail'])
+  assert.equal(kotlinRequiredFields('NoSuchRequest'), null)
+})
+
+test('unknown body fields are found in nested objects and arrays too', () => {
+  const openapi = {
+    components: {
+      schemas: {
+        Snap: { type: 'object', properties: { recordedBy: { type: 'string' }, artifacts: { type: 'array', items: { $ref: '#/components/schemas/Art' } } } },
+        Art: { type: 'object', properties: { artifactSha256: { type: 'string' } } },
+        Open: { type: 'object', additionalProperties: { type: 'string' } },
+      },
+    },
+  }
+  const op = (name) => ({ requestBody: { content: { 'application/json': { schema: { $ref: `#/components/schemas/${name}` } } } } })
+  assert.deepEqual(unknownBodyFields(openapi, op('Snap'), { recordedBy: 'x', artifacts: [{ artifactSha256: 'a', sha256: 'b' }], extra: 1 }), ['artifacts[].sha256', 'extra'])
+  assert.deepEqual(unknownBodyFields(openapi, op('Open'), { anything: 'x' }), [])
 })

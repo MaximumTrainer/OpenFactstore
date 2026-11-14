@@ -131,24 +131,28 @@ export function parseCurl(words) {
   let url = null
   let body = null
   let hasData = false
+  let get = false
+  let form = false
   for (let i = 0; i < words.length; i++) {
     const w = words[i]
     const next = () => words[++i]
-    if (w === '-X' || w === '--request') method = (next() ?? '').toUpperCase()
+    if (w === '-G' || w === '--get') get = true
+    else if (w === '-X' || w === '--request') method = (next() ?? '').toUpperCase()
     else if (/^-X[A-Z]+$/.test(w)) method = w.slice(2)
     else if (w === '-H' || w === '--header') headers.push(next() ?? '')
     else if (['-d', '--data', '--data-raw', '--data-binary', '--json'].includes(w)) {
       hasData = true
       body = next() ?? ''
       if (w === '--json') headers.push('Content-Type: application/json')
-    } else if (w === '-F' || w === '--form' || w === '--data-urlencode') { hasData = true; next() }
+    } else if (w === '-F' || w === '--form') { hasData = true; form = true; next() }
+    else if (w === '--data-urlencode') { hasData = true; next() }
     else if (w === '--upload-file' || w === '-T') { hasData = true; method = method ?? 'PUT'; next() }
     else if (['-o', '--output', '-u', '--user', '-w', '--write-out', '--cacert', '--cert', '--key', '-b', '--cookie', '-c', '--cookie-jar', '-A', '--user-agent', '--max-time', '-m', '--connect-timeout', '--retry', '-e', '--referer'].includes(w)) next()
     else if (w === '--url') url = next()
     else if (!w.startsWith('-') && url === null) url = w
   }
-  if (!method) method = hasData ? 'POST' : 'GET'
-  return { method, url, headers, body }
+  if (!method) method = hasData && !get ? 'POST' : 'GET'
+  return { method, url, headers, body, form }
 }
 
 /** Every curl command in a Markdown document: { file, line, method, url, path, headers, body }. */
@@ -181,10 +185,11 @@ function countCurlLine(body, nth) {
   return 0
 }
 
-/** `/api/...` path of a URL with the query string removed, or null when it is not an API URL. */
+/** `/api/vN/...` path of a URL with the query string removed, or null when it is not a Factstore API URL. */
 export function apiPath(url) {
   if (!url) return null
-  const at = url.indexOf('/api/')
+  // Factstore's API is versioned (/api/v1, /api/v2); other services' /api/ (RabbitMQ, SonarQube) is not.
+  const at = url.search(/\/api\/v\d+\//)
   if (at === -1) return null
   return url.slice(at).split(/[?#]/)[0].replace(/\/+$/, '') || null
 }
@@ -194,6 +199,7 @@ export function apiPath(url) {
  * (`POST /api/v1/assert`). Returns { file, line, method, path }.
  */
 export function endpointMentions(markdown, file = '') {
+  markdown = plainText(markdown)
   const out = []
   const re = new RegExp(`\\b(${METHODS.join('|')})\\s+(/api/[^\\s\`'"|)<>]*(?:<[^>\\s]+>[^\\s\`'"|)<>]*)*)`, 'g')
   markdown.split('\n').forEach((text, i) => {
@@ -217,8 +223,16 @@ export function pathMatches(docPath, template) {
   })
 }
 
+/**
+ * The served API: docs/openapi.json (which OpenApiSnapshotTest keeps equal to the running
+ * service) plus the endpoints of feature-flagged controllers it cannot include.
+ */
 export function loadOpenApi(root = REPO_ROOT) {
-  return JSON.parse(readFileSync(join(root, 'docs', 'openapi.json'), 'utf8'))
+  const api = JSON.parse(readFileSync(join(root, 'docs', 'openapi.json'), 'utf8'))
+  for (const [path, ops] of Object.entries(conditionalControllerPaths(root))) {
+    api.paths[path] = { ...ops, ...(api.paths[path] ?? {}) }
+  }
+  return api
 }
 
 /** The operation in the OpenAPI document that a documented call refers to, or null. */
@@ -265,6 +279,46 @@ export function requestProperties(openapi, operation) {
   }
   if (collect(schema) === false || props.size === 0) return null
   return props
+}
+
+/**
+ * Dotted paths of fields in a documented JSON body that the request schema does not declare,
+ * descending into nested objects and arrays. Open schemas (maps, untyped objects) accept anything.
+ */
+export function unknownBodyFields(openapi, operation, body) {
+  const content = operation.requestBody?.content
+  if (!content) return []
+  const media = content['application/json'] ?? Object.values(content)[0]
+  const out = []
+  const props = (schema) => {
+    schema = deref(openapi, schema)
+    if (!schema) return null
+    const merged = { ...(schema.properties ?? {}) }
+    for (const sub of [...(schema.allOf ?? []), ...(schema.oneOf ?? []), ...(schema.anyOf ?? [])]) {
+      const p = props(sub)
+      if (p === null) return null
+      Object.assign(merged, p)
+    }
+    if (!Object.keys(merged).length) return null
+    return merged
+  }
+  const walk = (schema, value, prefix) => {
+    schema = deref(openapi, schema)
+    if (!schema || value === null || typeof value !== 'object') return
+    if (Array.isArray(value)) {
+      for (const v of value) walk(schema.items, v, `${prefix}[]`)
+      return
+    }
+    const known = props(schema)
+    if (!known) return
+    for (const [k, v] of Object.entries(value)) {
+      const path = prefix ? `${prefix}.${k}` : k
+      if (!(k in known)) out.push(path)
+      else walk(known[k], v, path)
+    }
+  }
+  walk(media?.schema, body, '')
+  return [...new Set(out)]
 }
 
 /**
@@ -320,6 +374,182 @@ export function httpBlockRequests(markdown, file = '') {
       if (end === -1) end = lines.length
       const rest = lines.slice(k + 1, end).filter((l) => !/^[A-Za-z-]+:\s/.test(l) && !/^\s*#/.test(l)).join('\n').trim()
       out.push({ file, line: block.line + 1 + k, method: m[1], path: apiPath(m[2]), body: rest.startsWith('{') ? rest : null })
+    })
+  }
+  return out
+}
+
+/**
+ * Request fields the backend truly requires: constructor parameters of the request DTO that are
+ * non-null and have no default. (springdoc marks defaulted Kotlin parameters as required too, so
+ * the OpenAPI `required` list over-reports.) Returns null when the DTO is not found.
+ */
+export function kotlinRequiredFields(className, root = REPO_ROOT) {
+  const sources = kotlinSources(root)
+  const decl = new RegExp(`data class ${className}\\s*\\(`)
+  for (const src of sources) {
+    const m = decl.exec(src)
+    if (!m) continue
+    let depth = 1
+    let i = m.index + m[0].length
+    const start = i
+    while (i < src.length && depth) { if (src[i] === '(') depth++; else if (src[i] === ')') depth--; i++ }
+    // Comments and string literals can hold commas, brackets and `@`; drop them before splitting.
+    const text = src.slice(start, i - 1)
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '').replace(/"(?:[^"\\]|\\.)*"/g, '""')
+    const params = splitTopLevel(text)
+    return new Set(params
+      .map((p) => p.replace(/@[\w:.]+(\([^)]*\))?/g, '').trim())
+      .map((p) => p.match(/^(?:override\s+)?va[lr]\s+(\w+)\s*:\s*([^=]+?)\s*(=.*)?$/s))
+      .filter((p) => p && !p[3] && !p[2].trim().endsWith('?'))
+      .map((p) => p[1]))
+  }
+  return null
+}
+
+let kotlinCache = null
+function kotlinSources(root) {
+  if (kotlinCache) return kotlinCache
+  const out = []
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name)
+      if (statSync(full).isDirectory()) walk(full)
+      else if (name.endsWith('.kt')) out.push(readFileSync(full, 'utf8'))
+    }
+  }
+  walk(join(root, 'backend', 'src', 'main', 'kotlin'))
+  kotlinCache = out
+  return out
+}
+
+function splitTopLevel(text) {
+  const parts = []
+  let depth = 0
+  let cur = ''
+  for (const c of text) {
+    if ('(<[{'.includes(c)) depth++
+    if (')>]}'.includes(c)) depth--
+    if (c === ',' && depth === 0) { parts.push(cur); cur = '' } else cur += c
+  }
+  if (cur.trim()) parts.push(cur)
+  return parts
+}
+
+/** The schema name of an operation's JSON request body (the request DTO's class name). */
+export function requestSchemaName(operation) {
+  const content = operation.requestBody?.content
+  const media = content && (content['application/json'] ?? Object.values(content)[0])
+  const ref = media?.schema?.$ref
+  return ref ? ref.split('/').pop() : null
+}
+
+/** Text of a document as a reader sees it: HTML tags stripped and entities decoded, lines kept. */
+export function plainText(text) {
+  if (!/^\s*<(!doctype|html)/i.test(text)) return text
+  return text.replace(/<[^>\n]+>/g, '').replace(/&(lt|gt|amp|quot|#39|apos);/g, (e) => ENTITIES[e])
+}
+
+/** The anchors GitHub generates for a Markdown document's headings. */
+export function headingAnchors(markdown) {
+  const seen = new Map()
+  const anchors = new Set()
+  let inFence = false
+  for (const line of markdown.split('\n')) {
+    if (/^\s*(```|~~~)/.test(line)) inFence = !inFence
+    const m = !inFence && line.match(/^#{1,6}\s+(.*?)\s*#*\s*$/)
+    if (!m) continue
+    const base = m[1].replace(/`/g, '').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').toLowerCase()
+      .replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/\s/g, '-')
+    const n = seen.get(base) ?? 0
+    seen.set(base, n + 1)
+    anchors.add(n ? `${base}-${n}` : base)
+  }
+  return anchors
+}
+
+/** Links in a document: { line, target } for Markdown [x](target) and HTML href="target". */
+export function links(text) {
+  const out = []
+  text.split('\n').forEach((l, i) => {
+    for (const m of l.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)|href="([^"]+)"/g)) out.push({ line: i + 1, target: m[1] ?? m[2] })
+  })
+  return out
+}
+
+/** Media types an operation's request body accepts (empty when it takes none). */
+export function requestMediaTypes(operation) {
+  return Object.keys(operation.requestBody?.content ?? {})
+}
+
+/** Enum values allowed for each top-level property of the request body schema. */
+export function requestEnums(openapi, operation) {
+  const content = operation.requestBody?.content
+  const media = content && (content['application/json'] ?? Object.values(content)[0])
+  const schema = deref(openapi, media?.schema)
+  const out = new Map()
+  for (const [k, v] of Object.entries(schema?.properties ?? {})) {
+    const d = deref(openapi, v)
+    if (d?.enum) out.set(k, d.enum)
+  }
+  return out
+}
+
+/**
+ * Endpoints of controllers that exist only when a property or profile switches them on (Vault
+ * evidence, the ledger). docs/openapi.json is generated with those off, so they are read from the
+ * controller source instead: { path: { method: {} } }, shaped like OpenAPI `paths`.
+ */
+export function conditionalControllerPaths(root = REPO_ROOT) {
+  const dir = join(root, 'backend', 'src', 'main', 'kotlin', 'com', 'factstore', 'adapter', 'inbound', 'web')
+  const paths = {}
+  for (const name of readdirSync(dir).filter((n) => n.endsWith('.kt'))) {
+    const src = readFileSync(join(dir, name), 'utf8')
+    if (!/@RestController/.test(src) || !/@(ConditionalOnProperty|ConditionalOnExpression|Profile)\b/.test(src)) continue
+    const base = src.match(/^@RequestMapping\(\s*(?:value\s*=\s*)?\[?"([^"]*)"/m)?.[1] ?? ''
+    for (const m of src.matchAll(/@(Get|Post|Put|Delete|Patch)Mapping(?:\(\s*(?:value\s*=\s*)?\[?"([^"]*)"[^)]*\))?/g)) {
+      const path = (base + (m[2] ?? '')).replace(/\/+$/, '') || '/'
+      ;(paths[path] ??= {})[m[1].toLowerCase()] = {}
+    }
+  }
+  return paths
+}
+
+/** Command names and flag names the Go CLI (cli/) defines with cobra. */
+export function cliVocabulary(root = REPO_ROOT) {
+  const commands = new Set()
+  const flags = new Set(['help'])
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name)
+      if (statSync(full).isDirectory()) { if (name !== 'node_modules' && name !== 'tests') walk(full) }
+      else if (name.endsWith('.go') && !name.endsWith('_test.go')) {
+        const src = readFileSync(full, 'utf8')
+        for (const m of src.matchAll(/Use:\s*"([\w-]+)/g)) commands.add(m[1])
+        for (const m of src.matchAll(/Aliases:\s*\[\]string\{([^}]*)\}/g)) for (const a of m[1].matchAll(/"([\w-]+)"/g)) commands.add(a[1])
+        for (const m of src.matchAll(/Flags\(\)\.\w+\(([^)]*)\)/g)) { const f = m[1].match(/"([\w-]+)"/); if (f) flags.add(f[1]) }
+      }
+    }
+  }
+  walk(join(root, 'cli'))
+  return { commands, flags }
+}
+
+/** `factstore ...` invocations in a document's code blocks: { line, words }. */
+export function cliInvocations(markdown) {
+  const out = []
+  for (const block of codeBlocks(markdown)) {
+    const lines = block.body.split('\n')
+    lines.forEach((l, k) => {
+      if (!/^\s*(\|\s*)?factstore\s+[a-z]/.test(l) && !/[$(|&;]\s*factstore\s+[a-z]/.test(l)) return
+      let text = l
+      let n = k
+      while (text.trimEnd().endsWith('\\') && n + 1 < lines.length) text = text.trimEnd().slice(0, -1) + ' ' + lines[++n]
+      const tokens = shellTokens(text)
+      const at = tokens.indexOf('factstore')
+      const words = []
+      for (let j = at + 1; j < tokens.length && typeof tokens[j] === 'string'; j++) words.push(tokens[j])
+      out.push({ line: block.line + 1 + k, words })
     })
   }
   return out
