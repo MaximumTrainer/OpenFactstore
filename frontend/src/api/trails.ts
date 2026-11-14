@@ -1,5 +1,5 @@
 import client from './client'
-import type { Trail, TrailCascadeCounts, TrailCleanupRequest, TrailCleanupResult, TrailDeletion } from '../types'
+import type { Trail, TrailCascadeCounts, TrailCleanupRequest, TrailCleanupResult } from '../types'
 
 export const getTrails = (flowId?: string, includeArchived = false) =>
   client.get<Trail[]>('/trails', {
@@ -10,17 +10,14 @@ export const getTrail = (id: string) => client.get<Trail>(`/trails/${id}`)
 
 export const createTrail = (data: Partial<Trail>) => client.post<Trail>('/trails', data)
 
-/** Soft delete: the trail leaves the default listings, its evidence is retained. */
+/** Trails are archived, never deleted (#245): the trail leaves the default listings and becomes read-only; its evidence is kept. */
 export const archiveTrail = (id: string) => client.post<Trail>(`/trails/${id}/archive`, {})
 
 export const unarchiveTrail = (id: string) => client.post<Trail>(`/trails/${id}/unarchive`, {})
 
-/** What deleting this trail would remove — shown before the user is asked to confirm. */
+/** How much evidence the trail holds, all of which archiving keeps. */
 export const getTrailCascade = (id: string) => client.get<TrailCascadeCounts>(`/trails/${id}/cascade`)
 
-/** Permanent. Cascades to the trail's evidence; the audit log and ledger are left intact. */
-export const deleteTrail = (id: string) => client.delete<TrailDeletion>(`/trails/${id}`)
-
-/** Bulk cleanup. Defaults to a dry run on the server, so always send `dryRun` explicitly. */
+/** Bulk archive. Defaults to a dry run on the server, so always send `dryRun` explicitly. */
 export const cleanupTrails = (request: TrailCleanupRequest) =>
   client.post<TrailCleanupResult>('/trails/cleanup', request)

@@ -76,7 +76,7 @@ class FlowController(private val flowService: IFlowService) {
     @PreAuthorize("hasAuthority('SCOPE_flows:write')")
     @Operation(
         summary = "Delete a flow",
-        description = "Refused with 409 when trails are still attached, unless force=true. " +
+        description = "Refused with 409 while trails are attached, whatever force says: trails are never deleted (#245). " +
             "Archiving retires a flow without losing its history."
     )
     fun deleteFlow(

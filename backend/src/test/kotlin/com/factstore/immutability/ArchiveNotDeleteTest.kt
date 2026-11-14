@@ -32,7 +32,11 @@ import org.springframework.test.web.servlet.multipart
 import org.springframework.test.web.servlet.post
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.RequestMethod
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
+import org.springframework.core.annotation.AnnotatedElementUtils
+import org.springframework.core.type.filter.AnnotationTypeFilter
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
 /**
@@ -59,7 +63,6 @@ class ArchiveNotDeleteTest {
     @Autowired lateinit var artifactService: ArtifactService
     @Autowired lateinit var environmentService: IEnvironmentService
     @Autowired lateinit var auditService: IAuditService
-    @Autowired lateinit var handlerMapping: RequestMappingHandlerMapping
 
     private fun newFlowId(): UUID =
         flowService.createFlow(CreateFlowRequest("flow-245-${System.nanoTime()}", "d", listOf("custom-check"))).id
@@ -75,6 +78,8 @@ class ArchiveNotDeleteTest {
         artifactService.reportArtifact(trail.id, CreateArtifactRequest("img", "1", "sha256:${System.nanoTime()}", reportedBy = "ci"))
         return trail
     }
+
+    private fun digest() = "sha256:" + UUID.randomUUID().toString().replace("-", "").repeat(2)
 
     private fun newEnvironment() =
         environmentService.createEnvironment(CreateEnvironmentRequest(name = "env-245-${System.nanoTime()}", type = EnvironmentType.K8S))
@@ -137,11 +142,11 @@ class ArchiveNotDeleteTest {
         }.andExpect { status { isConflict() } }
         mockMvc.post("/api/v1/trails/${trail.id}/artifacts") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"imageName":"img","imageTag":"2","sha256Digest":"sha256:${System.nanoTime()}","reportedBy":"ci"}"""
+            content = """{"imageName":"img","imageTag":"2","sha256Digest":"${digest()}","reportedBy":"ci"}"""
         }.andExpect { status { isConflict() } }
         mockMvc.post("/api/v2/trails/${trail.id}/artifacts") {
             contentType = MediaType.APPLICATION_JSON
-            content = """{"imageName":"img","imageTag":"2","sha256Digest":"sha256:${System.nanoTime()}","reportedBy":"ci"}"""
+            content = """{"imageName":"img","imageTag":"2","sha256Digest":"${digest()}","reportedBy":"ci"}"""
         }.andExpect { status { isConflict() } }
         val file = MockMultipartFile("file", "more.txt", "text/plain", "more".toByteArray())
         mockMvc.multipart("/api/v1/trails/${trail.id}/attestations/$attestationId/evidence") { file(file) }
@@ -150,6 +155,22 @@ class ArchiveNotDeleteTest {
             .andExpect { status { isConflict() } }
 
         assertThat(cleanupService.cascadeFor(trail.id).attestations).isEqualTo(1)
+    }
+
+    @Test
+    fun `evidence already attached to an attestation cannot be replaced`() {
+        val trail = trailWithEvidence()
+        val attestation = attestationService.listAttestations(trail.id, 0, 10).items.first()
+        val file = MockMultipartFile("file", "other.txt", "text/plain", "other".toByteArray())
+
+        mockMvc.multipart("/api/v1/trails/${trail.id}/attestations/${attestation.id}/evidence") { file(file) }
+            .andExpect { status { isConflict() } }
+        mockMvc.multipart("/api/v2/trails/${trail.id}/attestations/${attestation.id}/evidence") { file(file) }
+            .andExpect { status { isConflict() } }
+
+        val after = attestationService.listAttestations(trail.id, 0, 10).items.first()
+        assertThat(after.evidenceFileHash).isEqualTo(attestation.evidenceFileHash)
+        assertThat(cleanupService.cascadeFor(trail.id).evidenceFiles).isEqualTo(1)
     }
 
     @Test
@@ -230,11 +251,27 @@ class ArchiveNotDeleteTest {
 
     private val mutating = setOf(RequestMethod.DELETE, RequestMethod.PUT, RequestMethod.PATCH)
 
-    private fun mutatingRoutes(): List<Pair<RequestMethod, String>> =
-        handlerMapping.handlerMethods.keys.flatMap { info ->
-            val methods = info.methodsCondition.methods
-            info.patternValues.flatMap { path -> methods.filter { it in mutating }.map { it to path } }
+    /**
+     * Every PUT/PATCH/DELETE route declared by any controller, read from the annotations so
+     * controllers that only load with optional infrastructure (Vault, for one) are covered too.
+     */
+    private fun mutatingRoutes(): List<Pair<RequestMethod, String>> {
+        val scanner = ClassPathScanningCandidateComponentProvider(false)
+        scanner.addIncludeFilter(AnnotationTypeFilter(RestController::class.java))
+        return scanner.findCandidateComponents("com.factstore").flatMap { candidate ->
+            val type = Class.forName(candidate.beanClassName)
+            val prefixes = AnnotatedElementUtils.findMergedAnnotation(type, RequestMapping::class.java)
+                ?.path?.toList()?.ifEmpty { null } ?: listOf("")
+            type.declaredMethods.flatMap { method ->
+                val mapping = AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping::class.java)
+                    ?: return@flatMap emptyList()
+                val paths = mapping.path.toList().ifEmpty { listOf("") }
+                mapping.method.filter { it in mutating }.flatMap { verb ->
+                    prefixes.flatMap { prefix -> paths.map { verb to prefix + it } }
+                }
+            }
         }
+    }
 
     @Test
     fun `no endpoint can change or remove an attestation or its evidence`() {
@@ -260,7 +297,7 @@ class ArchiveNotDeleteTest {
     }
 
     @Test
-    fun `vault evidence cannot be deleted over the API`() {
-        mockMvc.delete("/api/v1/evidence/trail/abc?evidenceType=approval").andExpect { status { isMethodNotAllowed() } }
+    fun `vault evidence has no DELETE route`() {
+        assertThat(mutatingRoutes().map { it.second }.filter { it.startsWith("/api/v1/evidence") }).isEmpty()
     }
 }

@@ -10,6 +10,9 @@ enum class AuditEventType {
     ARTIFACT_UPDATED,
     ENVIRONMENT_CREATED,
     ENVIRONMENT_DELETED,
+    // #245: environments are archived rather than deleted.
+    ENVIRONMENT_ARCHIVED,
+    ENVIRONMENT_UNARCHIVED,
     POLICY_EVALUATED,
     ATTESTATION_RECORDED,
     APPROVAL_GRANTED,

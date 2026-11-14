@@ -34,7 +34,7 @@ class ArtifactService(
         tenantScope.visible(artifact.orgSlug ?: ownership?.ofTrail(artifact.trailId))
 
     override fun reportArtifact(trailId: UUID, request: CreateArtifactRequest): ArtifactResponse {
-        if (!trailRepository.existsById(trailId)) throw NotFoundException("Trail not found: $trailId")
+        (trailRepository.findById(trailId) ?: throw NotFoundException("Trail not found: $trailId")).requireWritable()
         val artifact = Artifact(
             trailId = trailId,
             imageName = request.imageName,

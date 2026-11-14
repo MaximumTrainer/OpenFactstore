@@ -12,7 +12,9 @@ export const createEnvironment = (data: CreateEnvironmentRequest) =>
   client.post<Environment>('/environments', data)
 export const updateEnvironment = (id: string, data: UpdateEnvironmentRequest) =>
   client.put<Environment>(`/environments/${id}`, data)
-export const deleteEnvironment = (id: string) => client.delete(`/environments/${id}`)
+/** Environments are archived, never deleted (#245); the snapshot history is kept. */
+export const archiveEnvironment = (id: string) => client.post<Environment>(`/environments/${id}/archive`, {})
+export const unarchiveEnvironment = (id: string) => client.post<Environment>(`/environments/${id}/unarchive`, {})
 
 export const listSnapshots = (environmentId: string) =>
   client.get<EnvironmentSnapshot[]>(`/environments/${environmentId}/snapshots`)

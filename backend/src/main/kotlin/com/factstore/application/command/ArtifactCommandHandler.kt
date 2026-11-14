@@ -1,5 +1,6 @@
 package com.factstore.application.command
 
+import com.factstore.application.requireWritable
 import com.factstore.core.domain.Artifact
 import com.factstore.core.domain.AuditEventType
 import com.factstore.core.domain.event.DomainEvent
@@ -26,7 +27,8 @@ class ArtifactCommandHandler(
     private val log = LoggerFactory.getLogger(ArtifactCommandHandler::class.java)
 
     override fun reportArtifact(command: ReportArtifactCommand): CommandResult {
-        if (!trailRepository.existsById(command.trailId)) throw NotFoundException("Trail not found: ${command.trailId}")
+        (trailRepository.findById(command.trailId) ?: throw NotFoundException("Trail not found: ${command.trailId}"))
+            .requireWritable()
         val artifact = Artifact(
             trailId = command.trailId,
             imageName = command.imageName,

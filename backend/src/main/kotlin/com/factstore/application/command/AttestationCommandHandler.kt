@@ -1,5 +1,7 @@
 package com.factstore.application.command
 
+import com.factstore.application.requireNoEvidence
+import com.factstore.application.requireWritable
 import com.factstore.application.ActorResolver
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
@@ -50,7 +52,8 @@ class AttestationCommandHandler(
                 throw NotFoundException("Flow '${command.flowName}' not found for organisation '${command.orgSlug}'")
             }
         }
-        if (!trailRepository.existsById(command.trailId)) throw NotFoundException("Trail not found: ${command.trailId}")
+        (trailRepository.findById(command.trailId) ?: throw NotFoundException("Trail not found: ${command.trailId}"))
+            .requireWritable()
         val attestation = Attestation(
             trailId = command.trailId,
             type = command.type,
@@ -108,6 +111,8 @@ class AttestationCommandHandler(
         if (attestation.trailId != command.trailId) {
             throw NotFoundException("Attestation ${command.attestationId} does not belong to trail ${command.trailId}")
         }
+        trailRepository.findById(command.trailId)?.requireWritable()
+        attestation.requireNoEvidence()
         val evidenceFile = evidenceVaultService.store(
             command.attestationId, command.fileName, command.contentType, command.content
         )

@@ -105,10 +105,11 @@ class FlowCommandHandler(
         val flow = flowRepository.findById(command.id)
             ?: throw NotFoundException("Flow not found: ${command.id}")
         val trailCount = trailRepository.findByFlowId(command.id).size
-        if (trailCount > 0 && !command.force) {
+        // force is no longer honoured: a flow's trails are evidence and are never deleted (#245).
+        if (trailCount > 0) {
             throw ConflictException(
                 "Flow '${flow.name}' still has $trailCount trail(s). Archive it to retire it without " +
-                    "losing history, or pass force=true to delete it and its trails deliberately."
+                    "losing history; trails are never deleted (#245)."
             )
         }
         flowRepository.deleteById(command.id)

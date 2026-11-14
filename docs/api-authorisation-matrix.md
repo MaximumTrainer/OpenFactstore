@@ -109,6 +109,7 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `GET` | `/api/v1/environments/{id}/allowlist` | `@authz.has('policies:read')` |
 | `POST` | `/api/v1/environments/{id}/allowlist` | `@authz.has('policies:write')` |
 | `DELETE` | `/api/v1/environments/{id}/allowlist/{entryId}` | `@authz.has('policies:write')` |
+| `POST` | `/api/v1/environments/{id}/archive` | `@authz.has('admin')` |
 | `GET` | `/api/v1/environments/{id}/audit-log/csv` | `@authz.has('flows:read')` |
 | `POST` | `/api/v1/environments/{id}/baselines` | `@authz.has('flows:write')` |
 | `GET` | `/api/v1/environments/{id}/baselines/current` | `@authz.has('flows:read')` |
@@ -119,6 +120,7 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `POST` | `/api/v1/environments/{id}/snapshots` | `@authz.has('artifacts:write')` |
 | `GET` | `/api/v1/environments/{id}/snapshots/latest` | `@authz.has('flows:read')` |
 | `GET` | `/api/v1/environments/{id}/snapshots/{snapshotIndex}` | `@authz.has('flows:read')` |
+| `POST` | `/api/v1/environments/{id}/unarchive` | `@authz.has('admin')` |
 | `POST` | `/api/v1/evidence/collect` | `@authz.has('evidence:write')` |
 | `GET` | `/api/v1/evidence/gaps` | `@authz.has('evidence:read')` |
 | `GET` | `/api/v1/evidence/{sha256Hash}` | `@authz.has('evidence:read')` |

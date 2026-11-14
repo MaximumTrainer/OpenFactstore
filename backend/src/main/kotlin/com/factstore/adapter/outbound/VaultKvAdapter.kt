@@ -90,12 +90,6 @@ class VaultKvAdapter(
         }
     }
 
-    override fun deleteEvidence(entityType: String, entityId: String, evidenceType: String) {
-        val path = kvDataPath(entityType, entityId, evidenceType)
-        log.info("Soft-deleting evidence at Vault path: {}", path)
-        vaultTemplate.delete(path)
-    }
-
     override fun isHealthy(): Boolean {
         return try {
             vaultTemplate.opsForSys().health().isInitialized

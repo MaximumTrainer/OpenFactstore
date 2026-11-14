@@ -47,23 +47,58 @@ func TestUnarchiveTrail(t *testing.T) {
 	}
 }
 
-func TestDeleteTrailReturnsCascadeCounts(t *testing.T) {
+// #245: there is no hard delete. Archiving an environment keeps its snapshot history.
+func TestArchiveEnvironment(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete || r.URL.Path != "/api/v1/trails/trail-1" {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/environments/env-1/archive" {
 			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"trailId":"trail-1","cascade":{"attestations":3,"artifacts":1,"evidenceFiles":2,"total":6}}`))
+		json.NewEncoder(w).Encode(api.EnvironmentResponse{ID: "env-1", ArchivedAt: "2026-02-01T10:00:00Z"})
 	}))
 	defer server.Close()
 
 	c := mustNewClient(t, server.URL, "tok")
-	result, err := api.DeleteTrail(c, "trail-1")
+	env, err := api.ArchiveEnvironment(c, "env-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result.Cascade.Attestations != 3 || result.Cascade.Total != 6 {
-		t.Errorf("unexpected cascade: %+v", result.Cascade)
+	if env.ArchivedAt == "" {
+		t.Error("expected the archived timestamp to come back")
+	}
+}
+
+func TestUnarchiveEnvironment(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/environments/env-1/unarchive" {
+			t.Errorf("unexpected: %s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.EnvironmentResponse{ID: "env-1"})
+	}))
+	defer server.Close()
+
+	c := mustNewClient(t, server.URL, "tok")
+	if _, err := api.UnarchiveEnvironment(c, "env-1"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestListEnvironmentsCanIncludeArchived(t *testing.T) {
+	var query url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"items":[],"page":0,"size":20,"totalItems":0,"totalPages":0}`))
+	}))
+	defer server.Close()
+
+	c := mustNewClient(t, server.URL, "tok")
+	if _, err := api.ListEnvironmentsIncludingArchived(c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if query.Get("includeArchived") != "true" {
+		t.Errorf("expected includeArchived=true, got %q", query.Get("includeArchived"))
 	}
 }
 
@@ -96,13 +131,13 @@ func TestCleanupTrailsSendsOnlyTheSelectorsGiven(t *testing.T) {
 	var raw map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&raw)
-		w.Write([]byte(`{"dryRun":true,"mode":"DELETE","trailCount":0,"trailIds":[],"cascade":{}}`))
+		w.Write([]byte(`{"dryRun":true,"mode":"ARCHIVE","trailCount":0,"trailIds":[],"cascade":{}}`))
 	}))
 	defer server.Close()
 
 	c := mustNewClient(t, server.URL, "tok")
 	_, err := api.CleanupTrails(c, api.TrailCleanupRequest{
-		TagKey: "env", TagValue: "demo", Mode: "DELETE", DryRun: true,
+		TagKey: "env", TagValue: "demo", DryRun: true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -113,7 +148,11 @@ func TestCleanupTrailsSendsOnlyTheSelectorsGiven(t *testing.T) {
 	if _, present := raw["olderThan"]; present {
 		t.Error("olderThan must be omitted when not supplied")
 	}
-	if raw["tagKey"] != "env" || raw["mode"] != "DELETE" {
+	// #245: ARCHIVE is the only mode, so the CLI never sends one.
+	if _, present := raw["mode"]; present {
+		t.Error("mode must not be sent: archiving is the only cleanup")
+	}
+	if raw["tagKey"] != "env" {
 		t.Errorf("unexpected body: %v", raw)
 	}
 }

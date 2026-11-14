@@ -138,12 +138,8 @@ export interface TrailCascadeCounts {
   total: number
 }
 
-export interface TrailDeletion {
-  trailId: string
-  cascade: TrailCascadeCounts
-}
-
-export type CleanupMode = 'ARCHIVE' | 'DELETE'
+/** Archiving is the only cleanup: trails are never deleted (#245). */
+export type CleanupMode = 'ARCHIVE'
 
 export interface TrailCleanupRequest {
   flowId?: string
@@ -557,6 +553,8 @@ export interface Environment {
   complianceState: 'COMPLIANT' | 'NON_COMPLIANT' | 'UNKNOWN'
   createdAt: string
   updatedAt: string
+  /** Set when the environment is archived (#245). */
+  archivedAt?: string
 }
 
 export interface SnapshotArtifact {

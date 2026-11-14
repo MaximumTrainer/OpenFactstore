@@ -438,12 +438,10 @@ data class TrailCascadeCounts(
             coverageReports + securityScans + complianceAssessments + jiraTickets
 }
 
-data class TrailDeletionResponse(
-    val trailId: UUID,
-    val cascade: TrailCascadeCounts
-)
-
-/** Soft delete by default; hard deletion is the deliberate exception. */
+/**
+ * ARCHIVE is the only mode that runs. DELETE is kept so an old client gets a clear 400 rather than
+ * a parse error: trails are never deleted (#245).
+ */
 enum class CleanupMode { ARCHIVE, DELETE }
 
 /**
@@ -887,7 +885,9 @@ data class EnvironmentResponse(
     val scope: SnapshotScopeDto? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
-    val tags: Map<String, String> = emptyMap()
+    val tags: Map<String, String> = emptyMap(),
+    /** Set when the environment is archived (#245). */
+    val archivedAt: Instant? = null
 )
 
 data class SnapshotArtifactRequest(

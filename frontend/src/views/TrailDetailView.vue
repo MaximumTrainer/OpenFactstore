@@ -43,7 +43,7 @@
             data-test="remove-trail"
             class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-50"
             @click="showDeleteDialog = true"
-          >Archive or delete…</button>
+          >Archive…</button>
         </div>
       </div>
 
@@ -229,10 +229,9 @@
     </div>
 
     <!-- Remove trail -->
-    <DeleteTrailDialog
+    <ArchiveTrailDialog
       v-if="showDeleteDialog && trail"
       :trail="trail"
-      @deleted="onTrailDeleted"
       @archived="onTrailArchived"
       @cancel="showDeleteDialog = false"
     />
@@ -290,10 +289,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import StatusBadge from '../components/StatusBadge.vue'
 import EvidenceCell from '../components/EvidenceCell.vue'
-import DeleteTrailDialog from '../components/DeleteTrailDialog.vue'
+import ArchiveTrailDialog from '../components/ArchiveTrailDialog.vue'
 import { getTrail, unarchiveTrail } from '../api/trails'
 import { getAttestations } from '../api/attestations'
 import { getArtifacts, getProvenance } from '../api/artifacts'
@@ -302,7 +301,6 @@ import { getEvidenceSummary } from '../api/evidence'
 import type { Trail, Attestation, Artifact, AssertResult, EvidenceSummary, BuildProvenance, ProvenanceStatus } from '../types'
 
 const route = useRoute()
-const router = useRouter()
 const trail = ref<Trail | null>(null)
 const attestations = ref<Attestation[]>([])
 const artifacts = ref<Artifact[]>([])
@@ -316,11 +314,6 @@ const expandedProvenance = ref<string | null>(null)
 const provenanceMap = ref<Record<string, BuildProvenance | null>>({})
 
 const showDeleteDialog = ref(false)
-
-function onTrailDeleted() {
-  // The trail no longer exists; there is nothing left on this page to show.
-  router.push('/trails')
-}
 
 function onTrailArchived(updated: Trail) {
   trail.value = updated

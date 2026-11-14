@@ -171,11 +171,11 @@ the new definition on its next assertion. The web UI shows this as a warning on 
 | `GET` | `/api/v1/flows/{flowId}/trails` | List trails for a specific flow |
 | `GET` | `/api/v1/trails/{id}/audit` | Get audit events for a trail |
 | `POST` | `/api/v1/trails/{id}/assert` | Assert this pipeline execution — see [Compliance Assertion](#compliance-assertion) |
-| `POST` | `/api/v1/trails/{id}/archive` | Archive a trail (soft delete, reversible) |
+| `POST` | `/api/v1/trails/{id}/archive` | Archive a trail (read-only, hidden from listings, reversible) |
 | `POST` | `/api/v1/trails/{id}/unarchive` | Restore an archived trail |
-| `GET` | `/api/v1/trails/{id}/cascade` | What deleting this trail would remove |
-| `DELETE` | `/api/v1/trails/{id}` | Permanently delete a trail and the evidence it owns |
-| `POST` | `/api/v1/trails/cleanup` | Bulk cleanup by flow, tag or age (dry run by default) |
+| `GET` | `/api/v1/trails/{id}/cascade` | How much evidence the trail holds (archiving keeps all of it) |
+| `DELETE` | `/api/v1/trails/{id}` | Archive a trail, the same as `POST /archive`; trails are never deleted |
+| `POST` | `/api/v1/trails/cleanup` | Bulk archive by flow, tag or age (dry run by default) |
 
 **Create trail — request body:**
 ```json
@@ -359,45 +359,34 @@ Full guide, including the composition and drift semantics and how to add templat
 
 ### Retiring trails and flows
 
-Trails are compliance evidence, so **archiving is the default way to retire one**: the record and
-everything attached to it survive, the trail simply leaves the listings, and it is reversible.
-`GET /api/v1/trails` and `GET /api/v1/flows/{flowId}/trails` hide archived trails unless
-`includeArchived=true`.
+Evidence is immutable (#245): **trails and environments are archived, never deleted**, and no
+endpoint changes or removes an attestation's status or its evidence. Lawful erasure goes through
+[cryptographic shredding](./data-lifecycle.md), which is audited.
 
-**Deleting a trail** (`DELETE /api/v1/trails/{id}`) is permanent and cascades, in this order:
+**Archiving a trail** (`POST /api/v1/trails/{id}/archive`, or `DELETE /api/v1/trails/{id}`, which
+does the same and returns the trail) keeps the trail and everything attached to it. An archived
+trail:
 
-| Removed | Note |
-|---|---|
-| evidence files | deleted first: `evidence_files` has a foreign key onto `attestations` |
-| security scans, compliance assessments | no foreign key onto `trails`; would otherwise be orphaned |
-| Jira tickets, coverage reports, approvals | |
-| attestations | |
-| artifacts | build provenance cascades from these |
-| the trail itself | |
+- is hidden by `GET /api/v1/trails` and `GET /api/v1/flows/{flowId}/trails` unless `includeArchived=true`;
+- is read-only: recording an attestation or an artifact against it, or uploading evidence to one of
+  its attestations, is refused with `409`, on both `/api/v1` and `/api/v2`;
+- comes back with `POST /api/v1/trails/{id}/unarchive`.
 
-Deliberately **not** removed:
-
-- **the audit log** — `audit_events` has no foreign key onto `trails` by design, so the record that
-  the evidence existed outlives the evidence. The deletion event is written *before* the rows go.
-- **the append-only ledger** — entries are immutable.
-
-The response reports exactly what was removed:
+`GET /api/v1/trails/{id}/cascade` reports how much evidence the trail holds:
 
 ```json
 {
-  "trailId": "uuid",
-  "cascade": {
-    "attestations": 3, "artifacts": 1, "evidenceFiles": 2, "approvals": 0,
-    "coverageReports": 0, "securityScans": 0, "complianceAssessments": 0,
-    "jiraTickets": 0, "total": 6
-  }
+  "attestations": 3, "artifacts": 1, "evidenceFiles": 2, "approvals": 0,
+  "coverageReports": 0, "securityScans": 0, "complianceAssessments": 0,
+  "jiraTickets": 0, "total": 6
 }
 ```
 
-`GET /api/v1/trails/{id}/cascade` returns the same counts without removing anything, so a UI can
-state the blast radius before asking for confirmation.
+**Evidence is never replaced.** Uploading a second evidence file to an attestation that already has
+one is refused with `409`; record a new attestation, or override the old one
+(`POST /api/v1/attestations/{id}/override`), so the original stays on the record.
 
-**Bulk cleanup** (`POST /api/v1/trails/cleanup`) is for tearing down evaluation and demo data:
+**Bulk cleanup** (`POST /api/v1/trails/cleanup`) archives evaluation and demo data:
 
 ```json
 {
@@ -405,21 +394,26 @@ state the blast radius before asking for confirmation.
   "tagKey": "env",
   "tagValue": "demo",
   "olderThan": "2026-01-01T00:00:00Z",
-  "mode": "ARCHIVE",
   "dryRun": true
 }
 ```
 
-At least one of `flowId`, `tagKey` or `olderThan` is **required** — a mistyped request cannot select
-every trail in the system. `mode` defaults to `ARCHIVE` and `dryRun` to `true`, so the safe thing
-happens when a field is forgotten. A dry run returns the same shape with `dryRun: true` and changes
-nothing. Every archive and every deletion is written to the audit log as `TRAIL_ARCHIVED`,
-`TRAIL_UNARCHIVED` or `TRAIL_DELETED`, with the actor and the cascade counts.
+At least one of `flowId`, `tagKey` or `olderThan` is **required**, so a mistyped request cannot
+select every trail in the system. `dryRun` defaults to `true`; a dry run returns the same shape with
+`dryRun: true` and changes nothing. `mode` may be omitted or `ARCHIVE`; `DELETE` is refused with
+`400`. Every archive is written to the audit log as `TRAIL_ARCHIVED` or `TRAIL_UNARCHIVED`, with the
+actor.
 
 **Deleting a flow** (`DELETE /api/v1/flows/{id}`, and `/api/v2/flows/{id}`) is refused with `409`
-while trails are still attached, because it would orphan the evidence recorded against it. Archive
-the flow to retire it reversibly, or pass `?force=true` to delete it deliberately. The deletion is
+while trails are attached, whatever `force` says, because it would orphan the evidence recorded
+against it. Archive the flow to retire it. A flow with no trails can still be deleted; that is
 audited as `FLOW_DELETED`.
+
+**Environments** work the same way: `DELETE /api/v1/environments/{id}` archives the environment
+(`204`), as does `POST /api/v1/environments/{id}/archive`. An archived environment keeps its
+snapshot history, is hidden by `GET /api/v1/environments` unless `includeArchived=true`, refuses new
+snapshots with `409`, and comes back with `POST /api/v1/environments/{id}/unarchive`. Both are
+audited, as `ENVIRONMENT_ARCHIVED` and `ENVIRONMENT_UNARCHIVED`.
 
 ---
 
@@ -489,7 +483,9 @@ trail status and audit log always agree.
 | `GET` | `/api/v1/environments` | List all environments |
 | `GET` | `/api/v1/environments/{id}` | Get environment by ID |
 | `PUT` | `/api/v1/environments/{id}` | Update an environment |
-| `DELETE` | `/api/v1/environments/{id}` | Delete an environment |
+| `DELETE` | `/api/v1/environments/{id}` | Archive an environment; environments are never deleted ([why](#retiring-trails-and-flows)) |
+| `POST` | `/api/v1/environments/{id}/archive` | Archive an environment (keeps its snapshots) |
+| `POST` | `/api/v1/environments/{id}/unarchive` | Restore an archived environment |
 | `POST` | `/api/v1/environments/{id}/snapshots` | Record a snapshot |
 | `GET` | `/api/v1/environments/{id}/snapshots` | List snapshots |
 | `GET` | `/api/v1/environments/{id}/snapshots/latest` | Get the latest snapshot |
@@ -679,7 +675,6 @@ trail status and audit log always agree.
 | `GET` | `/api/v1/evidence/{entityType}/{entityId}` | Retrieve evidence metadata (query: `evidenceType`) |
 | `GET` | `/api/v1/evidence/{entityType}/{entityId}/list` | List evidence types for an entity |
 | `GET` | `/api/v1/evidence/{entityType}/{entityId}/download` | Download evidence artifact |
-| `DELETE` | `/api/v1/evidence/{entityType}/{entityId}` | Soft-delete evidence |
 | `GET` | `/api/v1/evidence/health` | Vault connectivity health check |
 
 ---
