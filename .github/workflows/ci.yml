@@ -308,6 +308,7 @@ jobs:
             --security.cors.allowed-origins=http://localhost:5173 \
             --sso.jwt.secret="$(openssl rand -base64 48)" \
             --vault.enabled=false \
+            --factstore.scm.encryption-key="$(openssl rand -base64 32)" \
             > /tmp/factstore.log 2>&1 &
           for i in $(seq 1 36); do
             if curl -sf http://localhost:8080/actuator/health > /dev/null; then

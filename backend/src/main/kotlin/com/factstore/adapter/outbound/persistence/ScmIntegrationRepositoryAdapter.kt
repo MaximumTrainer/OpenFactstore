@@ -27,4 +27,6 @@ class ScmIntegrationRepositoryAdapter(private val jpa: ScmIntegrationRepositoryJ
         jpa.deleteByOrgSlugAndProvider(orgSlug, provider)
     override fun existsByOrgSlugAndProvider(orgSlug: String, provider: ScmProvider): Boolean =
         jpa.existsByOrgSlugAndProvider(orgSlug, provider)
+
+    override fun findAll(): List<ScmIntegration> = jpa.findAll()
 }

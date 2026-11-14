@@ -105,7 +105,7 @@ docker compose ps</code></pre>
             <tr>
               <td><strong>RabbitMQ</strong></td>
               <td><code>http://localhost:15672</code></td>
-              <td>Event bus management UI (guest/guest)</td>
+              <td>Event bus management UI (credentials from <code>.env</code>)</td>
             </tr>
             <tr>
               <td><strong>Swagger UI</strong></td>
@@ -115,7 +115,7 @@ docker compose ps</code></pre>
             <tr>
               <td><strong>Grafana</strong></td>
               <td><code>http://localhost:3000</code></td>
-              <td>Compliance dashboards (admin/changeme)</td>
+              <td>Compliance dashboards (credentials from <code>.env</code>)</td>
             </tr>
             <tr>
               <td><strong>Prometheus</strong></td>
@@ -303,9 +303,9 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/artifacts" \
               <td>Set to <code>true</code> to require API key or JWT on all endpoints</td>
             </tr>
             <tr>
-              <td><code>FACTSTORE_SCM_ENCRYPTION_KEY</code></td>
-              <td><em>dev key</em></td>
-              <td>32-character AES key for encrypting SCM tokens at rest</td>
+              <td><code>SCM_ENCRYPTION_KEY</code></td>
+              <td><em>none (required outside the dev profile)</em></td>
+              <td>Base64 of exactly 32 random bytes (<code>openssl rand -base64 32</code>), the AES key for SCM tokens at rest</td>
             </tr>
             <tr>
               <td><code>FACTSTORE_EVENTS_PUBLISHER</code></td>
@@ -355,7 +355,7 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/artifacts" \
       <span class="code-key">SPRING_DATASOURCE_USERNAME:</span> <span class="code-value">factstore</span>
       <span class="code-key">SPRING_DATASOURCE_PASSWORD:</span> <span class="code-value">${DB_PASSWORD}</span>
       <span class="code-key">SECURITY_ENFORCE_AUTH:</span>      <span class="code-string">"true"</span>
-      <span class="code-key">FACTSTORE_SCM_ENCRYPTION_KEY:</span> <span class="code-value">${SCM_KEY}</span>
+      <span class="code-key">SCM_ENCRYPTION_KEY:</span> <span class="code-value">${SCM_ENCRYPTION_KEY}</span>
       <span class="code-key">FACTSTORE_EVENTS_PUBLISHER:</span> <span class="code-value">rabbitmq</span>
       <span class="code-key">SPRING_RABBITMQ_HOST:</span>       <span class="code-value">rabbitmq</span>
     <span class="code-key">depends_on:</span>
