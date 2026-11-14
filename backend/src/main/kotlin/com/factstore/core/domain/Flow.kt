@@ -61,6 +61,26 @@ class Flow(
     @Column(name = "requires_approval", nullable = false)
     var requiresApproval: Boolean = false
 
+    /**
+     * #240: when true, a self-asserted attestation (a status the caller claimed and the server
+     * could not check) does not count towards compliance, unless its type is in
+     * [acceptedSelfAssertedTypes].
+     */
+    @Column(name = "reject_self_asserted", nullable = false)
+    var rejectSelfAsserted: Boolean = false
+
+    @Column(name = "accepted_self_asserted_types", columnDefinition = "TEXT")
+    var acceptedSelfAssertedTypesRaw: String = ""
+
+    var acceptedSelfAssertedTypes: List<String>
+        get() = if (acceptedSelfAssertedTypesRaw.isBlank()) emptyList()
+                else acceptedSelfAssertedTypesRaw.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        set(value) { acceptedSelfAssertedTypesRaw = value.joinToString(",") }
+
+    /** Whether [attestationType]'s self-asserted evidence counts for this flow (#240). */
+    fun acceptsSelfAsserted(attestationType: String): Boolean =
+        !rejectSelfAsserted || attestationType in acceptedSelfAssertedTypes
+
     @Column(name = "required_approver_roles", columnDefinition = "TEXT")
     var requiredApproverRolesRaw: String = ""
 

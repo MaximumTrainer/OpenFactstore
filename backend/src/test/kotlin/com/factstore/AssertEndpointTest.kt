@@ -1,5 +1,6 @@
 package com.factstore
 
+import com.factstore.testsupport.recordWithEvidence
 import com.factstore.application.ArtifactService
 import com.factstore.application.AttestationService
 import com.factstore.application.FlowService
@@ -49,7 +50,7 @@ class AssertEndpointTest {
     fun `POST trails id assert judges that trail and reports its id`() {
         val flow = flowService.createFlow(CreateFlowRequest("flow-ep-${System.nanoTime()}", "d", listOf("junit")))
         val trail = newTrail(flow.id)
-        attestationService.recordAttestation(
+        attestationService.recordWithEvidence(
             trail.id,
             CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED)
         )
@@ -71,7 +72,7 @@ class AssertEndpointTest {
             CreateFlowRequest("flow-ep-nc-${System.nanoTime()}", "d", listOf("junit", "snyk"))
         )
         val trail = newTrail(flow.id)
-        attestationService.recordAttestation(
+        attestationService.recordWithEvidence(
             trail.id,
             CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED)
         )
@@ -94,7 +95,7 @@ class AssertEndpointTest {
         val digest = "sha256:ep${System.nanoTime()}"
 
         val older = newTrail(flow.id)
-        attestationService.recordAttestation(
+        attestationService.recordWithEvidence(
             older.id,
             CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED)
         )

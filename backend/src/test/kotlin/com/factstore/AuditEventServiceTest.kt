@@ -1,5 +1,6 @@
 package com.factstore
 
+import com.factstore.testsupport.recordWithEvidence
 import com.factstore.application.AuditEventService
 import com.factstore.application.FlowService
 import com.factstore.application.TrailService
@@ -62,7 +63,7 @@ class AuditEventServiceTest {
             gitAuthor = "author",
             gitAuthorEmail = "a@b.com"
         ))
-        attestationService.recordAttestation(trail.id, CreateAttestationRequest("junit", AttestationStatus.PASSED))
+        attestationService.recordWithEvidence(trail.id, CreateAttestationRequest("junit", AttestationStatus.PASSED))
 
         val events = auditEventService.getEventsForTrail(trail.id)
         assertTrue(events.any { it.eventType == AuditEventType.ATTESTATION_RECORDED })
@@ -98,7 +99,7 @@ class AuditEventServiceTest {
             gitAuthor = "author",
             gitAuthorEmail = "a@b.com"
         ))
-        attestationService.recordAttestation(trail.id, CreateAttestationRequest("junit", AttestationStatus.PASSED))
+        attestationService.recordWithEvidence(trail.id, CreateAttestationRequest("junit", AttestationStatus.PASSED))
         val digest = "sha256:gate-${System.nanoTime()}"
         artifactService.reportArtifact(trail.id, CreateArtifactRequest("img", "1.0", digest, reportedBy = "ci"))
 

@@ -51,7 +51,9 @@ class SecurityScanService(
             orgSlug = request.orgSlug
         )
 
-        val evaluation = if (threshold != null) evaluateThresholds(scan, threshold) else ThresholdEvaluationResult(true, emptyList())
+        // #240: no configured threshold fails closed against the documented default
+        // (0 critical, 0 high, 10 medium, any low) instead of passing unconditionally.
+        val evaluation = evaluateThresholds(scan, threshold ?: SecurityThreshold(flowId = trail.flowId))
         val attestationStatus = if (evaluation.passed) AttestationStatus.PASSED else AttestationStatus.FAILED
 
         val details = objectMapper.writeValueAsString(mapOf(

@@ -52,6 +52,8 @@ class FlowCommandHandler(
             it.templateYaml = command.templateYaml
             it.requiresApproval = command.requiresApproval
             it.requiredApproverRoles = command.requiredApproverRoles
+            it.rejectSelfAsserted = command.rejectSelfAsserted
+            it.acceptedSelfAssertedTypes = command.acceptedSelfAssertedTypes
         }
         val saved = flowRepository.save(flow)
         eventAppender.append(DomainEvent.FlowCreated(
@@ -86,6 +88,8 @@ class FlowCommandHandler(
         command.templateYaml?.let { flow.templateYaml = it }
         command.requiresApproval?.let { flow.requiresApproval = it }
         command.requiredApproverRoles?.let { flow.requiredApproverRoles = it }
+        command.rejectSelfAsserted?.let { flow.rejectSelfAsserted = it }
+        command.acceptedSelfAssertedTypes?.let { flow.acceptedSelfAssertedTypes = it }
         flow.updatedAt = Instant.now()
         val saved = flowRepository.save(flow)
         eventAppender.append(DomainEvent.FlowUpdated(

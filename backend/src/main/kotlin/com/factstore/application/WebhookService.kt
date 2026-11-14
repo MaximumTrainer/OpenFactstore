@@ -24,7 +24,8 @@ class WebhookService(
     private val webhookDeliveryRepository: IWebhookDeliveryRepository,
     private val trailRepository: ITrailRepository,
     private val attestationRepository: IAttestationRepository,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val verdicts: com.factstore.application.attestation.AttestationVerdictResolver
 ) : IWebhookService {
 
     private val log = LoggerFactory.getLogger(WebhookService::class.java)
@@ -141,13 +142,17 @@ class WebhookService(
     private fun handleAttestation(event: WebhookEvent, config: WebhookConfig) {
         val trail = findOrCreateTrail(event, config)
         val attestationType = event.attestationType ?: return
-        val attestationStatus = event.attestationStatus ?: return
+        val claimed = event.attestationStatus ?: return
+        // #240: a webhook's pass/fail is a claim like any other.
+        val verdict = verdicts.resolve(attestationType, claimed, attestationData = null)
+        val attestationStatus = verdict.status
 
         val attestation = Attestation(
             trailId = trail.id,
             type = attestationType,
             status = attestationStatus,
-            details = event.details
+            details = event.details,
+            selfAsserted = verdict.selfAsserted
         )
         attestationRepository.save(attestation)
 

@@ -63,7 +63,9 @@ class FlowCommandController(private val commandHandler: IFlowCommandHandler) {
             tags = request.tags,
             templateYaml = request.templateYaml,
             requiresApproval = request.requiresApproval,
-            requiredApproverRoles = request.requiredApproverRoles
+            requiredApproverRoles = request.requiredApproverRoles,
+            rejectSelfAsserted = request.rejectSelfAsserted,
+            acceptedSelfAssertedTypes = request.acceptedSelfAssertedTypes
         )))
 
     @PreAuthorize("@authz.has('flows:write')")
