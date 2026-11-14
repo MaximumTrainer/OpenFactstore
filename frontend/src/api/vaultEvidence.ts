@@ -33,13 +33,4 @@ export const downloadEvidence = (
     params: { evidenceType },
   })
 
-export const deleteEvidence = (
-  entityType: string,
-  entityId: string,
-  evidenceType: string,
-) =>
-  client.delete(`/evidence/${entityType}/${entityId}`, {
-    params: { evidenceType },
-  })
-
 export const getVaultHealth = () => client.get<VaultHealthResponse>('/evidence/health')

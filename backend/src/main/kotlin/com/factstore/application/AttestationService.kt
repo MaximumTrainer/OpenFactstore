@@ -56,11 +56,10 @@ class AttestationService(
      * The trail exists and belongs to the caller's organisation. Another organisation's trail is
      * "not found", for writes as for reads (#155 FR-5.2).
      */
-    private fun requireVisibleTrail(trailId: UUID) {
+    private fun requireVisibleTrail(trailId: UUID): com.factstore.core.domain.Trail =
         tenantScope.require(trailRepository.findById(trailId), { it.orgSlug ?: flowRepository.findById(it.flowId)?.orgSlug }) {
             "Trail not found: $trailId"
         }
-    }
 
     private val log = LoggerFactory.getLogger(AttestationService::class.java)
 
@@ -82,7 +81,7 @@ class AttestationService(
                 throw NotFoundException("Flow '$flowName' not found for organisation '$orgSlug'")
             }
         }
-        requireVisibleTrail(trailId)
+        requireVisibleTrail(trailId).requireWritable()
 
         customTypes.validate(request.type, request.attestationData)
 
@@ -162,6 +161,7 @@ class AttestationService(
     override fun recordArtifactAttestation(artifactId: UUID, request: CreateArtifactAttestationRequest): AttestationResponse {
         val artifact = artifactRepository.findById(artifactId)
             ?: throw NotFoundException("Artifact not found: $artifactId")
+        trailRepository.findById(artifact.trailId)?.requireWritable()
         val verdict = verdicts.resolve(request.type, request.status, request.attestationData)
         val attestation = Attestation(
             trailId = artifact.trailId,
@@ -236,6 +236,8 @@ class AttestationService(
         val attestation = attestationRepository.findById(attestationId)
             ?: throw NotFoundException("Attestation not found: $attestationId")
         if (attestation.trailId != trailId) throw NotFoundException("Attestation $attestationId does not belong to trail $trailId")
+        trailRepository.findById(trailId)?.requireWritable()
+        attestation.requireNoEvidence()
 
         val evidenceFile = evidenceVaultService.store(attestationId, fileName, contentType, content)
 

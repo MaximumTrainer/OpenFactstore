@@ -45,40 +45,4 @@ class TrailCleanupRepositoryAdapter(
             jiraTickets = jiraTickets.findByTrailId(trailId).size
         )
     }
-
-    @Transactional
-    override fun deleteTrailCascade(trailId: UUID): TrailCascadeCounts {
-        val trailAttestations = attestations.findByTrailId(trailId)
-
-        // Evidence first: evidence_files has a foreign key onto attestations.
-        var evidenceRemoved = 0
-        trailAttestations.forEach { attestation ->
-            val files = evidenceFiles.findByAttestationId(attestation.id)
-            evidenceRemoved += files.size
-            evidenceFiles.deleteAll(files)
-        }
-
-        val counts = TrailCascadeCounts(
-            attestations = trailAttestations.size,
-            artifacts = artifacts.findByTrailId(trailId).size,
-            evidenceFiles = evidenceRemoved,
-            approvals = approvals.findByTrailId(trailId).size,
-            coverageReports = coverageReports.findByTrailId(trailId).size,
-            securityScans = securityScans.findByTrailId(trailId).size,
-            complianceAssessments = complianceAssessments.findByTrailId(trailId).size,
-            jiraTickets = jiraTickets.findByTrailId(trailId).size
-        )
-
-        securityScans.deleteAll(securityScans.findByTrailId(trailId))
-        complianceAssessments.deleteAll(complianceAssessments.findByTrailId(trailId))
-        jiraTickets.deleteAll(jiraTickets.findByTrailId(trailId))
-        coverageReports.deleteAll(coverageReports.findByTrailId(trailId))
-        approvals.deleteAll(approvals.findByTrailId(trailId))
-        attestations.deleteAll(trailAttestations)
-        // build_provenances cascades from artifacts.
-        artifacts.deleteAll(artifacts.findByTrailId(trailId))
-        trails.deleteById(trailId)
-
-        return counts
-    }
 }

@@ -77,6 +77,20 @@ factstore trails create \
   [--pr-id 42] \
   [--pr-reviewer "Bob"] \
   [--deployment-actor "ci-bot"]
+
+# Trails are archived, never deleted (#245); an archived trail is read-only
+factstore trails archive <id>
+factstore trails unarchive <id>
+factstore trails cleanup --tag env=demo            # dry run: what would be archived
+factstore trails cleanup --tag env=demo --apply
+```
+
+### Environments
+
+```bash
+factstore environments list
+factstore environments archive <id>     # 'delete' is an alias; snapshots are kept
+factstore environments unarchive <id>
 ```
 
 ### Artifacts

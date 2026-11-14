@@ -61,7 +61,11 @@ class Environment(
     var scopeExcludeNames: String? = null,
 
     @Column(name = "scope_exclude_patterns", columnDefinition = "TEXT")
-    var scopeExcludePatterns: String? = null
+    var scopeExcludePatterns: String? = null,
+
+    /** Set when the environment has been archived (#245); its snapshots are kept and it takes no new ones. */
+    @Column(name = "archived_at", nullable = true)
+    var archivedAt: Instant? = null
 ) {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(

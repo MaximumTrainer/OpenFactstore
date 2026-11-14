@@ -12,7 +12,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -86,18 +85,6 @@ class VaultEvidenceController(
             )
             .contentType(MediaType.APPLICATION_JSON)
             .body(data)
-    }
-
-    @PreAuthorize("@authz.has('admin')")
-    @DeleteMapping("/{entityType}/{entityId}")
-    @Operation(summary = "Soft-delete evidence", description = "Marks evidence as archived in Vault (soft-delete — data is not permanently destroyed)")
-    fun deleteEvidence(
-        @PathVariable entityType: String,
-        @PathVariable entityId: String,
-        @org.springframework.web.bind.annotation.RequestParam evidenceType: String
-    ): ResponseEntity<Void> {
-        vaultEvidenceService.deleteEvidence(entityType, entityId, evidenceType)
-        return ResponseEntity.noContent().build()
     }
 
     @PreAuthorize("@authz.authenticated()")

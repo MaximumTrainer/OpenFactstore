@@ -116,14 +116,6 @@ class VaultEvidenceService(
             )
     }
 
-    override fun deleteEvidence(entityType: String, entityId: String, evidenceType: String) {
-        log.info(
-            "Soft-deleting evidence: entityType={} entityId={} evidenceType={}",
-            entityType, entityId, evidenceType
-        )
-        secureEvidenceStore.deleteEvidence(entityType, entityId, evidenceType)
-    }
-
     override fun getHealth(): VaultHealthResponse {
         val healthy = secureEvidenceStore.isHealthy()
         val status = if (healthy) "Vault is reachable and initialised" else "Vault is unreachable or unhealthy"

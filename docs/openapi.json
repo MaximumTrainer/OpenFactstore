@@ -710,7 +710,7 @@
           },
           "eventType" : {
             "type" : "string",
-            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "RETENTION_POLICY_SET", "RETENTION_POLICY_REMOVED", "RETENTION_BATCH_APPLIED", "LEGAL_HOLD_PLACED", "LEGAL_HOLD_RELEASED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
+            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "ENVIRONMENT_ARCHIVED", "ENVIRONMENT_UNARCHIVED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "RETENTION_POLICY_SET", "RETENTION_POLICY_REMOVED", "RETENTION_BATCH_APPLIED", "LEGAL_HOLD_PLACED", "LEGAL_HOLD_RELEASED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
           },
           "id" : {
             "format" : "uuid",
@@ -2670,6 +2670,10 @@
       },
       "EnvironmentResponse" : {
         "properties" : {
+          "archivedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
           "createdAt" : {
             "format" : "date-time",
             "type" : "string"
@@ -5820,19 +5824,6 @@
         "required" : [ "createdAt", "gitAuthor", "gitBranch", "gitCommitSha", "id", "status" ],
         "type" : "object"
       },
-      "TrailDeletionResponse" : {
-        "properties" : {
-          "cascade" : {
-            "$ref" : "#/components/schemas/TrailCascadeCounts"
-          },
-          "trailId" : {
-            "format" : "uuid",
-            "type" : "string"
-          }
-        },
-        "required" : [ "cascade", "trailId" ],
-        "type" : "object"
-      },
       "TrailNonCompliantNotificationRequest" : {
         "properties" : {
           "failedAttestationTypes" : {
@@ -7483,7 +7474,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "RETENTION_POLICY_SET", "RETENTION_POLICY_REMOVED", "RETENTION_BATCH_APPLIED", "LEGAL_HOLD_PLACED", "LEGAL_HOLD_RELEASED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
+            "x-extensible-enum" : [ "ARTIFACT_DEPLOYED", "ARTIFACT_REMOVED", "ARTIFACT_UPDATED", "ENVIRONMENT_CREATED", "ENVIRONMENT_DELETED", "ENVIRONMENT_ARCHIVED", "ENVIRONMENT_UNARCHIVED", "POLICY_EVALUATED", "ATTESTATION_RECORDED", "APPROVAL_GRANTED", "APPROVAL_REJECTED", "GATE_BLOCKED", "GATE_ALLOWED", "GATE_FALLBACK", "FLOW_UPDATED", "FLOW_ARCHIVED", "FLOW_UNARCHIVED", "FLOW_RENAMED", "FLOW_DELETED", "USER_SIGNED_IN", "USER_SIGNED_OUT", "USER_SIGN_IN_FAILED", "USER_SESSIONS_REVOKED", "USER_ROLE_CHANGED", "AUTH_FAILED", "CROSS_TENANT_READ", "SCHEMA_PUBLISHED", "SIGNING_KEY_REGISTERED", "SIGNING_KEY_REVOKED", "DATA_KEY_SHRED_REQUESTED", "DATA_KEY_SHREDDED", "RETENTION_POLICY_SET", "RETENTION_POLICY_REMOVED", "RETENTION_BATCH_APPLIED", "LEGAL_HOLD_PLACED", "LEGAL_HOLD_RELEASED", "AUTH_DENIED", "API_KEY_CREATED", "API_KEY_ROTATED", "API_KEY_REVOKED", "TRAIL_ARCHIVED", "TRAIL_UNARCHIVED", "TRAIL_DELETED" ]
           }
         }, {
           "in" : "query",
@@ -8410,6 +8401,14 @@
             "format" : "int32",
             "type" : "integer"
           }
+        }, {
+          "in" : "query",
+          "name" : "includeArchived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -8423,7 +8422,7 @@
             "description" : "OK"
           }
         },
-        "summary" : "List all environments",
+        "summary" : "List environments; archived environments are hidden by default",
         "tags" : [ "Environments" ]
       },
       "post" : {
@@ -8478,6 +8477,7 @@
     },
     "/api/v1/environments/{id}" : {
       "delete" : {
+        "description" : "Environments are never deleted (#245). This archives the environment: it is hidden from listings unless includeArchived=true, takes no new snapshots, and keeps its snapshot history. Same as POST /{id}/archive; undo with POST /{id}/unarchive.",
         "operationId" : "deleteEnvironment",
         "parameters" : [ {
           "in" : "path",
@@ -8493,7 +8493,7 @@
             "description" : "OK"
           }
         },
-        "summary" : "Delete an environment",
+        "summary" : "Archive an environment",
         "tags" : [ "Environments" ]
       },
       "get" : {
@@ -8660,6 +8660,34 @@
         },
         "summary" : "Remove an allow-list entry",
         "tags" : [ "Environment Allowlist" ]
+      }
+    },
+    "/api/v1/environments/{id}/archive" : {
+      "post" : {
+        "operationId" : "archiveEnvironment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EnvironmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Archive an environment; its snapshot history is kept",
+        "tags" : [ "Environments" ]
       }
     },
     "/api/v1/environments/{id}/audit-log/csv" : {
@@ -8990,6 +9018,34 @@
         "tags" : [ "Environments" ]
       }
     },
+    "/api/v1/environments/{id}/unarchive" : {
+      "post" : {
+        "operationId" : "unarchiveEnvironment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EnvironmentResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Unarchive an environment",
+        "tags" : [ "Environments" ]
+      }
+    },
     "/api/v1/evidence/collect" : {
       "post" : {
         "operationId" : "collectBulkEvidence",
@@ -9248,7 +9304,7 @@
     "/api/v1/flows/{id}" : {
       "delete" : {
         "deprecated" : true,
-        "description" : "Refused with 409 when trails are still attached, unless force=true. Archiving retires a flow without losing its history.\n\n**Deprecated** since 2026-11-14; use `/api/v2/flows/{id}` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
+        "description" : "Refused with 409 while trails are attached, whatever force says: trails are never deleted (#245). Archiving retires a flow without losing its history.\n\n**Deprecated** since 2026-11-14; use `/api/v2/flows/{id}` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "deleteFlow_1",
         "parameters" : [ {
           "in" : "path",
@@ -13078,7 +13134,7 @@
     },
     "/api/v1/trails/cleanup" : {
       "post" : {
-        "description" : "Defaults to a dry run and to ARCHIVE. At least one selector is required, so a mistyped request cannot select every trail in the system.",
+        "description" : "Defaults to a dry run. ARCHIVE is the only mode; DELETE is refused with 400 (#245). At least one selector is required, so a mistyped request cannot select every trail in the system.",
         "operationId" : "cleanupTrails",
         "requestBody" : {
           "content" : {
@@ -13158,7 +13214,7 @@
     },
     "/api/v1/trails/{id}" : {
       "delete" : {
-        "description" : "Cascades to attestations, artifacts, evidence files, approvals, coverage reports, security scans, compliance assessments and Jira tickets. The audit log and the append-only ledger are deliberately left intact. Prefer archiving.",
+        "description" : "Trails are never deleted (#245). This archives the trail, the same as POST /api/v1/trails/{id}/archive: it is hidden from listings unless includeArchived=true, rejects new attestations, artifacts and evidence with 409, and keeps all its evidence.",
         "operationId" : "deleteTrail",
         "parameters" : [ {
           "in" : "path",
@@ -13174,14 +13230,14 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/TrailDeletionResponse"
+                  "$ref" : "#/components/schemas/TrailResponse"
                 }
               }
             },
             "description" : "OK"
           }
         },
-        "summary" : "Permanently delete a trail and the evidence it owns",
+        "summary" : "Archive a trail",
         "tags" : [ "Trails" ]
       },
       "get" : {
@@ -13299,7 +13355,7 @@
             "description" : "OK"
           }
         },
-        "summary" : "What deleting this trail would remove",
+        "summary" : "How much evidence the trail holds (archiving keeps all of it)",
         "tags" : [ "Trails" ]
       }
     },
@@ -14632,7 +14688,7 @@
     },
     "/api/v2/flows/{id}" : {
       "delete" : {
-        "description" : "Refused with 409 when trails are still attached, unless force=true.",
+        "description" : "Refused with 409 while trails are attached, whatever force says: trails are never deleted (#245). Archive the flow instead.",
         "operationId" : "deleteFlow",
         "parameters" : [ {
           "in" : "path",

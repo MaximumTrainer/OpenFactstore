@@ -9,7 +9,7 @@ import (
 	"github.com/MaximumTrainer/Factstore/cli/internal/client"
 )
 
-// TrailCascadeCounts is what removing a trail took with it.
+// TrailCascadeCounts is the evidence a trail holds; archiving keeps all of it.
 type TrailCascadeCounts struct {
 	Attestations          int `json:"attestations"`
 	Artifacts             int `json:"artifacts"`
@@ -22,12 +22,6 @@ type TrailCascadeCounts struct {
 	Total                 int `json:"total"`
 }
 
-// TrailDeletionResponse mirrors the backend response for a hard delete.
-type TrailDeletionResponse struct {
-	TrailID string             `json:"trailId"`
-	Cascade TrailCascadeCounts `json:"cascade"`
-}
-
 // TrailCleanupRequest selects trails for bulk cleanup. At least one selector is required.
 type TrailCleanupRequest struct {
 	FlowID   string `json:"flowId,omitempty"`
@@ -35,12 +29,11 @@ type TrailCleanupRequest struct {
 	TagValue string `json:"tagValue,omitempty"`
 	// OlderThan is an RFC 3339 instant; trails created strictly before it are selected.
 	OlderThan string `json:"olderThan,omitempty"`
-	// Mode is ARCHIVE (default, reversible) or DELETE.
-	Mode   string `json:"mode,omitempty"`
-	DryRun bool   `json:"dryRun"`
+	// Archiving is the only cleanup (#245), so there is no mode to choose.
+	DryRun bool `json:"dryRun"`
 }
 
-// TrailCleanupResponse reports what was, or would be, removed.
+// TrailCleanupResponse reports what was, or would be, archived.
 type TrailCleanupResponse struct {
 	DryRun     bool               `json:"dryRun"`
 	Mode       string             `json:"mode"`
@@ -72,24 +65,6 @@ func postTrailState(c *client.Client, trailID, action string) (*TrailResponse, e
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
 	return &trail, nil
-}
-
-// DeleteTrail permanently removes a trail and the evidence it owns.
-func DeleteTrail(c *client.Client, trailID string) (*TrailDeletionResponse, error) {
-	body, status, err := c.Delete("/api/v1/trails/" + url.PathEscape(trailID))
-	if err != nil {
-		return nil, err
-	}
-	if status != http.StatusOK && status != http.StatusNoContent {
-		return nil, client.ParseError(status, body)
-	}
-	var result TrailDeletionResponse
-	if len(body) > 0 {
-		if err := json.Unmarshal(body, &result); err != nil {
-			return nil, fmt.Errorf("parse response: %w", err)
-		}
-	}
-	return &result, nil
 }
 
 // CleanupTrails runs a bulk cleanup. Set DryRun to report without changing anything.

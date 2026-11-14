@@ -65,12 +65,13 @@ class EnvironmentController(
 
     @PreAuthorize("@authz.has('flows:read')")
     @GetMapping
-    @Operation(summary = "List all environments")
+    @Operation(summary = "List environments; archived environments are hidden by default")
     fun listEnvironments(
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(defaultValue = "false") includeArchived: Boolean
     ): ResponseEntity<PageResponse<EnvironmentResponse>> =
-        ResponseEntity.ok(environmentService.listEnvironments(page, size))
+        ResponseEntity.ok(environmentService.listEnvironments(page, size, includeArchived))
 
     @PreAuthorize("@authz.has('flows:read')")
     @GetMapping("/live-artifacts")
@@ -95,11 +96,28 @@ class EnvironmentController(
 
     @PreAuthorize("@authz.has('admin')")
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete an environment")
+    @Operation(
+        summary = "Archive an environment",
+        description = "Environments are never deleted (#245). This archives the environment: it is hidden " +
+            "from listings unless includeArchived=true, takes no new snapshots, and keeps its snapshot " +
+            "history. Same as POST /{id}/archive; undo with POST /{id}/unarchive."
+    )
     fun deleteEnvironment(@PathVariable id: UUID): ResponseEntity<Void> {
-        environmentService.deleteEnvironment(id)
+        environmentService.archiveEnvironment(id)
         return ResponseEntity.noContent().build()
     }
+
+    @PreAuthorize("@authz.has('admin')")
+    @PostMapping("/{id}/archive")
+    @Operation(summary = "Archive an environment; its snapshot history is kept")
+    fun archiveEnvironment(@PathVariable id: UUID): ResponseEntity<EnvironmentResponse> =
+        ResponseEntity.ok(environmentService.archiveEnvironment(id))
+
+    @PreAuthorize("@authz.has('admin')")
+    @PostMapping("/{id}/unarchive")
+    @Operation(summary = "Unarchive an environment")
+    fun unarchiveEnvironment(@PathVariable id: UUID): ResponseEntity<EnvironmentResponse> =
+        ResponseEntity.ok(environmentService.unarchiveEnvironment(id))
 
     @PreAuthorize("@authz.has('artifacts:write')")
     @PostMapping("/{id}/snapshots")

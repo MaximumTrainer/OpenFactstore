@@ -14,7 +14,6 @@ import com.factstore.dto.PageResponse
 import com.factstore.dto.TrailCascadeCounts
 import com.factstore.dto.TrailCleanupRequest
 import com.factstore.dto.TrailCleanupResponse
-import com.factstore.dto.TrailDeletionResponse
 import com.factstore.dto.TrailResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -137,26 +136,26 @@ class TrailController(
 
     @PreAuthorize("@authz.has('trails:read')")
     @GetMapping("/api/v1/trails/{id}/cascade")
-    @Operation(summary = "What deleting this trail would remove")
+    @Operation(summary = "How much evidence the trail holds (archiving keeps all of it)")
     fun getTrailCascade(@PathVariable id: UUID): ResponseEntity<TrailCascadeCounts> =
         ResponseEntity.ok(trailCleanupService.cascadeFor(id))
 
     @PreAuthorize("@authz.has('admin')")
     @DeleteMapping("/api/v1/trails/{id}")
     @Operation(
-        summary = "Permanently delete a trail and the evidence it owns",
-        description = "Cascades to attestations, artifacts, evidence files, approvals, coverage " +
-            "reports, security scans, compliance assessments and Jira tickets. The audit log and " +
-            "the append-only ledger are deliberately left intact. Prefer archiving."
+        summary = "Archive a trail",
+        description = "Trails are never deleted (#245). This archives the trail, the same as " +
+            "POST /api/v1/trails/{id}/archive: it is hidden from listings unless includeArchived=true, " +
+            "rejects new attestations, artifacts and evidence with 409, and keeps all its evidence."
     )
-    fun deleteTrail(@PathVariable id: UUID): ResponseEntity<TrailDeletionResponse> =
-        ResponseEntity.ok(trailCleanupService.deleteTrail(id))
+    fun deleteTrail(@PathVariable id: UUID): ResponseEntity<TrailResponse> =
+        ResponseEntity.ok(trailCleanupService.archiveTrail(id))
 
     @PreAuthorize("@authz.has('admin')")
     @PostMapping("/api/v1/trails/cleanup")
     @Operation(
         summary = "Bulk cleanup of trails by flow, tag or age",
-        description = "Defaults to a dry run and to ARCHIVE. At least one selector is required, " +
+        description = "Defaults to a dry run. ARCHIVE is the only mode; DELETE is refused with 400 (#245). At least one selector is required, " +
             "so a mistyped request cannot select every trail in the system."
     )
     fun cleanupTrails(@RequestBody request: TrailCleanupRequest): ResponseEntity<TrailCleanupResponse> =

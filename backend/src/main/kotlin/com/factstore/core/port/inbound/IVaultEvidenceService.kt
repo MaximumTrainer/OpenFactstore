@@ -41,12 +41,6 @@ interface IVaultEvidenceService {
         evidenceType: String
     ): Map<String, String>
 
-    /**
-     * Soft-delete (archive) evidence for a given entity.
-     * The secret is marked as deleted in Vault but not permanently destroyed.
-     */
-    fun deleteEvidence(entityType: String, entityId: String, evidenceType: String)
-
     /** Check Vault connectivity and return a health status response. */
     fun getHealth(): VaultHealthResponse
 }

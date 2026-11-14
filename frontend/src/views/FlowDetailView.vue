@@ -87,10 +87,9 @@
         <p v-if="archiveError" class="mt-3 text-sm text-red-600">{{ archiveError }}</p>
       </div>
 
-      <DeleteTrailDialog
+      <ArchiveTrailDialog
         v-if="removingTrail"
         :trail="removingTrail"
-        @deleted="onTrailRemoved"
         @archived="onTrailRemoved"
         @cancel="removingTrail = null"
       />
@@ -138,7 +137,7 @@
                   type="button"
                   class="text-gray-600 hover:text-gray-900 font-medium"
                   @click="removingTrail = trail"
-                >Archive or delete…</button>
+                >Archive…</button>
               </td>
             </tr>
           </tbody>
@@ -153,7 +152,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import StatusBadge from '../components/StatusBadge.vue'
 import FlowEditForm from '../components/FlowEditForm.vue'
-import DeleteTrailDialog from '../components/DeleteTrailDialog.vue'
+import ArchiveTrailDialog from '../components/ArchiveTrailDialog.vue'
 import { getFlow, archiveFlow, unarchiveFlow, getFlowTemplateDrift } from '../api/flows'
 import { getTrails } from '../api/trails'
 import { getComplianceReport } from '../api/reports'

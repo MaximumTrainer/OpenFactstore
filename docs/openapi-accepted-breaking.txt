@@ -10,6 +10,13 @@ GET /api/v1/audit/{id} removed the enum constraint from the `eventType` response
 GET /api/v1/trails/{id}/audit removed the enum constraint from the `items/eventType` response property for the response status `200`
 GET /api/v2/trails/{id}/audit removed the enum constraint from the `items/eventType` response property for the response status `200`
 #
+# #245: trails are archived, never deleted. DELETE /api/v1/trails/{id} now archives the trail and
+# returns it (TrailResponse) instead of a deletion report with cascade counts; nothing is removed,
+# so there is no cascade to report. DELETE /api/v1/evidence/{entityType}/{entityId} (Vault) was
+# removed; it is not in the published spec because that controller only loads with Vault.
+DELETE /api/v1/trails/{id} removed the required property `cascade` from the response with the `200` status
+DELETE /api/v1/trails/{id} removed the required property `trailId` from the response with the `200` status
+
 # #250: the /api/v1 twins are deprecated in favour of /api/v2, so v2 now validates its input as v1
 # always has. Each bound below is the one the v1 endpoint already enforced; a client that worked
 # against v1 is unaffected.

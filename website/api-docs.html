@@ -98,7 +98,7 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v2
             <tr>
               <td><strong>Trails</strong></td>
               <td><code>/api/v1/trails</code></td>
-              <td>Per-release deployment evidence trails</td>
+              <td>Per-release deployment evidence trails; archived, never deleted</td>
             </tr>
             <tr>
               <td><strong>Attestations</strong></td>
@@ -128,7 +128,7 @@ curl -s -H "Authorization: Bearer $FACTSTORE_TOKEN" http://localhost:8080/api/v2
             <tr>
               <td><strong>Environments</strong></td>
               <td><code>/api/v1/environments</code></td>
-              <td>Tracked deployment environments (dev, staging, production)</td>
+              <td>Tracked deployment environments (dev, staging, production); archived, never deleted, so snapshot history is kept</td>
             </tr>
             <tr>
               <td><strong>Data Retention</strong></td>

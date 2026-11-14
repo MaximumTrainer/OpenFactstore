@@ -17,10 +17,13 @@ import java.util.UUID
 interface IEnvironmentService {
     fun createEnvironment(request: CreateEnvironmentRequest): EnvironmentResponse
     fun listEnvironments(): List<EnvironmentResponse>
-    fun listEnvironments(page: Int, size: Int): PageResponse<EnvironmentResponse>
+    /** Archived environments are hidden unless [includeArchived] (#245). */
+    fun listEnvironments(page: Int, size: Int, includeArchived: Boolean = false): PageResponse<EnvironmentResponse>
     fun getEnvironment(id: UUID): EnvironmentResponse
     fun updateEnvironment(id: UUID, request: UpdateEnvironmentRequest): EnvironmentResponse
-    fun deleteEnvironment(id: UUID)
+    /** Environments are never deleted (#245): archiving hides one and stops new snapshots, keeping its history. */
+    fun archiveEnvironment(id: UUID): EnvironmentResponse
+    fun unarchiveEnvironment(id: UUID): EnvironmentResponse
     fun recordSnapshot(environmentId: UUID, request: RecordSnapshotRequest): EnvironmentSnapshotResponse
     fun listSnapshots(environmentId: UUID): List<EnvironmentSnapshotResponse>
     fun getLatestSnapshot(environmentId: UUID): EnvironmentSnapshotResponse

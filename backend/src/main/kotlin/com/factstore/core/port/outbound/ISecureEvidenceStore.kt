@@ -58,13 +58,6 @@ interface ISecureEvidenceStore {
     fun listEvidence(entityType: String, entityId: String): List<String>
 
     /**
-     * Soft-deletes (archives) the latest version of the evidence secret.
-     * The data is not permanently destroyed and can be undeleted via the
-     * Vault UI/API if required.
-     */
-    fun deleteEvidence(entityType: String, entityId: String, evidenceType: String)
-
-    /**
      * Returns true when the backing store is reachable and healthy.
      */
     fun isHealthy(): Boolean

@@ -1,5 +1,7 @@
 package com.factstore.application.command
 
+import com.factstore.application.requireNoEvidence
+import com.factstore.application.requireWritable
 import com.factstore.application.ActorResolver
 import com.factstore.application.CustomAttestationTypeRules
 import com.factstore.application.TenantScope
@@ -61,10 +63,10 @@ class AttestationCommandHandler(
                 throw NotFoundException("Flow '${command.flowName}' not found for organisation '${command.orgSlug}'")
             }
         }
-        // Another organisation's trail is "not found" (#155 FR-5.2), as on v1.
+        // Another organisation's trail is "not found" (#155 FR-5.2), as on v1; an archived trail is read-only (#245).
         tenantScope.require(trailRepository.findById(command.trailId), { it.orgSlug ?: flowRepository.findById(it.flowId)?.orgSlug }) {
             "Trail not found: ${command.trailId}"
-        }
+        }.requireWritable()
         customTypes.validate(command.type, command.attestationData)
         // #240: the server decides pass/fail wherever it can evaluate the evidence.
         val verdict = verdicts.resolve(command.type, command.status, command.attestationData)
@@ -138,6 +140,8 @@ class AttestationCommandHandler(
         if (attestation.trailId != command.trailId) {
             throw NotFoundException("Attestation ${command.attestationId} does not belong to trail ${command.trailId}")
         }
+        trailRepository.findById(command.trailId)?.requireWritable()
+        attestation.requireNoEvidence()
         val evidenceFile = evidenceVaultService.store(
             command.attestationId, command.fileName, command.contentType, command.content
         )

@@ -8,11 +8,11 @@ Every operation the backend serves, grouped by resource, with the decision taken
 
 | | Operations |
 |---|---:|
-| `/api/v1` | 265 |
+| `/api/v1` | 267 |
 | `/api/v2` | 24 |
-| **Total** | **289** |
+| **Total** | **291** |
 | Deprecated | 22 |
-| After the sunset on 2027-05-14 | 267 |
+| After the sunset on 2027-05-14 | 269 |
 
 Deprecated operations still work until the sunset. Every response from one carries `Deprecation`, `Sunset` and a `Link: <successor>; rel="successor-version"` header, and the OpenAPI document marks it `deprecated: true`. See [API deprecations](upgrading/api-deprecations.md) for how to move.
 
@@ -222,14 +222,15 @@ Request counts per route are in the `http_server_requests_seconds_count` metric 
 
 | Method | Path | Summary | Status |
 |---|---|---|---|
-| GET | `/api/v1/environments` | List all environments |  |
+| GET | `/api/v1/environments` | List environments; archived environments are hidden by default |  |
 | POST | `/api/v1/environments` | Register a new environment |  |
 | GET | `/api/v1/environments/{id}` | Get environment by ID |  |
 | PUT | `/api/v1/environments/{id}` | Update an environment |  |
-| DELETE | `/api/v1/environments/{id}` | Delete an environment |  |
+| DELETE | `/api/v1/environments/{id}` | Archive an environment |  |
 | GET | `/api/v1/environments/{id}/allowlist` | List allow-list entries |  |
 | POST | `/api/v1/environments/{id}/allowlist` | Add an allow-list entry |  |
 | DELETE | `/api/v1/environments/{id}/allowlist/{entryId}` | Remove an allow-list entry |  |
+| POST | `/api/v1/environments/{id}/archive` | Archive an environment; its snapshot history is kept |  |
 | GET | `/api/v1/environments/{id}/audit-log/csv` | Export the audit log for an environment as a CSV file |  |
 | POST | `/api/v1/environments/{id}/baselines` | Create a new baseline for an environment |  |
 | GET | `/api/v1/environments/{id}/baselines/current` | Get the current active baseline for an environment |  |
@@ -240,6 +241,7 @@ Request counts per route are in the `http_server_requests_seconds_count` metric 
 | POST | `/api/v1/environments/{id}/snapshots` | Record a new snapshot for an environment |  |
 | GET | `/api/v1/environments/{id}/snapshots/{snapshotIndex}` | Get a specific snapshot by index |  |
 | GET | `/api/v1/environments/{id}/snapshots/latest` | Get the most recent snapshot for an environment |  |
+| POST | `/api/v1/environments/{id}/unarchive` | Unarchive an environment |  |
 | GET | `/api/v1/environments/live-artifacts` | Get live artifacts grouped by image name across all environments |  |
 
 ### evidence
@@ -538,10 +540,10 @@ Request counts per route are in the `http_server_requests_seconds_count` metric 
 | GET | `/api/v1/trails` | List trails, optionally filter by flowId; archived trails are hidden by default | deprecated |
 | POST | `/api/v1/trails` | Create/begin a trail | deprecated |
 | GET | `/api/v1/trails/{id}` | Get trail by ID | deprecated |
-| DELETE | `/api/v1/trails/{id}` | Permanently delete a trail and the evidence it owns |  |
+| DELETE | `/api/v1/trails/{id}` | Archive a trail |  |
 | POST | `/api/v1/trails/{id}/archive` | Archive a trail (soft delete) |  |
 | GET | `/api/v1/trails/{id}/audit` | Get audit events for a specific trail | deprecated |
-| GET | `/api/v1/trails/{id}/cascade` | What deleting this trail would remove |  |
+| GET | `/api/v1/trails/{id}/cascade` | How much evidence the trail holds (archiving keeps all of it) |  |
 | POST | `/api/v1/trails/{id}/unarchive` | Unarchive a trail |  |
 | GET | `/api/v1/trails/{trailId}/approvals` |  |  |
 | POST | `/api/v1/trails/{trailId}/approvals` |  |  |

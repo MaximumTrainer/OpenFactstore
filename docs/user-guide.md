@@ -547,6 +547,10 @@ Environments represent named deployment targets (e.g. `production`, `staging`, `
 
 > **Note:** Snapshots are updated by your CI/CD pipeline via the API. A stale snapshot may not reflect the current live state.
 
+### Retiring an environment
+
+Environments are archived, never deleted, so their snapshot history stays available for audit (#245). `DELETE /api/v1/environments/{id}` and `POST /api/v1/environments/{id}/archive` both archive; `factstore environments archive <id>` does the same from the CLI. An archived environment is hidden from `GET /api/v1/environments` unless you pass `includeArchived=true`, refuses new snapshots with `409`, and comes back with `POST /api/v1/environments/{id}/unarchive` (`factstore environments unarchive <id>`).
+
 ---
 
 ## 11. Logical Environments
@@ -1888,6 +1892,19 @@ factstore snapshots latest "$ENV_ID"
 factstore snapshots diff "$ENV_ID" 1 2
 ```
 
+### Retiring trails and environments
+
+Nothing is deleted (see [Evidence is immutable](#evidence-is-immutable)); these archive, and archiving is reversible:
+
+```bash
+factstore trails archive "$TRAIL_ID"
+factstore trails unarchive "$TRAIL_ID"
+factstore trails cleanup --tag env=demo          # dry run: lists what would be archived
+factstore trails cleanup --tag env=demo --apply
+factstore environments archive "$ENV_ID"         # 'delete' is an alias
+factstore environments unarchive "$ENV_ID"
+```
+
 ### Compliance assertion
 
 ```bash
@@ -2208,6 +2225,18 @@ Every assertion emits an audit event: `GATE_ALLOWED` (compliant) or `GATE_BLOCKE
 
 > Trail status reflects *accumulated evidence quality*. A `PENDING` trail with all `PASSED` attestations will produce a `COMPLIANT` assertion result — the assertion is the definitive compliance check.
 
+### Evidence is immutable
+
+Once recorded, evidence is never changed or removed over the API (#245):
+
+- **Attestations** have no update or delete endpoint. A correction is a new attestation, or an override (`POST /api/v1/attestations/{id}/override`) that keeps the original on the record.
+- **Evidence files** cannot be replaced: a second upload to an attestation that already has evidence is refused with `409`.
+- **Trails** are archived, never deleted. `DELETE /api/v1/trails/{id}` archives, the same as `POST /api/v1/trails/{id}/archive` (`factstore trails archive <id>`). An archived trail is hidden from listings unless `includeArchived=true` and is read-only: new attestations, artifacts and evidence are refused with `409` until it is unarchived (`POST /api/v1/trails/{id}/unarchive`). Bulk cleanup (`POST /api/v1/trails/cleanup`, `factstore trails cleanup`) archives only.
+- **Flows** with trails cannot be deleted, even with `force=true`; archive them instead.
+- **Erasure** that the law requires is done by [cryptographic shredding](data-lifecycle.md): destroying a month's data key makes its content unreadable without touching a ledger record, and needs two administrators. Both steps are audited.
+
+The details are in the API reference under [Retiring trails and flows](API_REFERENCE.md#retiring-trails-and-flows).
+
 ### Audit events emitted during the lifecycle
 
 | Lifecycle stage | Audit event |
@@ -2326,6 +2355,8 @@ curl -s -X POST "$BASE_URL/api/v1/legal-holds/$HOLD_ID/release" \
 ```
 
 The scheduled job runs daily at 03:30 UTC when `FACTSTORE_RETENTION_ENABLED=true` (see [Environment Variables](#environment-variables)). Every batch it applies is audited as `RETENTION_BATCH_APPLIED` with its counts. It also adds to the Prometheus counters `factstore_retention_items_total{data_class,action}` and `factstore_retention_skipped_total{data_class,reason="legal_hold"}`. Policy changes are audited as `RETENTION_POLICY_SET` and `RETENTION_POLICY_REMOVED`, and holds as `LEGAL_HOLD_PLACED` and `LEGAL_HOLD_RELEASED`. All of this needs the `admin` scope.
+
+Retention never removes trails or environments: they are archived, never deleted, and attestations and their evidence cannot be changed or removed over the API (#245). Archive trails you no longer need with `POST /api/v1/trails/{id}/archive` or `POST /api/v1/trails/cleanup`; they stay queryable with `includeArchived=true`. See [Retiring trails and flows](API_REFERENCE.md#retiring-trails-and-flows).
 
 ---
 

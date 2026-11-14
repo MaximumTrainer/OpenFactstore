@@ -67,7 +67,7 @@ resource "factstore_environment" "example" {
 | `description` | string | no | Human-readable description |
 | `org_slug` | string | yes | Organisation slug |
 
-> **Note:** The Factstore API does not expose delete endpoints for flows or environments. Destroying these resources removes them from Terraform state only.
+> **Note:** Destroying a flow or environment resource removes it from Terraform state only. Factstore keeps environments and trails as evidence: they are archived, never deleted (see `docs/API_REFERENCE.md`, "Retiring trails and flows").
 
 ## Example
 

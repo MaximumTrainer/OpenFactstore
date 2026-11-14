@@ -103,63 +103,20 @@ class TrailCleanupTest {
     private fun auditEventsFor(trailId: UUID): List<AuditEventType> =
         auditService.getEventsForTrail(trailId).map { it.eventType }
 
-    // --- Hard delete ------------------------------------------------------
+    // --- No hard delete (#245) -------------------------------------------
 
     @Test
-    fun `deleting a trail removes its attestations, artifacts and evidence`() {
+    fun `there is no hard delete - bulk cleanup in DELETE mode is refused, even as a dry run`() {
         val flowId = newFlowId("junit")
         val trail = newTrail(flowId)
-        attestationService.recordAttestation(
-            trail.id,
-            CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED)
-        )
-        artifactService.reportArtifact(
-            trail.id,
-            CreateArtifactRequest("img", "1", "sha256:d${System.nanoTime()}", reportedBy = "ci")
-        )
 
-        val result = cleanupService.deleteTrail(trail.id)
-
-        assertEquals(trail.id, result.trailId)
-        assertEquals(1, result.cascade.attestations)
-        assertEquals(1, result.cascade.artifacts)
-        assertThrows<NotFoundException> { trailService.getTrail(trail.id) }
-    }
-
-    @Test
-    fun `deleting a trail records an audit event carrying the cascade counts`() {
-        val flowId = newFlowId("junit")
-        val trail = newTrail(flowId)
-        attestationService.recordAttestation(
-            trail.id,
-            CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED)
-        )
-
-        cleanupService.deleteTrail(trail.id)
-
-        val event = auditService.queryEvents(eventType = AuditEventType.TRAIL_DELETED, page = 0, size = 50)
-            .events
-            .firstOrNull { objectMapper.readValue(it.payload, Map::class.java)["trailId"] == trail.id.toString() }
-        assertNotNull(event, "a deletion must itself be on the record")
-        val payload = objectMapper.readValue(event!!.payload, Map::class.java)
-        assertEquals(1, (payload["cascade"] as Map<*, *>)["attestations"])
-        assertNotNull(payload["actor"] ?: event.actor)
-    }
-
-    @Test
-    fun `the audit log survives the trail it describes`() {
-        val flowId = newFlowId("junit")
-        val trail = newTrail(flowId)
-        attestationService.recordAttestation(
-            trail.id,
-            CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED)
-        )
-        val before = auditService.getEventsForTrail(trail.id).size
-
-        cleanupService.deleteTrail(trail.id)
-
-        // Deleting evidence must not erase the record that the evidence once existed.
-        assertTrue(auditService.getEventsForTrail(trail.id).size >= before)
+        for (dryRun in listOf(true, false)) {
+            val error = assertThrows<com.factstore.exception.BadRequestException> {
+                cleanupService.cleanup(TrailCleanupRequest(flowId = flowId, mode = CleanupMode.DELETE, dryRun = dryRun))
+            }
+            assertTrue(error.message!!.contains("ARCHIVE"))
+        }
+        assertNotNull(trailService.getTrail(trail.id))
     }
 
     @Test
@@ -177,11 +134,6 @@ class TrailCleanupTest {
         assertNotNull(trailService.getTrail(trail.id), "inspecting must not remove anything")
     }
 
-    @Test
-    fun `deleting an unknown trail is a not-found`() {
-        assertThrows<NotFoundException> { cleanupService.deleteTrail(UUID.randomUUID()) }
-    }
-
     // --- Bulk cleanup -----------------------------------------------------
 
     @Test
@@ -191,7 +143,7 @@ class TrailCleanupTest {
         newTrail(flowId)
 
         val result = cleanupService.cleanup(
-            TrailCleanupRequest(flowId = flowId, mode = CleanupMode.DELETE, dryRun = true)
+            TrailCleanupRequest(flowId = flowId, mode = CleanupMode.ARCHIVE, dryRun = true)
         )
 
         assertTrue(result.dryRun)
@@ -253,18 +205,6 @@ class TrailCleanupTest {
         }
     }
 
-    @Test
-    fun `bulk deletion is audited once per trail`() {
-        val flowId = newFlowId("junit")
-        val a = newTrail(flowId)
-        val b = newTrail(flowId)
-
-        cleanupService.cleanup(TrailCleanupRequest(flowId = flowId, mode = CleanupMode.DELETE, dryRun = false))
-
-        assertTrue(auditEventsFor(a.id).contains(AuditEventType.TRAIL_DELETED))
-        assertTrue(auditEventsFor(b.id).contains(AuditEventType.TRAIL_DELETED))
-    }
-
     // --- Flow deletion ----------------------------------------------------
 
     @Test
@@ -279,13 +219,14 @@ class TrailCleanupTest {
     }
 
     @Test
-    fun `a flow with trails can be deleted deliberately with force`() {
+    fun `a flow with trails cannot be deleted even with force`() {
         val flowId = newFlowId("junit")
         newTrail(flowId)
 
-        flowService.deleteFlow(flowId, force = true)
+        val error = assertThrows<ConflictException> { flowService.deleteFlow(flowId, force = true) }
 
-        assertThrows<NotFoundException> { flowService.getFlow(flowId) }
+        assertTrue(error.message!!.contains("archive", ignoreCase = true))
+        assertNotNull(flowService.getFlow(flowId))
     }
 
     @Test

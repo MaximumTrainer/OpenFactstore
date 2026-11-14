@@ -72,7 +72,7 @@ class FlowCommandController(private val commandHandler: IFlowCommandHandler) {
     @DeleteMapping("/{id}")
     @Operation(
         summary = "Delete a flow",
-        description = "Refused with 409 when trails are still attached, unless force=true."
+        description = "Refused with 409 while trails are attached, whatever force says: trails are never deleted (#245). Archive the flow instead."
     )
     fun deleteFlow(
         @PathVariable id: UUID,

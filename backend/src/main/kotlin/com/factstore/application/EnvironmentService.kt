@@ -40,6 +40,8 @@ import com.factstore.dto.SnapshotDiffResponse
 import com.factstore.dto.SnapshotScopeDto
 import com.factstore.dto.UpdateEnvironmentRequest
 import com.factstore.exception.ConflictException
+import com.factstore.core.domain.AuditEventType
+import com.factstore.core.port.inbound.IAuditService
 import com.factstore.exception.NotFoundException
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
@@ -63,7 +65,9 @@ class EnvironmentService(
     private val attestationRepository: IAttestationRepository,
     private val flowRepository: IFlowRepository,
     private val trailRepository: ITrailRepository,
-    private val tenantScope: TenantScope = TenantScope.UNSCOPED
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
+    private val auditService: IAuditService? = null,
+    private val actorResolver: ActorResolver = ActorResolver()
 ) : IEnvironmentService {
 
     private val log = LoggerFactory.getLogger(EnvironmentService::class.java)
@@ -96,9 +100,11 @@ class EnvironmentService(
         environmentRepository.findAll().filter { tenantScope.visible(it.orgSlug) }.map { it.toResponse() }
 
     @Transactional(readOnly = true)
-    override fun listEnvironments(page: Int, size: Int): PageResponse<EnvironmentResponse> {
-        if (tenantScope.orgSlug() != null) {
-            val visible = environmentRepository.findAll().filter { tenantScope.visible(it.orgSlug) }
+    override fun listEnvironments(page: Int, size: Int, includeArchived: Boolean): PageResponse<EnvironmentResponse> {
+        if (tenantScope.orgSlug() != null || !includeArchived) {
+            // Archived environments are filtered out before paging, so the page counts stay honest.
+            val visible = environmentRepository.findAll()
+                .filter { tenantScope.visible(it.orgSlug) && (includeArchived || it.archivedAt == null) }
             val totalPages = if (size <= 0) 0 else (visible.size + size - 1) / size
             return PageResponse(visible.drop(page * size).take(size).map { it.toResponse() }, page, size, visible.size.toLong(), totalPages)
         }
@@ -135,15 +141,45 @@ class EnvironmentService(
         return environmentRepository.save(environment).toResponse()
     }
 
-    override fun deleteEnvironment(id: UUID) {
-        requireVisibleEnvironment(id)
-        environmentRepository.deleteById(id)
-        log.info("Deleted environment: $id")
+    override fun archiveEnvironment(id: UUID): EnvironmentResponse {
+        val environment = requireVisibleEnvironment(id)
+        if (environment.archivedAt == null) {
+            environment.archivedAt = Instant.now()
+            environment.updatedAt = Instant.now()
+            environmentRepository.save(environment)
+            audit(AuditEventType.ENVIRONMENT_ARCHIVED, environment)
+            log.info("Archived environment: $id")
+        }
+        return environment.toResponse()
+    }
+
+    override fun unarchiveEnvironment(id: UUID): EnvironmentResponse {
+        val environment = requireVisibleEnvironment(id)
+        if (environment.archivedAt != null) {
+            environment.archivedAt = null
+            environment.updatedAt = Instant.now()
+            environmentRepository.save(environment)
+            audit(AuditEventType.ENVIRONMENT_UNARCHIVED, environment)
+            log.info("Unarchived environment: $id")
+        }
+        return environment.toResponse()
+    }
+
+    private fun audit(eventType: AuditEventType, environment: com.factstore.core.domain.Environment) {
+        auditService?.record(
+            eventType = eventType,
+            environmentId = environment.id,
+            actor = actorResolver.current(),
+            payload = mapOf("environmentId" to environment.id.toString(), "environmentName" to environment.name)
+        )
     }
 
     override fun recordSnapshot(environmentId: UUID, request: RecordSnapshotRequest): EnvironmentSnapshotResponse {
         val environment = environmentRepository.findById(environmentId)
             ?: throw NotFoundException("Environment not found: $environmentId")
+        if (environment.archivedAt != null) {
+            throw ConflictException("Environment '${environment.name}' is archived and takes no new snapshots; unarchive it first")
+        }
         val nextIndex = (snapshotRepository.findMaxSnapshotIndexByEnvironmentId(environmentId) ?: 0L) + 1
         val snapshot = snapshotRepository.save(
             EnvironmentSnapshot(
@@ -397,7 +433,7 @@ class EnvironmentService(
 
     @Transactional(readOnly = true)
     override fun getLiveArtifactsByRepo(): List<LiveArtifactByRepoResponse> {
-        val environments = environmentRepository.findAll().filter { tenantScope.visible(it.orgSlug) }
+        val environments = environmentRepository.findAll().filter { tenantScope.visible(it.orgSlug) && it.archivedAt == null }
         val deploymentsByImageName = mutableMapOf<String, MutableList<LiveArtifactDeployment>>()
         for (environment in environments) {
             val latestSnapshot = snapshotRepository.findLatestByEnvironmentId(environment.id) ?: continue
@@ -437,7 +473,8 @@ fun Environment.toResponse(): EnvironmentResponse {
         scope = scopeDto,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        tags = tags.toMap()
+        tags = tags.toMap(),
+        archivedAt = archivedAt
     )
 }
 

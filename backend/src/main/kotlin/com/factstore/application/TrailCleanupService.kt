@@ -10,7 +10,6 @@ import com.factstore.dto.CleanupMode
 import com.factstore.dto.TrailCascadeCounts
 import com.factstore.dto.TrailCleanupRequest
 import com.factstore.dto.TrailCleanupResponse
-import com.factstore.dto.TrailDeletionResponse
 import com.factstore.dto.TrailResponse
 import com.factstore.exception.BadRequestException
 import com.factstore.exception.NotFoundException
@@ -61,18 +60,12 @@ class TrailCleanupService(
         return trailCleanupRepository.countCascade(id)
     }
 
-    override fun deleteTrail(id: UUID): TrailDeletionResponse {
-        val trail = require(id)
-        // The audit event is written before the rows go, so the record of the removal cannot be
-        // lost to the removal itself. audit_events has no foreign key onto trails by design.
-        val cascade = trailCleanupRepository.countCascade(id)
-        audit(AuditEventType.TRAIL_DELETED, trail, mapOf("cascade" to cascade.asMap()))
-        val removed = trailCleanupRepository.deleteTrailCascade(id)
-        log.info("Deleted trail $id and ${removed.total} owned records")
-        return TrailDeletionResponse(trailId = id, cascade = removed)
-    }
-
     override fun cleanup(request: TrailCleanupRequest): TrailCleanupResponse {
+        if (request.mode == CleanupMode.DELETE) {
+            throw BadRequestException(
+                "Trails are never deleted (#245); use mode ARCHIVE. Personal data is erased by shredding its data key (see docs/data-lifecycle.md)."
+            )
+        }
         if (request.flowId == null && request.tagKey == null && request.olderThan == null) {
             throw BadRequestException(
                 "At least one of flowId, tagKey or olderThan is required so a cleanup cannot select every trail"
@@ -94,12 +87,7 @@ class TrailCleanupService(
             )
         }
 
-        selected.forEach { trail ->
-            when (request.mode) {
-                CleanupMode.ARCHIVE -> archiveTrail(trail.id)
-                CleanupMode.DELETE -> deleteTrail(trail.id)
-            }
-        }
+        selected.forEach { trail -> archiveTrail(trail.id) }
         log.info("Cleanup ${request.mode} applied to ${selected.size} trails")
 
         return TrailCleanupResponse(
@@ -120,7 +108,7 @@ class TrailCleanupService(
             } ?: true
             val ageMatches = request.olderThan?.let { trail.createdAt.isBefore(it) } ?: true
             // Archiving an already-archived trail is a no-op; leave it out of the count.
-            val notAlreadyArchived = request.mode == CleanupMode.DELETE || trail.archivedAt == null
+            val notAlreadyArchived = trail.archivedAt == null
             tagMatches && ageMatches && notAlreadyArchived
         }
     }
