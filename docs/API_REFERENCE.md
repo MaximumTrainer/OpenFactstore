@@ -684,6 +684,23 @@ trail status and audit log always agree.
 
 ---
 
+### Data retention and legal holds
+
+All require the `admin` scope. See the user guide's [Data Retention](./user-guide.md#data-retention) for the data classes and what each does.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/admin/retention/data-classes` | Data classes with their action (`SHRED`, `ARCHIVE`, `PRUNE`) and minimum period |
+| `GET` | `/api/v1/admin/retention/policies` | List retention policies |
+| `PUT` | `/api/v1/admin/retention/policies/{tenant}/{dataClass}` | Set a policy: `{"retainDays": 2555}`. Shorter than the class minimum is `400`; an unknown organisation is `404` |
+| `DELETE` | `/api/v1/admin/retention/policies/{tenant}/{dataClass}` | Remove a policy; the data is then kept indefinitely |
+| `POST` | `/api/v1/admin/retention/runs` | Run the job now. A dry run unless `dryRun=false`. Returns one batch per policy: `tenant`, `dataClass`, `action`, `cutoff`, `eligible`, `applied`, `skippedForLegalHold` |
+| `GET` | `/api/v1/legal-holds` | List active holds; `includeReleased=true` for all |
+| `POST` | `/api/v1/legal-holds` | Place a hold: `{"scopeType": "TRAIL"\|"FLOW", "scopeId": "uuid", "reason": "..."}` (`201`) |
+| `POST` | `/api/v1/legal-holds/{id}/release` | Release a hold; it stays on record |
+
+---
+
 ### Audit & Search
 
 | Method | Path | Description |

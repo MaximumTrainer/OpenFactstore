@@ -132,6 +132,13 @@ opa:
   external-url: ${OPA_URL:http://localhost:8181}
 
 factstore:
+  # Data retention (#251). Policies are set per organisation over the API; with none set, nothing
+  # is ever removed. The scheduled job only runs when enabled.
+  retention:
+    enabled: ${FACTSTORE_RETENTION_ENABLED:false}
+    dry-run: ${FACTSTORE_RETENTION_DRY_RUN:false}
+    cron: ${FACTSTORE_RETENTION_CRON:0 30 3 * * *}
+    archive-dir: ${FACTSTORE_RETENTION_ARCHIVE_DIR:./data/retention-archive}
   events:
     publisher: ${FACTSTORE_EVENTS_PUBLISHER:logging}
   region: ${FACTSTORE_REGION:us-east-1}
