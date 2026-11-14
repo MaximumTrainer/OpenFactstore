@@ -1,5 +1,6 @@
 package com.factstore.application
 
+import com.factstore.application.policy.ConditionException
 import com.factstore.application.policy.PolicyExpressionEvaluator
 import com.factstore.application.policy.PolicyExpressionEvaluator.EvaluationContext
 import org.junit.jupiter.api.Assertions.*
@@ -108,10 +109,116 @@ class PolicyExpressionEvaluatorTest {
     }
 
     @Test
-    fun `malformed expression returns false not exception`() {
+    fun `malformed expression throws instead of silently evaluating to false`() {
         val context = ctx(flowName = "my-flow")
-        assertFalse(evaluator.evaluate("this is not a valid expression !!!", context))
-        assertFalse(evaluator.evaluate("== broken ==", context))
+        assertThrows(ConditionException::class.java) {
+            evaluator.evaluate("this is not a valid expression !!!", context)
+        }
+        assertThrows(ConditionException::class.java) { evaluator.evaluate("== broken ==", context) }
+    }
+
+    @Test
+    fun `unknown field is an error naming the field`() {
+        val e = assertThrows(ConditionException::class.java) {
+            evaluator.evaluate("""flow.nmae == "payments"""", ctx(flowName = "payments"))
+        }
+        assertTrue(e.message!!.contains("flow.nmae"), e.message)
+        assertEquals(1, e.position)
+    }
+
+    @Test
+    fun `unknown function is an error`() {
+        val e = assertThrows(ConditionException::class.java) {
+            evaluator.validate("""startsWith(flow.name, "pay")""")
+        }
+        assertTrue(e.message!!.contains("startsWith"), e.message)
+    }
+
+    @Test
+    fun `stray quote is a syntax error with its position`() {
+        val e = assertThrows(ConditionException::class.java) {
+            evaluator.validate("""flow.name == "payments""")
+        }
+        assertEquals(14, e.position)
+    }
+
+    @Test
+    fun `trailing tokens are a syntax error`() {
+        assertThrows(ConditionException::class.java) {
+            evaluator.validate("""flow.name == "a" "b"""")
+        }
+    }
+
+    @Test
+    fun `invalid regex in matches is an error`() {
+        assertThrows(ConditionException::class.java) {
+            evaluator.validate("""matches(flow.name, "([")""")
+        }
+    }
+
+    @Test
+    fun `and binds tighter than or`() {
+        val expr = """flow.name == "x" and artifact.name == "y" or artifact.fingerprint == "z""""
+        // (false and true) or true
+        assertTrue(evaluator.evaluate(expr, ctx(flowName = "other", artifactName = "y", artifactFingerprint = "z")))
+        // (true and false) or false
+        assertFalse(evaluator.evaluate(expr, ctx(flowName = "x", artifactName = "other", artifactFingerprint = "other")))
+        // (true and true) or false
+        assertTrue(evaluator.evaluate(expr, ctx(flowName = "x", artifactName = "y", artifactFingerprint = "other")))
+    }
+
+    @Test
+    fun `or followed by and keeps and precedence`() {
+        val expr = """flow.name == "x" or artifact.name == "y" and artifact.fingerprint == "z""""
+        // true or (false and false) -> true; naive left-to-right would give false
+        assertTrue(evaluator.evaluate(expr, ctx(flowName = "x", artifactName = "no", artifactFingerprint = "no")))
+    }
+
+    @Test
+    fun `parentheses override precedence`() {
+        val expr = """(flow.name == "x" or artifact.name == "y") and artifact.fingerprint == "z""""
+        assertFalse(evaluator.evaluate(expr, ctx(flowName = "x", artifactName = "y", artifactFingerprint = "no")))
+        assertTrue(evaluator.evaluate(expr, ctx(flowName = "x", artifactFingerprint = "z")))
+    }
+
+    @Test
+    fun `quoted value containing and or or is compared verbatim`() {
+        val context = ctx(flowName = "salt and pepper or vinegar")
+        assertTrue(evaluator.evaluate("""flow.name == "salt and pepper or vinegar"""", context))
+        assertFalse(evaluator.evaluate("""flow.name == "salt and pepper"""", context))
+        assertTrue(evaluator.evaluate("""flow.name in ["a, b", "salt and pepper or vinegar"]""", context))
+    }
+
+    @Test
+    fun `not applies to a single operand`() {
+        val expr = """not flow.name == "x" and exists(flow)"""
+        assertTrue(evaluator.evaluate(expr, ctx(flowName = "y")))
+        assertFalse(evaluator.evaluate(expr, ctx(flowName = "x")))
+    }
+
+    @Test
+    fun `flow tags can be read with dot or bracket syntax`() {
+        val context = ctx(flowName = "f", flowTags = mapOf("pci-scope" to "true", "team" to "core"))
+        assertTrue(evaluator.evaluate("""flow.tags["pci-scope"] == "true"""", context))
+        assertTrue(evaluator.evaluate("""flow.tags.team == "core"""", context))
+        assertFalse(evaluator.evaluate("""flow.tags["missing"] == "true"""", context))
+    }
+
+    @Test
+    fun `single-quoted string literals are accepted`() {
+        assertTrue(evaluator.evaluate("flow.name == 'payments'", ctx(flowName = "payments")))
+    }
+
+    @Test
+    fun `exists accepts only known subjects`() {
+        assertTrue(evaluator.evaluate("exists(artifact)", ctx(artifactName = "a")))
+        assertThrows(ConditionException::class.java) { evaluator.validate("exists(flwo)") }
+    }
+
+    @Test
+    fun `blank expression is an error`() {
+        assertThrows(ConditionException::class.java) { evaluator.validate("   ") }
+        assertThrows(ConditionException::class.java) { evaluator.validate("\${{ }}") }
     }
 
     @Test
