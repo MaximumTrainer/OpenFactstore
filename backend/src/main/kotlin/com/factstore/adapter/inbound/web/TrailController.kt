@@ -159,6 +159,7 @@ class TrailController(
         ResponseEntity.ok(trailCleanupService.cleanup(request))
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{id}/audit")
     @GetMapping("/api/v1/trails/{id}/audit")
     @Operation(summary = "Get audit events for a specific trail")
     fun getTrailAuditEvents(@PathVariable id: UUID): ResponseEntity<List<AuditEventResponse>> =

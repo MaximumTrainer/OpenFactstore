@@ -56,14 +56,31 @@ class DeprecatedEndpointTest {
     private val deprecatedRoutes get() = routes().filter { it.deprecation != null }
 
     @Test
-    fun `#250 the superseded v1 twins are deprecated`() {
+    fun `#250 every v1 endpoint with a v2 twin is deprecated`() {
+        // The 22 v1 endpoints with a v2 twin of the same method and path (decision on #250).
         assertThat(deprecatedRoutes.map { "${it.method} ${it.path}" }).containsExactlyInAnyOrder(
-            "GET /api/v1/trails/{id}/audit",
+            "GET /api/v1/artifacts",
             "GET /api/v1/artifacts/{sha256}/provenance",
+            "GET /api/v1/flows",
+            "POST /api/v1/flows",
+            "GET /api/v1/flows/{flowId}/trails",
+            "DELETE /api/v1/flows/{id}",
+            "GET /api/v1/flows/{id}",
+            "PUT /api/v1/flows/{id}",
+            "GET /api/v1/flows/{id}/template",
+            "GET /api/v1/trails",
+            "POST /api/v1/trails",
+            "GET /api/v1/trails/{id}",
+            "GET /api/v1/trails/{id}/audit",
+            "GET /api/v1/trails/{trailId}/artifacts",
+            "POST /api/v1/trails/{trailId}/artifacts",
             "GET /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance",
             "POST /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance",
             "POST /api/v1/trails/{trailId}/artifacts/{artifactId}/provenance/verify",
+            "GET /api/v1/trails/{trailId}/attestations",
+            "POST /api/v1/trails/{trailId}/attestations",
             "POST /api/v1/trails/{trailId}/attestations/pull-request",
+            "POST /api/v1/trails/{trailId}/attestations/{attestationId}/evidence",
         )
     }
 

@@ -6639,6 +6639,8 @@
     },
     "/api/v1/artifacts/{sha256}/provenance" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/artifacts/{sha256}/provenance` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "getProvenanceBySha256_1",
         "parameters" : [ {
           "in" : "path",
@@ -12635,6 +12637,8 @@
     },
     "/api/v1/trails/{id}/audit" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{id}/audit` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "getTrailAuditEvents_1",
         "parameters" : [ {
           "in" : "path",
@@ -12854,6 +12858,8 @@
     },
     "/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance" : {
       "get" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "getProvenance_1",
         "parameters" : [ {
           "in" : "path",
@@ -12888,6 +12894,8 @@
         "tags" : [ "Artifacts" ]
       },
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "recordProvenance_1",
         "parameters" : [ {
           "in" : "path",
@@ -12934,6 +12942,8 @@
     },
     "/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance/verify" : {
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance/verify` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "verifyProvenance_1",
         "parameters" : [ {
           "in" : "path",
@@ -13052,8 +13062,6 @@
         "tags" : [ "Attestations" ]
       },
       "post" : {
-        "deprecated" : true,
-        "description" : "⚠️ Deprecated: use the v2 endpoint POST /api/v2/attestations/{org}/{flow}/{trail}/{artifactFingerprint} instead.",
         "operationId" : "recordAttestation_2",
         "parameters" : [ {
           "in" : "path",
@@ -13092,6 +13100,8 @@
     },
     "/api/v1/trails/{trailId}/attestations/pull-request" : {
       "post" : {
+        "deprecated" : true,
+        "description" : "**Deprecated** since 2026-11-14; use `/api/v2/trails/{trailId}/attestations/pull-request` instead. Removed after 2027-05-14. Responses carry `Deprecation`, `Sunset` and a `successor-version` `Link` header.",
         "operationId" : "attestPullRequest_1",
         "parameters" : [ {
           "in" : "path",

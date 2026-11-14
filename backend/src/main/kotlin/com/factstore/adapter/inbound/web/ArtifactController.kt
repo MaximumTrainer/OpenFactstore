@@ -73,6 +73,7 @@ class ArtifactController(
         ResponseEntity.ok(artifactService.searchByCommitSha(commitSha))
 
     @PreAuthorize("@authz.has('artifacts:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance")
     @PostMapping("/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance")
     @Operation(summary = "Record build provenance for an artifact")
     fun recordProvenance(
@@ -84,6 +85,7 @@ class ArtifactController(
             .body(buildProvenanceService.recordProvenance(trailId, artifactId, request))
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance")
     @GetMapping("/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance")
     @Operation(summary = "Retrieve build provenance for an artifact")
     fun getProvenance(
@@ -93,12 +95,14 @@ class ArtifactController(
         ResponseEntity.ok(buildProvenanceService.getProvenance(trailId, artifactId))
 
     @PreAuthorize("@authz.has('trails:read')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/artifacts/{sha256}/provenance")
     @GetMapping("/api/v1/artifacts/{sha256}/provenance")
     @Operation(summary = "Get provenance by artifact SHA256 digest")
     fun getProvenanceBySha256(@PathVariable sha256: String): ResponseEntity<BuildProvenanceResponse> =
         ResponseEntity.ok(buildProvenanceService.getProvenanceBySha256(sha256))
 
     @PreAuthorize("@authz.has('artifacts:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/artifacts/{artifactId}/provenance/verify")
     @PostMapping("/api/v1/trails/{trailId}/artifacts/{artifactId}/provenance/verify")
     @Operation(summary = "Verify the provenance signature of an artifact")
     fun verifyProvenance(

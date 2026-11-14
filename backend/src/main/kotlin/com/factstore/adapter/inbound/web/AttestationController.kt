@@ -35,12 +35,10 @@ class AttestationController(
 
     @PreAuthorize("@authz.has('attestations:write')")
     @PostMapping
-    @Operation(
-        summary = "Record an attestation for a trail",
-        deprecated = true,
-        description = "⚠️ Deprecated: use the v2 endpoint " +
-            "POST /api/v2/attestations/{org}/{flow}/{trail}/{artifactFingerprint} instead."
-    )
+    // #250: no longer flagged deprecated. The v2 artifact endpoint it pointed to only covers
+    // attestations bound to an artifact, and the CLI and every tutorial call this one. The
+    // decision is recorded in tools/endpoint-inventory/decisions.json (trail-attestations).
+    @Operation(summary = "Record an attestation for a trail")
     fun recordAttestation(
         @PathVariable trailId: UUID,
         @Valid @RequestBody request: CreateAttestationRequest,
@@ -99,6 +97,7 @@ class AttestationController(
     }
 
     @PreAuthorize("@authz.has('attestations:write')")
+    @DeprecatedEndpoint(since = ApiDeprecations.SINCE_2026_11, sunset = ApiDeprecations.SUNSET_2027_05, successor = "/api/v2/trails/{trailId}/attestations/pull-request")
     @PostMapping("/pull-request")
     @Operation(summary = "Record a pull request attestation by querying the SCM provider")
     fun attestPullRequest(
