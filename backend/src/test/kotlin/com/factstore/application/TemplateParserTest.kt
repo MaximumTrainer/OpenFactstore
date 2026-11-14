@@ -193,4 +193,128 @@ class TemplateParserTest {
     fun `validate rejects YAML that cannot be parsed as a template`() {
         assertThrows(BadRequestException::class.java) { parser.validate("{ not valid yaml: [unclosed") }
     }
+
+    @Test
+    fun `validate accepts a blank template`() {
+        parser.validate("")
+        parser.validate("   ")
+    }
+
+    @Test
+    fun `validate names the exact location of a bad condition among unconditioned rules`() {
+        val yaml = """
+            version: 1
+            trail:
+              attestations:
+                - name: lint
+                  type: generic
+                - name: jira-ticket
+                  type: jira
+                  if: 'flow.nmae == "x"'
+        """.trimIndent()
+        val e = assertThrows(BadRequestException::class.java) { parser.validate(yaml) }
+        assertTrue(e.message!!.contains("at trail.attestations[1] "), e.message)
+
+        val artifactYaml = """
+            version: 1
+            artifacts:
+              - name: frontend
+                attestations:
+                  - name: lint
+                    type: generic
+              - name: backend
+                attestations:
+                  - name: unit-tests
+                    type: junit
+                  - name: scan
+                    type: snyk
+                    if: 'artifact.nmae == "x"'
+        """.trimIndent()
+        val e2 = assertThrows(BadRequestException::class.java) { parser.validate(artifactYaml) }
+        assertTrue(e2.message!!.contains("at artifacts[1].attestations[1] "), e2.message)
+    }
+
+    @Test
+    fun `validate accepts a template mixing conditioned and unconditioned rules`() {
+        parser.validate("""
+            version: 1
+            trail:
+              attestations:
+                - name: lint
+                  type: generic
+                - name: jira-ticket
+                  type: jira
+                  if: 'exists(flow)'
+            artifacts:
+              - name: backend
+                attestations:
+                  - name: unit-tests
+                    type: junit
+                  - name: scan
+                    type: snyk
+                    if: 'exists(artifact)'
+        """.trimIndent())
+    }
+
+    @Test
+    fun `parse fills defaults for missing or mistyped fields`() {
+        val result = parser.parse("""
+            version: "two"
+            trail:
+              attestations:
+                - type: junit
+                - name: lint
+                - just-a-string
+                - name: gate
+                  type: generic
+                  if: true
+            artifacts:
+              - attestations:
+                  - name: scan
+                    type: snyk
+              - not-a-map
+        """.trimIndent())!!
+
+        assertEquals(1, result.version)
+        assertEquals(listOf("", "lint", "gate"), result.trailAttestations.map { it.name })
+        assertEquals(listOf("junit", "", "generic"), result.trailAttestations.map { it.type })
+        assertEquals(listOf(null, null, "true"), result.trailAttestations.map { it.ifCondition })
+        assertEquals(1, result.artifacts.size)
+        assertEquals("", result.artifacts[0].name)
+        assertEquals("scan", result.artifacts[0].attestations.single().name)
+    }
+
+    @Test
+    fun `artifacts nested under trail take precedence over top-level artifacts`() {
+        val result = parser.parse("""
+            trail:
+              artifacts:
+                - name: nested
+            artifacts:
+              - name: top-level
+        """.trimIndent())!!
+        assertEquals(listOf("nested"), result.artifacts.map { it.name })
+        assertTrue(result.trailAttestations.isEmpty())
+    }
+
+    @Test
+    fun `parse ignores attestations that are not a list`() {
+        val result = parser.parse("""
+            trail:
+              attestations: nope
+            artifacts:
+              - name: backend
+                attestations: 3
+        """.trimIndent())!!
+        assertTrue(result.trailAttestations.isEmpty())
+        assertTrue(result.artifacts.single().attestations.isEmpty())
+    }
+
+    @Test
+    fun `a non-string if is kept as text so validation rejects it`() {
+        val e = assertThrows(BadRequestException::class.java) {
+            parser.validate("trail:\n  attestations:\n    - name: gate\n      type: generic\n      if: 42\n")
+        }
+        assertTrue(e.message!!.contains("gate"), e.message)
+    }
 }
