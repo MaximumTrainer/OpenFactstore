@@ -894,3 +894,54 @@ export interface StoreEvidenceRequest {
   evidenceType: string
   data: Record<string, string>
 }
+
+// ── Data retention (#251) ─────────────────────────────────────────────────────
+
+export type RetentionDataClass = 'FACT_CONTENT' | 'ENVIRONMENT_SNAPSHOTS' | 'NOTIFICATIONS'
+export type RetentionAction = 'SHRED' | 'ARCHIVE' | 'PRUNE'
+
+export interface RetentionDataClassInfo {
+  dataClass: RetentionDataClass
+  action: RetentionAction
+  minimumDays: number
+}
+
+export interface RetentionPolicy {
+  tenant: string
+  dataClass: RetentionDataClass
+  action: RetentionAction
+  retainDays: number
+  minimumDays: number
+  updatedBy: string
+  updatedAt: string
+}
+
+export interface RetentionBatch {
+  tenant: string
+  dataClass: RetentionDataClass
+  action: RetentionAction
+  cutoff: string
+  eligible: number
+  applied: number
+  skippedForLegalHold: number
+}
+
+export interface RetentionRunReport {
+  dryRun: boolean
+  ranAt: string
+  batches: RetentionBatch[]
+}
+
+export type LegalHoldScope = 'TRAIL' | 'FLOW'
+
+export interface LegalHold {
+  id: string
+  scopeType: LegalHoldScope
+  scopeId: string
+  reason: string
+  placedBy: string
+  placedAt: string
+  releasedBy?: string | null
+  releasedAt?: string | null
+  active: boolean
+}

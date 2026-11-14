@@ -1,6 +1,7 @@
 package com.factstore.application
 
 import com.factstore.application.policy.PolicyParser
+import com.factstore.application.policy.ConditionException
 import com.factstore.application.policy.PolicyExpressionEvaluator
 import com.factstore.application.template.TemplateParser
 import com.factstore.application.template.ParsedTemplate
@@ -195,7 +196,11 @@ class AssertService(
         templateYaml: String
     ): AssertResponse {
         val parsed = templateParser.parse(templateYaml)
-        val allRequired = computeRequired(flow, artifact?.imageName, parsed)
+        val (allRequired, conditionErrors) = computeRequired(flow, artifact?.imageName, parsed)
+        // #241: an unevaluable condition never passes silently; say which one and why.
+        val conditionNote = if (conditionErrors.isEmpty()) "" else
+            "; treated as required because their if: condition could not be evaluated: " +
+                conditionErrors.joinToString("; ")
 
         val attestations = attestationRepository.findByTrailId(trail.id)
         val evidence = SelfAssertion.classify(allRequired, attestations, flow) { it.name }
@@ -214,7 +219,7 @@ class AssertService(
                 failedAttestationTypes = emptyList(),
                 missingAttestationNames = emptyList(),
                 failedAttestationNames = failedNames,
-                details = "All required attestations passed${evidence.note()}",
+                details = "All required attestations passed$conditionNote${evidence.note()}",
                 trailId = trail.id,
                 selfAssertedAttestationTypes = evidence.selfAsserted
             )
@@ -229,7 +234,7 @@ class AssertService(
             failedAttestationTypes = emptyList(),
             missingAttestationNames = missing,
             failedAttestationNames = failedNames,
-            details = "Missing required attestations: ${missing.joinToString(", ")}${evidence.note()}",
+            details = "Missing required attestations: ${missing.joinToString(", ")}$conditionNote${evidence.note()}",
             trailId = trail.id,
             selfAssertedAttestationTypes = evidence.selfAsserted,
             rejectedSelfAssertedAttestationTypes = evidence.rejected
@@ -265,21 +270,38 @@ class AssertService(
         log.info("Trail ${trail.id} status -> $newStatus")
     }
 
+    /**
+     * The attestation names required for this evaluation, and a description of every `if:`
+     * condition that could not be evaluated. Such a condition fails closed (#241): its
+     * attestation is required.
+     */
     private fun computeRequired(
         flow: Flow,
         artifactName: String?,
         effectiveParsed: ParsedTemplate?
-    ): List<String> {
+    ): Pair<List<String>, List<String>> {
         val evalCtx = PolicyExpressionEvaluator.EvaluationContext(
             flowName = flow.name,
+            flowTags = flow.tags.toMap(),
             artifactName = artifactName
         )
+        val errors = mutableListOf<String>()
+        fun applies(name: String, condition: String?): Boolean {
+            if (condition == null) return true
+            return try {
+                policyExpressionEvaluator.evaluate(condition, evalCtx)
+            } catch (e: ConditionException) {
+                log.warn("Condition on attestation '$name' could not be evaluated; treating it as required: ${e.message}")
+                errors += "'$name' (${e.message})"
+                true
+            }
+        }
         val trailRequired = (effectiveParsed?.trailAttestations ?: emptyList())
-            .filter { it.ifCondition == null || policyExpressionEvaluator.evaluate(it.ifCondition, evalCtx) }
+            .filter { applies(it.name, it.ifCondition) }
             .map { it.name }
         val artifactEntry = effectiveParsed?.artifacts?.firstOrNull { it.name == artifactName }
         val artifactRequired = (artifactEntry?.attestations ?: emptyList())
-            .filter { it.ifCondition == null || policyExpressionEvaluator.evaluate(it.ifCondition, evalCtx) }
+            .filter { applies(it.name, it.ifCondition) }
             .map { it.name }
         val policyRequired = mutableListOf<String>()
         for (policy in policyRepository.findAll()) {
@@ -287,10 +309,10 @@ class AssertService(
             val policyYamlContent = policy.policyYaml ?: continue
             val parsed = policyParser.parse(policyYamlContent) ?: continue
             parsed.artifactRules.requiredAttestations
-                .filter { rule -> rule.ifCondition == null || policyExpressionEvaluator.evaluate(rule.ifCondition, evalCtx) }
+                .filter { rule -> applies(rule.name, rule.ifCondition) }
                 .mapTo(policyRequired) { rule -> rule.name }
         }
-        return (trailRequired + artifactRequired + policyRequired).distinct()
+        return (trailRequired + artifactRequired + policyRequired).distinct() to errors.distinct()
     }
 
     private fun emitPolicyEvent(response: AssertResponse) {

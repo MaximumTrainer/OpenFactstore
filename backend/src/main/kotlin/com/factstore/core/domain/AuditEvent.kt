@@ -44,6 +44,12 @@ enum class AuditEventType {
     // Cryptographic shredding of a tenant-month data key (#200): requested, then approved by a second admin.
     DATA_KEY_SHRED_REQUESTED,
     DATA_KEY_SHREDDED,
+    // #251: retention policies, legal holds and each batch the retention job applies.
+    RETENTION_POLICY_SET,
+    RETENTION_POLICY_REMOVED,
+    RETENTION_BATCH_APPLIED,
+    LEGAL_HOLD_PLACED,
+    LEGAL_HOLD_RELEASED,
     AUTH_DENIED,
     // Credential lifecycle (#155 FR-8.2).
     API_KEY_CREATED,

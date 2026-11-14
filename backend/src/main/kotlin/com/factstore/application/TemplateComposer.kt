@@ -86,6 +86,7 @@ class TemplateComposer(private val templateParser: TemplateParser) {
     private fun StringBuilder.appendAttestation(attestation: TemplateAttestation, indent: String) {
         appendLine("$indent- name: ${attestation.name}")
         appendLine("$indent  type: ${attestation.type}")
-        attestation.ifCondition?.let { appendLine("$indent  if: \"$it\"") }
+        // Single-quoted YAML: only ' needs escaping (as ''), so a condition's own quotes survive (#241).
+        attestation.ifCondition?.let { appendLine("$indent  if: '${it.replace("'", "''")}'") }
     }
 }

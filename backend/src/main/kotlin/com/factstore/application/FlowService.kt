@@ -49,6 +49,7 @@ class FlowService(
             throw ConflictException("Flow with name '${request.name}' already exists")
         }
         validateTags(request.tags)
+        request.templateYaml?.let { templateParser.validate(it) }
         // A template is copied onto the flow at creation, never linked live, so a later template
         // change can never silently alter what an in-flight release is judged against (#162).
         val templateIds = (listOfNotNull(request.templateId) + request.templateIds).distinct()
@@ -135,6 +136,7 @@ class FlowService(
             flow.tags = it.toMutableMap()
         }
         request.templateYaml?.let {
+            templateParser.validate(it)
             // A template document can be thousands of lines; record that it changed, not the whole thing.
             if (it != flow.templateYaml) {
                 changes["templateYaml"] = mapOf(

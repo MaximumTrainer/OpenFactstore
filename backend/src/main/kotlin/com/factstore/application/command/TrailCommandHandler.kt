@@ -24,11 +24,13 @@ class TrailCommandHandler(
 ) : ITrailCommandHandler {
 
     private val log = LoggerFactory.getLogger(TrailCommandHandler::class.java)
+    private val templateParser = com.factstore.application.template.TemplateParser()
 
     override fun createTrail(command: CreateTrailCommand): CommandResult {
         if (!flowRepository.existsById(command.flowId)) {
             throw NotFoundException("Flow not found: ${command.flowId}")
         }
+        command.templateYaml?.let { templateParser.validate(it) }
         // Get-or-create on (flowId, externalId): a re-run of the pipeline that owns the release
         // must not fork the evidence, and no second TrailCreated event is appended (#164).
         command.externalId?.takeIf { it.isNotBlank() }?.let { externalId ->

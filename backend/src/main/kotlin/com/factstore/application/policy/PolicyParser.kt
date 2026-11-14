@@ -1,5 +1,6 @@
 package com.factstore.application.policy
 
+import com.factstore.exception.BadRequestException
 import org.springframework.stereotype.Component
 import org.yaml.snakeyaml.Yaml
 
@@ -40,7 +41,7 @@ class PolicyParser {
                 PolicyAttestationRule(
                     name = att["name"] as? String ?: "",
                     type = att["type"] as? String ?: "",
-                    ifCondition = att["if"] as? String
+                    ifCondition = att["if"]?.toString()
                 )
             }
 
@@ -53,5 +54,20 @@ class PolicyParser {
                 )
             )
         }.getOrNull()
+    }
+
+    /**
+     * Rejects, with `400`, a policy that cannot be parsed or has an `if:` condition that is not
+     * valid (#241).
+     */
+    fun validate(yamlContent: String) {
+        if (yamlContent.isBlank()) return
+        val parsed = parse(yamlContent) ?: throw BadRequestException("policyYaml is not a valid policy")
+        ConditionValidation.requireValid(
+            "policyYaml",
+            parsed.artifactRules.requiredAttestations.mapIndexedNotNull { i, rule ->
+                rule.ifCondition?.let { LocatedCondition("artifacts.attestations[$i]", rule.name, it) }
+            }
+        )
     }
 }

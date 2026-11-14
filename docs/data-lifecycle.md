@@ -32,6 +32,10 @@ Shredding is irreversible and needs two administrators:
 - The period is closed: a new fact that would be written under a shredded key is refused rather than given a new key.
 - `POST /api/v1/admin/events/verify` and the ledger proof for a shredded fact (`GET /api/v1/queries/ledger/proof/{fact_id}`) still verify.
 
+## Retention
+
+A retention policy for `FACT_CONTENT` (#251) shreds keys automatically: once a whole tenant-month is older than the organisation's period (at least 365 days), the retention job destroys that month's key. It writes the same `DataKeyShredded` certificate to the ledger and the same `DATA_KEY_SHREDDED` audit event. The certificate names `retention-policy` as the requester and whoever last set the policy as the approver. Setting the policy is the deliberate act that replaces the two-administrator request. A month is skipped while any of its facts is about an artifact on a trail or flow under legal hold. Policies, holds, dry runs and the other data classes are described in the user guide's [Data Retention](user-guide.md#data-retention).
+
 ## Backups
 
 Shredding deletes the wrapped key from the database, but **database backups made before the shred still hold it**. Content in those backups stays recoverable for as long as the backups and the Vault key-encryption key both exist. Either keep backup retention within your erasure deadline, or rotate the Vault key and remove versions older than the oldest backup you keep (`vault write transit/keys/factstore-data-keys/config min_decryption_version=<n>`) once a shredded period has aged out of backups.
