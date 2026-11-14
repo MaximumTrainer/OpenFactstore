@@ -21,8 +21,8 @@ docker compose up --build
 - **Command API** → http://localhost:8080
 - **Query API** → http://localhost:8081
 - **Swagger UI** → http://localhost:8080/swagger-ui.html
-- **RabbitMQ Management** → http://localhost:15672 (guest / guest)
-- **Grafana** → http://localhost:3000 (admin / changeme)
+- **RabbitMQ Management** → http://localhost:15672 (`RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` from `.env`)
+- **Grafana** → http://localhost:3000 (`GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD` from `.env`)
 
 ---
 

@@ -101,7 +101,7 @@ kubectl create secret generic factstore-app \
   --namespace factstore \
   --from-literal=audit-hmac-secret='<strong-random-64-chars>' \
   --from-literal=sso-jwt-secret='<strong-random-64-chars>' \
-  --from-literal=scm-encryption-key='<exactly-32-chars>'
+  --from-literal=scm-encryption-key="$(openssl rand -base64 32)"
 ```
 
 Also create the Vault credentials secret:
@@ -277,7 +277,7 @@ All settings can be overridden via environment variables.
 | `VAULT_ROLE_ID` / `VAULT_SECRET_ID` | — | Vault AppRole credentials |
 | `AUDIT_HMAC_SECRET` | `change-me-in-production` | HMAC key for audit log integrity — **must be changed** |
 | `SSO_JWT_SECRET` | `changeme-in-production` | JWT signing key — **must be changed** |
-| `SCM_ENCRYPTION_KEY` | `default-dev-key-32chars!!!!!!` | Encryption key for SCM tokens — **must be changed, exactly 32 chars** |
+| `SCM_ENCRYPTION_KEY` | *(none; required)* | Base64 of exactly 32 random bytes (`openssl rand -base64 32`). The backend refuses to start without it outside the dev profile |
 | `FACTSTORE_REGION` | `us-east-1` | Deployment region tag on audit events |
 | `OPA_MODE` | `embedded` | OPA policy engine mode: `embedded` or `external` |
 | `COSIGN_ENABLED` | `false` | Enable Sigstore/Cosign artifact signature verification |
@@ -382,6 +382,6 @@ echo "✅ Smoke test complete"
 | `Connection refused` on port 8080 | Backend not started | Check `docker compose logs backend` or JVM startup logs |
 | `Flyway migration failed` | Database schema conflict or wrong credentials | Verify `DB_*` env vars; check if database exists |
 | `401 Unauthorized` on all requests | `SECURITY_ENFORCE_AUTH=true` but no key provided | Include `Authorization: Bearer <key>` header |
-| `500 Internal Server Error` on startup | Invalid `AUDIT_HMAC_SECRET` or `SCM_ENCRYPTION_KEY` | Ensure `SCM_ENCRYPTION_KEY` is exactly 32 characters |
+| Startup fails naming `SCM_ENCRYPTION_KEY` | Key unset, not base64, not 32 bytes, or a development key | Set it to the output of `openssl rand -base64 32`; to keep old tokens see [security-hardening.md](../security-hardening.md#scm-token-key) |
 | Vault connection errors at startup | `VAULT_ENABLED=true` but Vault unreachable | Set `VAULT_ENABLED=false` or fix Vault connectivity |
 | High database connection pool exhaustion | Under heavy load | Increase `spring.datasource.hikari.maximum-pool-size` |

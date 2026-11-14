@@ -3,7 +3,7 @@ package com.factstore.application.command
 import com.factstore.application.ActorResolver
 import com.factstore.application.CustomAttestationTypeRules
 import com.factstore.application.TenantScope
-import com.factstore.application.attestation.AttestationTypeProcessor
+import com.factstore.application.attestation.AttestationVerdictResolver
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.AuditEventType
@@ -43,8 +43,8 @@ class AttestationCommandHandler(
     private val actorResolver: ActorResolver,
     customAttestationTypeRepository: ICustomAttestationTypeRepository,
     objectMapper: ObjectMapper,
-    private val tenantScope: TenantScope = TenantScope.UNSCOPED,
-    private val processors: List<AttestationTypeProcessor> = emptyList()
+    private val verdicts: AttestationVerdictResolver,
+    private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : IAttestationCommandHandler {
 
     private val customTypes = CustomAttestationTypeRules(customAttestationTypeRepository, objectMapper)
@@ -66,10 +66,13 @@ class AttestationCommandHandler(
             "Trail not found: ${command.trailId}"
         }
         customTypes.validate(command.type, command.attestationData)
+        // #240: the server decides pass/fail wherever it can evaluate the evidence.
+        val verdict = verdicts.resolve(command.type, command.status, command.attestationData)
         val attestation = Attestation(
             trailId = command.trailId,
             type = command.type,
-            status = command.status,
+            status = verdict.status,
+            selfAsserted = verdict.selfAsserted,
             details = command.details,
             name = command.name,
             evidenceUrl = command.evidenceUrl,
@@ -82,7 +85,6 @@ class AttestationCommandHandler(
         )
         attestation.externalUrls = command.externalUrls?.takeIf { it.isNotEmpty() } ?: listOfNotNull(command.evidenceUrl)
         attestation.annotations.putAll(command.annotations.orEmpty())
-        customTypes.evaluate(attestation)
         val saved = attestationRepository.save(attestation)
         eventAppender.append(DomainEvent.AttestationRecorded(
             aggregateId = saved.id,
@@ -142,11 +144,10 @@ class AttestationCommandHandler(
         attestation.evidenceFileHash = evidenceFile.sha256Hash
         attestation.evidenceFileName = evidenceFile.fileName
         attestation.evidenceFileSizeBytes = evidenceFile.fileSizeBytes
-        // A typed report (e.g. JUnit XML) sets the attestation's details and status, as on v1.
-        val processor = processors.firstOrNull { it.typeName.equals(attestation.type, ignoreCase = true) }
-        processor?.process(command.content, attestation)
+        // The evidence decides the status for types with a processor (#240), as on /api/v1.
+        val processed = verdicts.applyEvidence(attestation, command.content)
         attestationRepository.save(attestation)
-        if (processor != null) {
+        if (processed) {
             if (attestation.status == AttestationStatus.FAILED) markTrailNonCompliant(attestation.trailId)
             eventPublisher.publish(SupplyChainEvent.AttestationProcessedEvent(
                 attestationId = attestation.id.toString(),

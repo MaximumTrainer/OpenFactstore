@@ -145,7 +145,12 @@ factstore:
   policy:
     evaluator: ${FACTSTORE_POLICY_EVALUATOR:opa}
   scm:
-    encryption-key: ${SCM_ENCRYPTION_KEY:default-dev-key-32chars!!!!!!}
+    # Base64 of exactly 32 random bytes (openssl rand -base64 32). No default outside the dev
+    # and local profiles; startup fails without it (#242).
+    encryption-key: ${SCM_ENCRYPTION_KEY:}
+    # The previous key, only while moving old tokens to the new one (docs/security-hardening.md).
+    legacy-encryption-key: ${SCM_LEGACY_ENCRYPTION_KEY:}
+    reencrypt-legacy-tokens: ${FACTSTORE_SCM_REENCRYPT_LEGACY_TOKENS:false}
   # Signing of stored event records (#184). `local` signs with an in-memory development key that
   # is lost on restart and is refused under the prod profile; production uses `vault-transit`,
   # where the private key never leaves Vault. See docs/runbooks/event-signing-keys.md.

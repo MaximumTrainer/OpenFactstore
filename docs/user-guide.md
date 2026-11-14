@@ -147,9 +147,9 @@ docker compose up --build
 | Command API (writes, and reads) | http://localhost:8080 |
 | Query API (reads) | http://localhost:8081 |
 | Swagger UI | http://localhost:8080/swagger-ui.html (spec at `/api-docs`; both need a credential, like the API) |
-| RabbitMQ management | http://localhost:15672 (guest / guest) |
+| RabbitMQ management | http://localhost:15672 (`RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` from `.env`) |
 | Prometheus | http://localhost:9090 |
-| Grafana | http://localhost:3000 (admin / `changeme`) |
+| Grafana | http://localhost:3000 (`GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD` from `.env`) |
 | HashiCorp Vault | http://localhost:8200 |
 | Web UI | http://localhost:8080 (built into the image); http://localhost:5173 with the dev server |
 
@@ -214,8 +214,9 @@ The backend reads these environment variables at startup. `docker-compose.yml` s
 | `FACTSTORE_RETENTION_DRY_RUN` | `false` | With the job enabled, only log what it would do |
 | `FACTSTORE_RETENTION_CRON` | `0 30 3 * * *` | When the job runs (Spring cron, UTC) |
 | `FACTSTORE_RETENTION_ARCHIVE_DIR` | `./data/retention-archive` | Where archived records are written, one JSON file each; mount object storage here to keep them off the host |
-| `SCM_ENCRYPTION_KEY` | `default-dev-key-32chars!!!!!!` | AES-256-GCM key for SCM token encryption. **Set to a strong random 32-char value in production.** |
-| `GF_SECURITY_ADMIN_PASSWORD` | `changeme` | Grafana admin password |
+| `SCM_ENCRYPTION_KEY` | *(none outside the `dev`/`local` profiles; set by `scripts/bootstrap-env.sh`)* | AES-256-GCM key for SCM tokens: base64 of exactly 32 random bytes (`openssl rand -base64 32`). The service refuses to start without a valid one |
+| `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` | *(none; set by `scripts/bootstrap-env.sh`)* | Message broker credentials; Compose refuses to start without them |
+| `GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD` | *(none; set by `scripts/bootstrap-env.sh`)* | Grafana admin login; Compose refuses to start without them |
 
 > 💡 **Pro-tip:** For production, set `DB_PASSWORD`, `VAULT_TOKEN` and the bootstrap keys via a secrets manager. Never commit them.
 
@@ -296,26 +297,32 @@ curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/artifacts" \
 
 ### Step 4: Record Attestations
 
-Record that the unit tests passed, then that the security scan passed:
+Record the unit tests and the security scan, then upload each tool's report. Factstore decides whether a `junit` or `snyk` attestation passed **from the report**, not from anything the pipeline says: until the report arrives the attestation is `PENDING`, and any `status` you send for these types is ignored (see [Who decides pass or fail](#who-decides-pass-or-fail)).
 
 ```bash
-curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
-  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "junit",
-    "status": "PASSED",
-    "details": "All 247 unit tests passed"
-  }' | jq .
+mkdir -p reports
+printf '<testsuite name="unit" tests="247" failures="0" errors="0"><testcase name="ok"/></testsuite>\n' > reports/junit.xml
+printf '{"vulnerabilities": []}\n' > reports/snyk.json
 
-curl -s -X POST "$BASE_URL/api/v2/trails/$TRAIL_ID/attestations" \
+JUNIT_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "type": "snyk",
-    "status": "PASSED",
-    "details": "No critical vulnerabilities found"
-  }' | jq .
+  -d '{ "type": "junit", "details": "Unit tests" }' | jq -r .id)
+curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$JUNIT_ID/evidence" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  -F "file=@./reports/junit.xml" | jq .
+
+SNYK_ID=$(curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "type": "snyk", "details": "Dependency scan" }' | jq -r .id)
+curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations/$SNYK_ID/evidence" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  -F "file=@./reports/snyk.json" | jq .
+
+# Both are now PASSED, decided by the server from the reports
+curl -s "$BASE_URL/api/v1/trails/$TRAIL_ID/attestations" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" | jq -e 'all(.items[]; .status == "PASSED")'
 ```
 
 ### Step 5: Assert Compliance
@@ -1153,7 +1160,7 @@ curl -s -X POST "$BASE_URL/api/v1/organisations/acme-corp/scm-integrations" \
   }' | jq .
 ```
 
-> 💡 **Pro-tip:** The token is encrypted at rest using AES-256-GCM. Set `SCM_ENCRYPTION_KEY` to a strong, random 32-character key in production. If Vault is enabled (`VAULT_ENABLED=true`), tokens are additionally stored in HashiCorp Vault.
+> 💡 **Pro-tip:** The token is encrypted at rest using AES-256-GCM. `SCM_ENCRYPTION_KEY` (base64 of 32 random bytes) is required outside the dev profile. If Vault is enabled (`VAULT_ENABLED=true`), tokens are additionally stored in HashiCorp Vault.
 
 **Step 2 — Record a PR attestation:**
 
@@ -1191,7 +1198,8 @@ curl -s -X POST "$BASE_URL/api/v1/trails/$TRAIL_ID/security-scans" \
     "reportUrl": "https://ci.example.com/scans/42"
   }' | jq .
 
-# Set thresholds that a flow must satisfy
+# Set thresholds that a flow must satisfy. Without one, a scan is judged against the
+# default: 0 critical, 0 high, at most 10 medium, any number of low.
 curl -s -X POST "$BASE_URL/api/v1/flows/$FLOW_ID/security-thresholds" \
   -H "Authorization: Bearer $FACTSTORE_TOKEN" \
   -H "Content-Type: application/json" \
@@ -1353,9 +1361,31 @@ The server verifies the token's **signature** against the issuer's published key
 
 > 💡 **Pro-tip:** OIDC provenance is particularly valuable under PCI-DSS and SOX requirements for proving that production deployments originated from a known, audited pipeline — not a developer's laptop.
 
+### Who decides pass or fail
+
+An attestation's status is decided by the server wherever it can check the evidence:
+
+| Attestation type | How the status is decided | A `status` (or `passed`) sent by the caller |
+|---|---|---|
+| `junit`, `snyk`, `sonar`, `jira` (types with a [processor](#attestation-type-processors)) | From the uploaded evidence file; `PENDING` until it arrives | Ignored, except `FAILED`, which is kept (failing closed is always safe) |
+| Custom type with a `jqExpression` | The expression's result on `attestationData`; `PENDING` with no data or data it cannot read | Ignored |
+| Any other type | The caller's claim | Recorded as given, with `"selfAsserted": true` |
+| Security scans (`POST /api/v1/trails/{id}/security-scans`) | Vulnerability counts against the flow's threshold, or the default threshold when none is set | Not accepted |
+
+This applies to every way evidence arrives: `/api/v1` and `/api/v2` attestations, artifact-level attestations, `POST /api/v1/evidence/collect` (where `passed: true` is a claim like any other) and CI webhooks.
+
+**Self-asserted evidence** counts towards compliance by default, but it is labelled: the assert response lists it in `selfAssertedAttestationTypes` and its `details` say so, and a gate decision lists it in `self_asserted`. A flow can refuse it with `"rejectSelfAsserted": true`, naming any types it still accepts in `acceptedSelfAssertedTypes`; refused evidence is reported as missing and listed in `rejectedSelfAssertedAttestationTypes` (assert) or `rejected_self_asserted` (gate).
+
+```bash
+curl -s -X PUT "$BASE_URL/api/v1/flows/$FLOW_ID" \
+  -H "Authorization: Bearer $FACTSTORE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "rejectSelfAsserted": true, "acceptedSelfAssertedTypes": ["manual-sign-off"] }' | jq .
+```
+
 ### Attestation Type Processors
 
-When you upload an evidence file to an attestation of certain types, OpenFactstore **automatically parses the content** and sets `PASSED` or `FAILED` without you having to specify the status manually. Evidence is uploaded as a multipart file to `POST /api/v2/trails/{trailId}/attestations/{attestationId}/evidence`.
+When you upload an evidence file to an attestation of certain types, OpenFactstore **automatically parses the content** and sets `PASSED` or `FAILED`. For these types the evidence is the only way to reach `PASSED`. Evidence is uploaded as a multipart file to `POST /api/v1/trails/{trailId}/attestations/{attestationId}/evidence`.
 
 #### JUnit XML → `junit` attestations
 
@@ -1824,7 +1854,7 @@ factstore attest snyk \
   --scan-results-file snyk-report.json \
   --name "snyk-scan"
 
-# Any other attestation type
+# Any other attestation type (its status is recorded as self-asserted)
 factstore attest generic \
   --trail-id "$TRAIL_ID" \
   --type "change-approval" \
@@ -1931,15 +1961,15 @@ curl -s -X POST "$BASE_URL/api/v1/api-keys" \
 |---------|-------------|---------------------------|
 | Relational data | H2 in-memory (unit tests) / PostgreSQL (dev/prod) | PostgreSQL 16 with encrypted volumes (e.g. AWS RDS with encryption-at-rest enabled) |
 | Evidence files | Local DB (Base64) | HashiCorp Vault (`VAULT_ENABLED=true`) |
-| SCM tokens | AES-256-GCM encrypted in PostgreSQL | Same — set `SCM_ENCRYPTION_KEY` to a strong random 32-char key + HashiCorp Vault for additional secret management |
+| SCM tokens | AES-256-GCM encrypted in PostgreSQL | Same — keep `SCM_ENCRYPTION_KEY` (base64 of 32 random bytes) in a secrets manager |
 
 > 💡 **Pro-tip:** Enable `VAULT_ENABLED=true` in production to store all evidence files and SCM tokens in HashiCorp Vault. The `vault` service is included in the Docker Compose file for local testing.
 
 ### SCM Token Storage
 
-When you register an SCM integration (GitHub, GitLab, Bitbucket), the token is **encrypted at rest using AES-256-GCM** before being stored in PostgreSQL. The encryption key is derived from the `SCM_ENCRYPTION_KEY` environment variable (padded or truncated to 32 bytes). **For production:**
+When you register an SCM integration (GitHub, GitLab, Bitbucket), the token is **encrypted at rest using AES-256-GCM** before being stored in PostgreSQL. The key is the `SCM_ENCRYPTION_KEY` environment variable: the base64 encoding of exactly 32 random bytes, used as is (never padded or truncated). Outside the `dev` and `local` profiles it has no default and the service refuses to start without a valid key. **For production:**
 
-1. Set `SCM_ENCRYPTION_KEY` to a strong, randomly generated 32-character key.
+1. Set `SCM_ENCRYPTION_KEY` to the output of `openssl rand -base64 32`, kept in a secrets manager. Tokens stored under an older key can be re-encrypted once; see [docs/security-hardening.md](./security-hardening.md#scm-token-key).
 2. Optionally set `VAULT_ENABLED=true` to back token storage with HashiCorp Vault.
 3. Consider a KMS-backed Vault auto-unseal for fully automated operations.
 
@@ -1994,7 +2024,7 @@ The `monitoring/dashboards/` directory contains four pre-built dashboards:
 | Deployment Gates | `deployment-gates.json` | Gate pass/block rates by environment |
 | Audit & Forensics | `audit-forensics.json` | Audit event volume and anomaly detection |
 
-Dashboards are auto-provisioned via `monitoring/provisioning/`. Open http://localhost:3000 and log in as `admin` / `changeme` (or the value of `GF_SECURITY_ADMIN_PASSWORD`).
+Dashboards are auto-provisioned via `monitoring/provisioning/`. Open http://localhost:3000 and log in with `GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD` from `.env`.
 
 ---
 
@@ -2124,6 +2154,8 @@ POST /api/v2/trails/<trailId>/attestations
   "evidenceUrl": "https://ci.example.com/runs/42"
 }
 ```
+
+`unit-tests` has no server-side evaluator, so this status is recorded as **self-asserted**. For a type the server can evaluate (`junit`, `snyk`, `sonar`, `jira`, or a custom type with a `jqExpression`) the status is derived from the evidence instead; see [Who decides pass or fail](#who-decides-pass-or-fail).
 
 #### Attestation statuses
 

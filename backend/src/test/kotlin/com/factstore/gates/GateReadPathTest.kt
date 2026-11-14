@@ -1,5 +1,6 @@
 package com.factstore.gates
 
+import com.factstore.testsupport.recordWithEvidence
 import com.factstore.application.ArtifactService
 import com.factstore.application.AttestationService
 import com.factstore.application.FlowService
@@ -138,7 +139,7 @@ class GateReadPathTest {
     fun `#194 new evidence invalidates the cached decision`() {
         evaluate().andExpect { jsonPath("$.status") { value("REJECTED") } }
 
-        asAdmin { attestations.recordAttestation(trailId, CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED)) }
+        asAdmin { attestations.recordWithEvidence(trailId, CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED)) }
 
         evaluate().andExpect {
             jsonPath("$.status") { value("APPROVED") }

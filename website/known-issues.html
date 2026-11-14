@@ -106,9 +106,9 @@
               stored together as a single Base64-encoded value.
             </p>
             <p>
-              Set the encryption key via the <code>FACTSTORE_SCM_ENCRYPTION_KEY</code> environment variable
-              (32-character string). A default development key is used when the variable is not
-              set. Rotate tokens after enabling encryption for maximum security.
+              Set the key via the <code>SCM_ENCRYPTION_KEY</code> environment variable: the base64
+              encoding of exactly 32 random bytes (<code>openssl rand -base64 32</code>). Outside the
+              dev profile there is no default and the backend refuses to start without a valid key.
             </p>
           </div>
         </div>

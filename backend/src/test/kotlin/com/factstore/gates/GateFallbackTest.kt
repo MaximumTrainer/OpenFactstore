@@ -1,5 +1,6 @@
 package com.factstore.gates
 
+import com.factstore.testsupport.recordWithEvidence
 import com.factstore.application.ArtifactService
 import com.factstore.application.AttestationService
 import com.factstore.application.FlowService
@@ -92,7 +93,7 @@ class GateFallbackTest {
         flowId = flows.createFlow(CreateFlowRequest("gate-${System.nanoTime()}", "d", listOf("junit"))).id
         val trail = trails.createTrail(CreateTrailRequest(flowId = flowId, gitCommitSha = "c", gitBranch = "main", gitAuthor = "a", gitAuthorEmail = "a@example.com"))
         artifacts.reportArtifact(trail.id, CreateArtifactRequest(imageName = "svc", imageTag = "1", sha256Digest = "sha256:$digest", reportedBy = "ci"))
-        attestations.recordAttestation(trail.id, CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED))
+        attestations.recordWithEvidence(trail.id, CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED))
         SecurityContextHolder.clearContext()
     }
 

@@ -27,4 +27,6 @@ class InMemoryScmIntegrationRepository : IScmIntegrationRepository {
 
     override fun existsByOrgSlugAndProvider(orgSlug: String, provider: ScmProvider): Boolean =
         store.values.any { it.orgSlug == orgSlug && it.provider == provider }
+
+    override fun findAll(): List<ScmIntegration> = store.values.toList()
 }

@@ -61,11 +61,13 @@ only thing standing between the internet and your data**.
 See **[docs/api-authorisation.md](./docs/api-authorisation.md)** and
 **[docs/authentication.md](./docs/authentication.md)**.
 
-### SCM tokens stored Base64-encoded (without Vault)
+### SCM tokens are encrypted with a key you must supply
 
-When `VAULT_ENABLED=false`, SCM integration tokens (GitHub, GitLab) are stored Base64-encoded in PostgreSQL. This is encoding, not encryption.
+SCM integration tokens (GitHub, GitLab, Bitbucket, Azure DevOps) are encrypted with AES-256-GCM (a random 12-byte IV per token, stored with the ciphertext) before they are written to PostgreSQL. This is true whether or not Vault is enabled.
 
-**Mitigation:** Set `VAULT_ENABLED=true` and configure HashiCorp Vault for all environments that store real SCM tokens.
+The key is `SCM_ENCRYPTION_KEY`: the base64 encoding of exactly 32 random bytes (`openssl rand -base64 32`). Outside the `dev` and `local` profiles there is no default and the backend refuses to start without one; a key of the wrong length, the public development key, and the old literal `default-dev-key-32chars!!!!!!` are all refused rather than padded or truncated (#242). Anyone who can read both the database and this key can read the tokens, so keep the key in a secrets manager, not next to the database credentials.
+
+Deployments that encrypted tokens before #242 can move them to a new key with a one-off step; see [docs/security-hardening.md](./docs/security-hardening.md#scm-token-key).
 
 ### H2 in-memory database (unit tests only)
 
@@ -101,13 +103,13 @@ Use this checklist before deploying OpenFactstore to a production environment.
 - [ ] The bootstrap credential has been used, revoked, and `security.bootstrap.enabled` set to
       `false`.
 - [ ] `security.cors.allowed-origins` lists the real origins; it is not `*`.
-- [ ] Default Grafana password (`changeme`) has been changed.
+- [ ] Grafana and RabbitMQ credentials come from a secrets manager or the generated `.env`, never a shared default.
 
 ### Secrets Management
 
 - [ ] `DB_PASSWORD` is stored in a secrets manager (AWS Secrets Manager, GCP Secret Manager, Vault).
 - [ ] `VAULT_TOKEN` is stored in a secrets manager; consider Vault auto-unseal via KMS.
-- [ ] SCM tokens are stored in Vault (`VAULT_ENABLED=true`), not plain PostgreSQL.
+- [ ] `SCM_ENCRYPTION_KEY` is a generated 32-byte key held in a secrets manager.
 - [ ] No secrets are committed to source control.
 
 ### Database

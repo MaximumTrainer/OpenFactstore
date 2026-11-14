@@ -1,5 +1,6 @@
 package com.factstore
 
+import com.factstore.testsupport.recordWithEvidence
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.dto.*
 import com.factstore.application.*
@@ -29,7 +30,7 @@ class AssertServiceTest {
             gitAuthorEmail = "author@example.com"
         ))
         for ((type, status) in attestedTypes) {
-            attestationService.recordAttestation(trail.id, CreateAttestationRequest(type = type, status = status))
+            attestationService.recordWithEvidence(trail.id, CreateAttestationRequest(type = type, status = status))
         }
         val digest = "sha256:${System.nanoTime()}"
         artifactService.reportArtifact(trail.id, CreateArtifactRequest(
@@ -113,8 +114,8 @@ artifacts:
         val trail = trailService.createTrail(CreateTrailRequest(
             flowId = flow.id, gitCommitSha = "abc", gitBranch = "main", gitAuthor = "a", gitAuthorEmail = "a@b.com"
         ))
-        attestationService.recordAttestation(trail.id, CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED, name = "unit-tests"))
-        attestationService.recordAttestation(trail.id, CreateAttestationRequest(type = "snyk", status = AttestationStatus.PASSED, name = "security-scan"))
+        attestationService.recordWithEvidence(trail.id, CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED, name = "unit-tests"))
+        attestationService.recordWithEvidence(trail.id, CreateAttestationRequest(type = "snyk", status = AttestationStatus.PASSED, name = "security-scan"))
         val digest = "sha256:tmpl${System.nanoTime()}"
         artifactService.reportArtifact(trail.id, CreateArtifactRequest("myimage", "latest", digest, reportedBy = "ci"))
         val result = assertService.assertCompliance(AssertRequest(digest, flow.id))
@@ -138,7 +139,7 @@ artifacts:
         val trail = trailService.createTrail(CreateTrailRequest(
             flowId = flow.id, gitCommitSha = "abc", gitBranch = "main", gitAuthor = "a", gitAuthorEmail = "a@b.com"
         ))
-        attestationService.recordAttestation(trail.id, CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED, name = "unit-tests"))
+        attestationService.recordWithEvidence(trail.id, CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED, name = "unit-tests"))
         // security-scan missing
         val digest = "sha256:tmpl-nc${System.nanoTime()}"
         artifactService.reportArtifact(trail.id, CreateArtifactRequest("myimage", "latest", digest, reportedBy = "ci"))
@@ -170,7 +171,7 @@ artifacts:
             flowId = flow.id, gitCommitSha = "abc", gitBranch = "main", gitAuthor = "a", gitAuthorEmail = "a@b.com",
             templateYaml = trailTemplateYaml
         ))
-        attestationService.recordAttestation(trail.id, CreateAttestationRequest(type = "snyk", status = AttestationStatus.PASSED, name = "security-scan"))
+        attestationService.recordWithEvidence(trail.id, CreateAttestationRequest(type = "snyk", status = AttestationStatus.PASSED, name = "security-scan"))
         val digest = "sha256:trail-tmpl${System.nanoTime()}"
         artifactService.reportArtifact(trail.id, CreateArtifactRequest("myimage", "latest", digest, reportedBy = "ci"))
         val result = assertService.assertCompliance(AssertRequest(digest, flow.id))

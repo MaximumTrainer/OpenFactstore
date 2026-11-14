@@ -144,7 +144,8 @@ configure<info.solidsoft.gradle.pitest.PitestPluginExtension> {
         "com.factstore.application.ScopeFilter",
         "com.factstore.application.CiContextResolver",
         "com.factstore.application.ComplianceMetricsService",
-        "com.factstore.application.SecurityScanService"
+        "com.factstore.application.SecurityScanService",
+        "com.factstore.application.attestation.AttestationVerdictResolver"
     ))
     targetTests.set(setOf(
         "com.factstore.TemplateParserTest",
@@ -153,7 +154,8 @@ configure<info.solidsoft.gradle.pitest.PitestPluginExtension> {
         "com.factstore.SnapshotScopeFilterTest",
         "com.factstore.CiContextResolverTest",
         "com.factstore.application.ComplianceMetricsServiceTest",
-        "com.factstore.application.SecurityScanServiceTest"
+        "com.factstore.application.SecurityScanServiceTest",
+        "com.factstore.core.AttestationVerdictResolverTest"
     ))
     threads.set(Runtime.getRuntime().availableProcessors())
     outputFormats.set(setOf("XML", "HTML"))

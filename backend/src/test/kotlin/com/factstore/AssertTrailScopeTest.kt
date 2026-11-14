@@ -1,5 +1,6 @@
 package com.factstore
 
+import com.factstore.testsupport.recordWithEvidence
 import com.factstore.application.ArtifactService
 import com.factstore.application.AssertService
 import com.factstore.application.AttestationService
@@ -53,7 +54,7 @@ class AssertTrailScopeTest {
     )
 
     private fun attest(trailId: UUID, type: String, status: AttestationStatus) {
-        attestationService.recordAttestation(trailId, CreateAttestationRequest(type = type, status = status))
+        attestationService.recordWithEvidence(trailId, CreateAttestationRequest(type = type, status = status))
     }
 
     private fun registerArtifact(trailId: UUID, digest: String) {
@@ -219,18 +220,18 @@ class AssertTrailScopeTest {
         val digest = "sha256:tmplshared${System.nanoTime()}"
 
         val good = newTrail(flow.id)
-        attestationService.recordAttestation(
+        attestationService.recordWithEvidence(
             good.id,
             CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED, name = "unit-tests")
         )
-        attestationService.recordAttestation(
+        attestationService.recordWithEvidence(
             good.id,
             CreateAttestationRequest(type = "snyk", status = AttestationStatus.PASSED, name = "security-scan")
         )
         registerArtifact(good.id, digest)
 
         val bad = newTrail(flow.id)
-        attestationService.recordAttestation(
+        attestationService.recordWithEvidence(
             bad.id,
             CreateAttestationRequest(type = "junit", status = AttestationStatus.PASSED, name = "unit-tests")
         )

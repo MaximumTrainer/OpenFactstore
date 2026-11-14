@@ -559,6 +559,9 @@
             "format" : "uuid",
             "type" : "string"
           },
+          "selfAsserted" : {
+            "type" : "boolean"
+          },
           "status" : {
             "enum" : [ "PASSED", "FAILED", "PENDING" ],
             "type" : "string"
@@ -571,7 +574,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "annotations", "compliant", "createdAt", "externalUrls", "id", "status", "trailId", "type" ],
+        "required" : [ "annotations", "compliant", "createdAt", "externalUrls", "id", "selfAsserted", "status", "trailId", "type" ],
         "type" : "object"
       },
       "AttestationView" : {
@@ -979,12 +982,19 @@
           "passed" : {
             "type" : "boolean"
           },
+          "selfAsserted" : {
+            "type" : "boolean"
+          },
+          "status" : {
+            "enum" : [ "PASSED", "FAILED", "PENDING" ],
+            "type" : "string"
+          },
           "trailId" : {
             "format" : "uuid",
             "type" : "string"
           }
         },
-        "required" : [ "attestationId", "evidenceType", "passed", "trailId" ],
+        "required" : [ "attestationId", "evidenceType", "passed", "selfAsserted", "status", "trailId" ],
         "type" : "object"
       },
       "BundleResponse" : {
@@ -1758,6 +1768,12 @@
       },
       "CreateFlowCommand" : {
         "properties" : {
+          "acceptedSelfAssertedTypes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "description" : {
             "maxLength" : 2048,
             "minLength" : 0,
@@ -1770,6 +1786,9 @@
           },
           "orgSlug" : {
             "type" : "string"
+          },
+          "rejectSelfAsserted" : {
+            "type" : "boolean"
           },
           "requiredApproverRoles" : {
             "items" : {
@@ -1810,6 +1829,12 @@
       },
       "CreateFlowRequest" : {
         "properties" : {
+          "acceptedSelfAssertedTypes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "description" : {
             "maxLength" : 2048,
             "minLength" : 0,
@@ -1822,6 +1847,9 @@
           },
           "orgSlug" : {
             "type" : "string"
+          },
+          "rejectSelfAsserted" : {
+            "type" : "boolean"
           },
           "requiredApproverRoles" : {
             "items" : {
@@ -3081,6 +3109,12 @@
       },
       "FlowResponse" : {
         "properties" : {
+          "acceptedSelfAssertedTypes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "archivedAt" : {
             "format" : "date-time",
             "type" : "string"
@@ -3101,6 +3135,9 @@
           },
           "orgSlug" : {
             "type" : "string"
+          },
+          "rejectSelfAsserted" : {
+            "type" : "boolean"
           },
           "requiredApproverRoles" : {
             "items" : {
@@ -3137,7 +3174,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "createdAt", "description", "id", "name", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags", "updatedAt" ],
+        "required" : [ "acceptedSelfAssertedTypes", "createdAt", "description", "id", "name", "rejectSelfAsserted", "requiredApproverRoles", "requiredAttestationTypes", "requiresApproval", "tags", "updatedAt" ],
         "type" : "object"
       },
       "FlowTemplateResponse" : {
@@ -3309,12 +3346,24 @@
             },
             "type" : "array"
           },
+          "rejected_self_asserted" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "self_asserted" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "status" : {
             "enum" : [ "APPROVED", "REJECTED" ],
             "type" : "string"
           }
         },
-        "required" : [ "decision_tree", "fallback_mode", "missing_attestations", "status" ],
+        "required" : [ "decision_tree", "fallback_mode", "missing_attestations", "rejected_self_asserted", "self_asserted", "status" ],
         "type" : "object"
       },
       "GateEvaluateRequest" : {
@@ -6024,11 +6073,20 @@
       },
       "UpdateFlowRequest" : {
         "properties" : {
+          "acceptedSelfAssertedTypes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "description" : {
             "type" : "string"
           },
           "name" : {
             "type" : "string"
+          },
+          "rejectSelfAsserted" : {
+            "type" : "boolean"
           },
           "requiredApproverRoles" : {
             "items" : {

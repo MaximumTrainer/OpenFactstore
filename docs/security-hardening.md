@@ -55,8 +55,25 @@ Use this checklist during initial deployment, periodic security reviews, and bef
 - [ ] **Replace all default secret values**  
   - `AUDIT_HMAC_SECRET` — must not be `change-me-in-production`
   - `SSO_JWT_SECRET` — must not be `changeme-in-production`
-  - `SCM_ENCRYPTION_KEY` — must not be `default-dev-key-32chars!!!!!!`
-  - `GF_SECURITY_ADMIN_PASSWORD` (Grafana) — must not be `changeme`
+  - `SCM_ENCRYPTION_KEY` — required outside the dev profile; see [SCM token key](#scm-token-key)
+  - `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` and `GF_SECURITY_ADMIN_USER` / `GF_SECURITY_ADMIN_PASSWORD` — Docker Compose refuses to start without them; `scripts/bootstrap-env.sh` generates them
+
+### SCM token key
+
+`SCM_ENCRYPTION_KEY` is the base64 encoding of exactly 32 random bytes:
+
+```bash
+openssl rand -base64 32
+```
+
+The backend refuses to start when the key is unset (outside the `dev` and `local` profiles), does not decode to exactly 32 bytes, is the public development key, or is the old literal `default-dev-key-32chars!!!!!!`. Keys are never padded or truncated.
+
+**Moving tokens encrypted before #242 to a new key.** Earlier versions accepted any string and zero-padded or truncated it to 32 bytes. To re-encrypt those tokens once:
+
+1. Generate a new key and set it as `SCM_ENCRYPTION_KEY`.
+2. Set `SCM_LEGACY_ENCRYPTION_KEY` to the old value (for example `default-dev-key-32chars!!!!!!`) and `FACTSTORE_SCM_REENCRYPT_LEGACY_TOKENS=true`.
+3. Start the backend once. It logs `Re-encrypted N SCM token(s) with the current key`.
+4. Unset both variables and restart. While `SCM_LEGACY_ENCRYPTION_KEY` is set, old tokens also still decrypt on use.
 
 - [ ] **Enable HashiCorp Vault integration**  
   Set `VAULT_ENABLED=true` and configure AppRole authentication (`VAULT_ROLE_ID` / `VAULT_SECRET_ID`) instead of a root token. You **must** also set `VAULT_AUTH_METHOD=APPROLE` (matching `vault.authentication=APPROLE` in Spring config), otherwise the application will continue to use token auth and ignore the AppRole fields. Store all application secrets in Vault KV.

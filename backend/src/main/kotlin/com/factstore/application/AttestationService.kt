@@ -1,6 +1,6 @@
 package com.factstore.application
 
-import com.factstore.application.attestation.AttestationTypeProcessor
+import com.factstore.application.attestation.AttestationVerdictResolver
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.AuditEventType
@@ -24,7 +24,6 @@ import com.factstore.dto.OverrideAttestationRequest
 import com.factstore.dto.PageResponse
 import com.factstore.exception.BadRequestException
 import com.factstore.exception.NotFoundException
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
@@ -48,7 +47,7 @@ class AttestationService(
     private val customAttestationTypeRepository: ICustomAttestationTypeRepository,
     private val artifactRepository: IArtifactRepository,
     private val objectMapper: ObjectMapper,
-    private val processors: List<AttestationTypeProcessor> = emptyList(),
+    private val verdicts: AttestationVerdictResolver,
     private val actorResolver: ActorResolver,
     private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : IAttestationService {
@@ -87,10 +86,13 @@ class AttestationService(
 
         customTypes.validate(request.type, request.attestationData)
 
+        // #240: the server decides pass/fail wherever it can evaluate the evidence.
+        val verdict = verdicts.resolve(request.type, request.status, request.attestationData)
         val attestation = Attestation(
             trailId = trailId,
             type = request.type,
-            status = request.status,
+            status = verdict.status,
+            selfAsserted = verdict.selfAsserted,
             details = request.details,
             name = request.name,
             evidenceUrl = request.evidenceUrl,
@@ -108,8 +110,6 @@ class AttestationService(
         }
         attestation.externalUrls = effectiveExternalUrls
         attestation.annotations.putAll(request.annotations)
-
-        customTypes.evaluate(attestation)
 
         val saved = attestationRepository.save(attestation)
         eventPublisher.publish(
@@ -162,10 +162,12 @@ class AttestationService(
     override fun recordArtifactAttestation(artifactId: UUID, request: CreateArtifactAttestationRequest): AttestationResponse {
         val artifact = artifactRepository.findById(artifactId)
             ?: throw NotFoundException("Artifact not found: $artifactId")
+        val verdict = verdicts.resolve(request.type, request.status, request.attestationData)
         val attestation = Attestation(
             trailId = artifact.trailId,
             type = request.type,
-            status = request.status,
+            status = verdict.status,
+            selfAsserted = verdict.selfAsserted,
             details = request.details,
             name = request.name,
             evidenceUrl = request.evidenceUrl,
@@ -248,9 +250,7 @@ class AttestationService(
     }
 
     private fun applyTypeProcessor(attestation: Attestation, evidenceContent: ByteArray) {
-        val processor = processors.firstOrNull { it.typeName.equals(attestation.type, ignoreCase = true) }
-        if (processor != null) {
-            processor.process(evidenceContent, attestation)
+        if (verdicts.applyEvidence(attestation, evidenceContent)) {
             if (attestation.status == AttestationStatus.FAILED) {
                 markTrailNonCompliant(attestation.trailId)
             }
@@ -294,5 +294,6 @@ fun Attestation.toResponse() = AttestationResponse(
     gitRepoUrl = gitRepoUrl,
     artifactId = artifactId,
     overridesAttestationId = overridesAttestationId,
-    justification = justification
+    justification = justification,
+    selfAsserted = selfAsserted
 )
