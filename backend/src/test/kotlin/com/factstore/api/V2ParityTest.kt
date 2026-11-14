@@ -186,4 +186,23 @@ class V2ParityTest {
         assertThat(view["evidenceFileName"].asText()).isEqualTo("junit.xml")
         assertThat(get("/api/v2/trails/$trailId")["status"].asText()).isEqualTo("NON_COMPLIANT")
     }
+
+    @Test
+    fun `#250 a v2 flow shows whether it refuses self-asserted attestations, like v1`() {
+        val id = flow(""","rejectSelfAsserted":true,"acceptedSelfAssertedTypes":["change-approval"]""")
+        val view = get("/api/v2/flows/$id")
+        assertThat(view["rejectSelfAsserted"].asBoolean()).isTrue()
+        assertThat(view["acceptedSelfAssertedTypes"].map { it.asText() }).containsExactly("change-approval")
+    }
+
+    @Test
+    fun `#250 a v2 attestation shows whether its status was self-asserted, like v1`() {
+        val trailId = trail(flow())
+        post("/api/v2/trails/$trailId/attestations", """{"type":"change-approval","status":"PASSED"}""")
+        post("/api/v2/trails/$trailId/attestations", """{"type":"junit","status":"PASSED"}""")
+        val byType = get("/api/v2/trails/$trailId/attestations").associateBy { it["type"].asText() }
+        assertThat(byType.getValue("change-approval")["selfAsserted"].asBoolean()).isTrue()
+        assertThat(byType.getValue("junit")["selfAsserted"].asBoolean()).isFalse()
+        assertThat(byType.getValue("junit")["status"].asText()).isEqualTo("PENDING")
+    }
 }
