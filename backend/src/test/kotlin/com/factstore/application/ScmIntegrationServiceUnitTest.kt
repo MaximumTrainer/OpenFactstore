@@ -23,7 +23,7 @@ class ScmIntegrationServiceUnitTest {
     @Mock
     private lateinit var scmIntegrationRepository: IScmIntegrationRepository
 
-    private val encryptionService = ScmTokenEncryptionService("test-key-32-chars-for-unit-tests")
+    private val encryptionService = ScmTokenEncryptionService("dGVzdC1vbmx5LXNjbS10b2tlbi1rZXktMzItYnl0ZXM=")
 
     private val service: ScmIntegrationService by lazy {
         ScmIntegrationService(scmIntegrationRepository, encryptionService)

@@ -154,7 +154,8 @@ class AssertService(
         }
 
         val attestations = attestationRepository.findByTrailId(trail.id)
-        val passedTypes = attestations.filter { it.status == AttestationStatus.PASSED }.map { it.type }.toSet()
+        val evidence = SelfAssertion.classify(required, attestations, flow) { it.type }
+        val passedTypes = evidence.passed
         val failedTypes = attestations.filter { it.status == AttestationStatus.FAILED }.map { it.type }
         val missing = required.filter { it !in passedTypes }
 
@@ -167,8 +168,9 @@ class AssertService(
                 status = ComplianceStatus.COMPLIANT,
                 missingAttestationTypes = emptyList(),
                 failedAttestationTypes = failedTypes,
-                details = "All required attestations passed",
-                trailId = trail.id
+                details = "All required attestations passed${evidence.note()}",
+                trailId = trail.id,
+                selfAssertedAttestationTypes = evidence.selfAsserted
             )
         }
 
@@ -179,8 +181,10 @@ class AssertService(
             status = ComplianceStatus.NON_COMPLIANT,
             missingAttestationTypes = missing,
             failedAttestationTypes = failedTypes,
-            details = "Missing required attestations: ${missing.joinToString(", ")}",
-            trailId = trail.id
+            details = "Missing required attestations: ${missing.joinToString(", ")}${evidence.note()}",
+            trailId = trail.id,
+            selfAssertedAttestationTypes = evidence.selfAsserted,
+            rejectedSelfAssertedAttestationTypes = evidence.rejected
         )
     }
 
@@ -199,7 +203,8 @@ class AssertService(
                 conditionErrors.joinToString("; ")
 
         val attestations = attestationRepository.findByTrailId(trail.id)
-        val passedNames = attestations.filter { it.status == AttestationStatus.PASSED }.mapNotNull { it.name }.toSet()
+        val evidence = SelfAssertion.classify(allRequired, attestations, flow) { it.name }
+        val passedNames = evidence.passed
         val failedNames = attestations.filter { it.status == AttestationStatus.FAILED }.mapNotNull { it.name }
         val missing = allRequired.filter { it !in passedNames }
 
@@ -214,8 +219,9 @@ class AssertService(
                 failedAttestationTypes = emptyList(),
                 missingAttestationNames = emptyList(),
                 failedAttestationNames = failedNames,
-                details = "All required attestations passed$conditionNote",
-                trailId = trail.id
+                details = "All required attestations passed$conditionNote${evidence.note()}",
+                trailId = trail.id,
+                selfAssertedAttestationTypes = evidence.selfAsserted
             )
         }
 
@@ -228,8 +234,10 @@ class AssertService(
             failedAttestationTypes = emptyList(),
             missingAttestationNames = missing,
             failedAttestationNames = failedNames,
-            details = "Missing required attestations: ${missing.joinToString(", ")}$conditionNote",
-            trailId = trail.id
+            details = "Missing required attestations: ${missing.joinToString(", ")}$conditionNote${evidence.note()}",
+            trailId = trail.id,
+            selfAssertedAttestationTypes = evidence.selfAsserted,
+            rejectedSelfAssertedAttestationTypes = evidence.rejected
         )
     }
 
@@ -326,5 +334,40 @@ class AssertService(
             trailId = response.trailId,
             artifactSha256 = response.sha256Digest
         )
+    }
+}
+
+/**
+ * #240: which required attestations are satisfied, and which of those rest only on the caller's
+ * word. A self-asserted PASSED counts unless the flow refuses self-assertion for that type.
+ */
+data class SelfAssertion(
+    val passed: Set<String>,
+    val selfAsserted: List<String>,
+    val rejected: List<String>
+) {
+    fun note(): String = buildString {
+        if (selfAsserted.isNotEmpty()) append("; self-asserted (not verified by the server): ${selfAsserted.joinToString(", ")}")
+        if (rejected.isNotEmpty()) append("; self-asserted evidence not accepted by this flow: ${rejected.joinToString(", ")}")
+    }
+
+    companion object {
+        fun classify(
+            required: List<String>,
+            attestations: List<com.factstore.core.domain.Attestation>,
+            flow: Flow,
+            key: (com.factstore.core.domain.Attestation) -> String?
+        ): SelfAssertion {
+            val passing = attestations.filter { it.status == AttestationStatus.PASSED }
+            val verified = passing.filter { !it.selfAsserted }.mapNotNull(key).toSet()
+            val acceptedClaims = passing.filter { it.selfAsserted && flow.acceptsSelfAsserted(it.type) }.mapNotNull(key).toSet()
+            val refusedClaims = passing.filter { it.selfAsserted && !flow.acceptsSelfAsserted(it.type) }.mapNotNull(key).toSet()
+            val passed = verified + acceptedClaims
+            return SelfAssertion(
+                passed = passed,
+                selfAsserted = required.filter { it in acceptedClaims && it !in verified },
+                rejected = required.filter { it in refusedClaims && it !in passed }
+            )
+        }
     }
 }

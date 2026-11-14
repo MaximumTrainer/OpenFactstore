@@ -37,7 +37,8 @@ class AttestationCommandHandler(
     private val flowRepository: IFlowRepository,
     private val eventPublisher: IEventPublisher,
     private val eventAppender: EventAppender,
-    private val actorResolver: ActorResolver
+    private val actorResolver: ActorResolver,
+    private val verdicts: com.factstore.application.attestation.AttestationVerdictResolver
 ) : IAttestationCommandHandler {
 
     private val log = LoggerFactory.getLogger(AttestationCommandHandler::class.java)
@@ -54,10 +55,13 @@ class AttestationCommandHandler(
         }
         (trailRepository.findById(command.trailId) ?: throw NotFoundException("Trail not found: ${command.trailId}"))
             .requireWritable()
+        // #240: the server decides pass/fail wherever it can evaluate the evidence.
+        val verdict = verdicts.resolve(command.type, command.status, attestationData = null)
         val attestation = Attestation(
             trailId = command.trailId,
             type = command.type,
-            status = command.status,
+            status = verdict.status,
+            selfAsserted = verdict.selfAsserted,
             details = command.details,
             name = command.name,
             evidenceUrl = command.evidenceUrl,
@@ -85,7 +89,7 @@ class AttestationCommandHandler(
                 artifactFingerprint = command.artifactFingerprint
             )
         )
-        if (command.status == AttestationStatus.FAILED) {
+        if (saved.status == AttestationStatus.FAILED) {
             markTrailNonCompliant(command.trailId)
         }
         auditService.record(
@@ -119,6 +123,10 @@ class AttestationCommandHandler(
         attestation.evidenceFileHash = evidenceFile.sha256Hash
         attestation.evidenceFileName = evidenceFile.fileName
         attestation.evidenceFileSizeBytes = evidenceFile.fileSizeBytes
+        // The evidence decides the status for types with a processor (#240), as on /api/v1.
+        if (verdicts.applyEvidence(attestation, command.content) && attestation.status == AttestationStatus.FAILED) {
+            markTrailNonCompliant(attestation.trailId)
+        }
         attestationRepository.save(attestation)
         eventAppender.append(DomainEvent.EvidenceUploaded(
             aggregateId = attestation.id,

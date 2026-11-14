@@ -21,7 +21,10 @@ data class CreateFlowCommand(
     val orgSlug: String? = null,
     val templateYaml: String? = null,
     val requiresApproval: Boolean = false,
-    val requiredApproverRoles: List<String> = emptyList()
+    val requiredApproverRoles: List<String> = emptyList(),
+    /** #240: see `Flow.rejectSelfAsserted`. Optional, default false. */
+    val rejectSelfAsserted: Boolean? = null,
+    val acceptedSelfAssertedTypes: List<String>? = null
 )
 
 /** JSON body for PUT /api/v2/flows/{id} — `id` comes from the path variable. */
@@ -32,7 +35,9 @@ data class UpdateFlowRequest(
     val tags: Map<String, String>? = null,
     val templateYaml: String? = null,
     val requiresApproval: Boolean? = null,
-    val requiredApproverRoles: List<String>? = null
+    val requiredApproverRoles: List<String>? = null,
+    val rejectSelfAsserted: Boolean? = null,
+    val acceptedSelfAssertedTypes: List<String>? = null
 )
 
 data class UpdateFlowCommand(
@@ -43,7 +48,9 @@ data class UpdateFlowCommand(
     val tags: Map<String, String>? = null,
     val templateYaml: String? = null,
     val requiresApproval: Boolean? = null,
-    val requiredApproverRoles: List<String>? = null
+    val requiredApproverRoles: List<String>? = null,
+    val rejectSelfAsserted: Boolean? = null,
+    val acceptedSelfAssertedTypes: List<String>? = null
 )
 
 data class DeleteFlowCommand(

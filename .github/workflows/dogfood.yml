@@ -97,6 +97,7 @@ jobs:
             --security.enforce-auth=false \
             --security.bootstrap.api-key="${FACTSTORE_TOKEN}" \
             --vault.enabled=false \
+            --factstore.scm.encryption-key="$(openssl rand -base64 32)" \
             > /tmp/factstore.log 2>&1 &
 
       - name: Wait for Factstore

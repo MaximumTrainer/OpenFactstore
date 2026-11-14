@@ -1,6 +1,6 @@
 package com.factstore.application
 
-import com.factstore.application.attestation.AttestationTypeProcessor
+import com.factstore.application.attestation.AttestationVerdictResolver
 import com.factstore.core.domain.Attestation
 import com.factstore.core.domain.AttestationStatus
 import com.factstore.core.domain.AuditEventType
@@ -24,7 +24,6 @@ import com.factstore.dto.OverrideAttestationRequest
 import com.factstore.dto.PageResponse
 import com.factstore.exception.BadRequestException
 import com.factstore.exception.NotFoundException
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
@@ -48,7 +47,7 @@ class AttestationService(
     private val customAttestationTypeRepository: ICustomAttestationTypeRepository,
     private val artifactRepository: IArtifactRepository,
     private val objectMapper: ObjectMapper,
-    private val processors: List<AttestationTypeProcessor> = emptyList(),
+    private val verdicts: AttestationVerdictResolver,
     private val actorResolver: ActorResolver,
     private val tenantScope: TenantScope = TenantScope.UNSCOPED
 ) : IAttestationService {
@@ -87,10 +86,13 @@ class AttestationService(
             validateDataAgainstSchema(request.attestationData, customType.schemaJson!!, request.type)
         }
 
+        // #240: the server decides pass/fail wherever it can evaluate the evidence.
+        val verdict = verdicts.resolve(request.type, request.status, request.attestationData)
         val attestation = Attestation(
             trailId = trailId,
             type = request.type,
-            status = request.status,
+            status = verdict.status,
+            selfAsserted = verdict.selfAsserted,
             details = request.details,
             name = request.name,
             evidenceUrl = request.evidenceUrl,
@@ -108,10 +110,6 @@ class AttestationService(
         }
         attestation.externalUrls = effectiveExternalUrls
         attestation.annotations.putAll(request.annotations)
-
-        if (customType?.jqExpression != null && request.attestationData != null) {
-            applyJqExpression(attestation, customType.jqExpression!!, request.attestationData)
-        }
 
         val saved = attestationRepository.save(attestation)
         eventPublisher.publish(
@@ -165,10 +163,12 @@ class AttestationService(
         val artifact = artifactRepository.findById(artifactId)
             ?: throw NotFoundException("Artifact not found: $artifactId")
         trailRepository.findById(artifact.trailId)?.requireWritable()
+        val verdict = verdicts.resolve(request.type, request.status, request.attestationData)
         val attestation = Attestation(
             trailId = artifact.trailId,
             type = request.type,
-            status = request.status,
+            status = verdict.status,
+            selfAsserted = verdict.selfAsserted,
             details = request.details,
             name = request.name,
             evidenceUrl = request.evidenceUrl,
@@ -270,62 +270,8 @@ class AttestationService(
         }
     }
 
-    private fun applyJqExpression(attestation: Attestation, jqExpression: String, attestationData: String) {
-        try {
-            val node = objectMapper.readTree(attestationData)
-            val result = evaluateJqExpression(jqExpression, node)
-            if (result != null) {
-                attestation.status = if (result) AttestationStatus.PASSED else AttestationStatus.FAILED
-            }
-        } catch (e: Exception) {
-            log.warn("Failed to evaluate jq expression '{}' for attestation type '{}': {}", jqExpression, attestation.type, e.message)
-        }
-    }
-
-    /**
-     * Evaluates a simple jq-like expression against a JSON node.
-     * Supports: `.field`, `.field == value`, `.field.nested == value`
-     * Returns null if the expression is not supported or cannot be evaluated.
-     */
-    private fun evaluateJqExpression(expression: String, node: JsonNode): Boolean? {
-        val trimmed = expression.trim()
-        return if (trimmed.contains("==")) {
-            val parts = trimmed.split("==", limit = 2)
-            val fieldPath = parts[0].trim()
-            val expectedRaw = parts[1].trim()
-            val fieldNode = resolveFieldPath(fieldPath, node) ?: return null
-            val expected = expectedRaw.removeSurrounding("\"")
-            when {
-                expectedRaw == "true" -> fieldNode.asBoolean() == true
-                expectedRaw == "false" -> fieldNode.asBoolean() == false
-                expectedRaw.startsWith("\"") -> fieldNode.asText() == expected
-                else -> fieldNode.asText() == expected
-            }
-        } else {
-            val fieldNode = resolveFieldPath(trimmed, node) ?: return null
-            when {
-                fieldNode.isBoolean -> fieldNode.asBoolean()
-                fieldNode.isNull -> false
-                fieldNode.isMissingNode -> false
-                else -> true
-            }
-        }
-    }
-
-    private fun resolveFieldPath(path: String, node: JsonNode): JsonNode? {
-        val parts = path.trimStart('.').split(".")
-        var current: JsonNode = node
-        for (part in parts) {
-            if (part.isBlank()) continue
-            current = current.get(part) ?: return null
-        }
-        return current
-    }
-
     private fun applyTypeProcessor(attestation: Attestation, evidenceContent: ByteArray) {
-        val processor = processors.firstOrNull { it.typeName.equals(attestation.type, ignoreCase = true) }
-        if (processor != null) {
-            processor.process(evidenceContent, attestation)
+        if (verdicts.applyEvidence(attestation, evidenceContent)) {
             if (attestation.status == AttestationStatus.FAILED) {
                 markTrailNonCompliant(attestation.trailId)
             }
@@ -369,5 +315,6 @@ fun Attestation.toResponse() = AttestationResponse(
     gitRepoUrl = gitRepoUrl,
     artifactId = artifactId,
     overridesAttestationId = overridesAttestationId,
-    justification = justification
+    justification = justification,
+    selfAsserted = selfAsserted
 )

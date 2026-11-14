@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test
 
 class ScmTokenEncryptionServiceTest {
 
-    private val service = ScmTokenEncryptionService("test-key-that-is-32-characters!!")
+    private val service = ScmTokenEncryptionService("dGVzdC1vbmx5LXNjbS10b2tlbi1rZXktMzItYnl0ZXM=")
 
     @Test
     fun `encrypt then decrypt returns original plaintext`() {
@@ -23,10 +23,9 @@ class ScmTokenEncryptionServiceTest {
     }
 
     @Test
-    fun `encrypt and decrypt with short key is padded to 32 bytes`() {
-        val shortKeyService = ScmTokenEncryptionService("short")
-        val plaintext = "token-with-short-key"
-        assertEquals(plaintext, shortKeyService.decrypt(shortKeyService.encrypt(plaintext)))
+    fun `a short key is refused rather than padded to 32 bytes`() {
+        // #242: padding turned a short passphrase into a weak AES key.
+        org.junit.jupiter.api.assertThrows<IllegalStateException> { ScmTokenEncryptionService("short") }
     }
 
     @Test

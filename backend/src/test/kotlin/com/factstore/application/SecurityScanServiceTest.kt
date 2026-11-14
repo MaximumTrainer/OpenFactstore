@@ -48,16 +48,35 @@ class SecurityScanServiceTest {
     }
 
     @Test
-    fun `record scan with no threshold results in PASSED attestation`() {
+    fun `record scan with no threshold and critical vulnerabilities fails closed`() {
         val trailId = createTrail()
         val request = RecordSecurityScanRequest(tool = "Trivy", criticalVulnerabilities = 5)
         val response = service.recordScan(trailId, request)
         assertEquals("Trivy", response.tool)
-        assertFalse(response.thresholdBreached)
-        assertTrue(response.breachDetails.isEmpty())
+        assertTrue(response.thresholdBreached)
+        assertTrue(response.breachDetails.any { it.contains("Critical") }, response.breachDetails.toString())
         val attestation = attestationRepository.findByTrailId(trailId).first()
-        assertEquals(AttestationStatus.PASSED, attestation.status)
+        assertEquals(AttestationStatus.FAILED, attestation.status)
         assertEquals("SECURITY_SCAN", attestation.type)
+    }
+
+    @Test
+    fun `record scan with no threshold and high vulnerabilities fails under the default threshold`() {
+        val trailId = createTrail()
+        val response = service.recordScan(trailId, RecordSecurityScanRequest(tool = "Trivy", highVulnerabilities = 1))
+        assertTrue(response.thresholdBreached)
+        assertEquals(AttestationStatus.FAILED, attestationRepository.findByTrailId(trailId).first().status)
+    }
+
+    @Test
+    fun `record scan with no threshold passes when within the default threshold`() {
+        val trailId = createTrail()
+        val response = service.recordScan(
+            trailId,
+            RecordSecurityScanRequest(tool = "Trivy", mediumVulnerabilities = 3, lowVulnerabilities = 40)
+        )
+        assertFalse(response.thresholdBreached)
+        assertEquals(AttestationStatus.PASSED, attestationRepository.findByTrailId(trailId).first().status)
     }
 
     @Test

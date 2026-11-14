@@ -14,6 +14,9 @@ export interface Flow {
   templateVersion?: string | null
   /** Set when the flow has been archived (soft-deleted) rather than removed. */
   archivedAt?: string | null
+  /** Refuse self-asserted evidence (#240), except for acceptedSelfAssertedTypes. */
+  rejectSelfAsserted?: boolean
+  acceptedSelfAssertedTypes?: string[]
   createdAt: string
   updatedAt: string
 }
@@ -175,6 +178,8 @@ export interface Attestation {
   externalUrls?: string[]
   details?: string
   createdAt: string
+  /** The status is the caller's unchecked claim: the server has no evaluator for this type (#240). */
+  selfAsserted?: boolean
 }
 
 export interface Artifact {
@@ -248,6 +253,10 @@ export interface AssertResponse {
   details: string
   /** The trail the verdict was computed from. */
   trailId?: string
+  /** Required attestations that passed only on the caller's word (#240). */
+  selfAssertedAttestationTypes?: string[]
+  /** Required attestations whose self-asserted evidence the flow refuses (#240). */
+  rejectedSelfAssertedAttestationTypes?: string[]
 }
 
 /** View model the assert screens render; produced by `toAssertResult`. */

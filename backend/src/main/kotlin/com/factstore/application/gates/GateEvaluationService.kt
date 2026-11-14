@@ -49,6 +49,10 @@ data class GateDecision(
     @get:JsonProperty("audit_alert_id") val auditAlertId: UUID?,
     @get:JsonProperty("decision_tree") val decisionTree: DecisionTree,
     @get:JsonProperty("missing_attestations") val missingAttestations: List<String>,
+    /** #240: attestations that counted only on the caller's word (no server-side evaluator). */
+    @get:JsonProperty("self_asserted") val selfAsserted: List<String> = emptyList(),
+    /** #240: attestations whose self-asserted evidence the flow refuses. */
+    @get:JsonProperty("rejected_self_asserted") val rejectedSelfAsserted: List<String> = emptyList(),
     /** How fresh the data behind this decision is (#194). */
     @get:JsonProperty("data_as_of") val dataAsOf: DataAsOf? = null
 )
@@ -87,7 +91,8 @@ class GateEvaluationService(
     private val reports: com.factstore.core.port.outbound.IGateFallbackReports,
     private val cache: GateDecisionCache,
     private val lag: com.factstore.application.observability.ProjectionLag,
-    private val clock: java.time.Clock
+    private val clock: java.time.Clock,
+    private val flows: com.factstore.core.port.outbound.IFlowRepository
 ) {
     private val log = LoggerFactory.getLogger(GateEvaluationService::class.java)
 
@@ -137,10 +142,12 @@ class GateEvaluationService(
                 .copy(dataAsOf = freshness)
         }
 
-        val policyGaps = verdict.trailId?.let { trail ->
-            val passed = attestations.findByTrailId(trail).filter { it.status == AttestationStatus.PASSED }.map { it.type }.toSet()
-            request.requiredPolicies.filterNot { it in passed }
-        } ?: request.requiredPolicies
+        // #240: required policies are judged like the flow's own requirements, self-assertion included.
+        val flow = flows.findById(request.flowId)
+        val policyEvidence = verdict.trailId?.takeIf { flow != null }?.let { trail ->
+            com.factstore.application.SelfAssertion.classify(request.requiredPolicies, attestations.findByTrailId(trail), flow!!) { it.type }
+        }
+        val policyGaps = policyEvidence?.let { e -> request.requiredPolicies.filterNot { it in e.passed } } ?: request.requiredPolicies
         val missing = (verdict.missingAttestationTypes + policyGaps).distinct()
         val failed = verdict.failedAttestationTypes
         val approved = verdict.status == ComplianceStatus.COMPLIANT && policyGaps.isEmpty()
@@ -153,6 +160,8 @@ class GateEvaluationService(
                 request.requiredPolicies, missing, failed
             ),
             missingAttestations = missing,
+            selfAsserted = (verdict.selfAssertedAttestationTypes + (policyEvidence?.selfAsserted ?: emptyList())).distinct(),
+            rejectedSelfAsserted = (verdict.rejectedSelfAssertedAttestationTypes + (policyEvidence?.rejected ?: emptyList())).distinct(),
             dataAsOf = freshness
         )
     }
