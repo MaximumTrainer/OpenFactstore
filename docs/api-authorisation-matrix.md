@@ -43,6 +43,11 @@ Only the caller's own session and notifications, and the public scope vocabulary
 |---|---|---|
 | `POST` | `/api/v1/admin/events/verify` | `@authz.has('admin')` |
 | `POST` | `/api/v1/admin/ledger/checkpoints` | `@authz.has('admin')` |
+| `GET` | `/api/v1/admin/retention/data-classes` | `@authz.has('admin')` |
+| `GET` | `/api/v1/admin/retention/policies` | `@authz.has('admin')` |
+| `DELETE` | `/api/v1/admin/retention/policies/{tenant}/{dataClass}` | `@authz.has('admin')` |
+| `PUT` | `/api/v1/admin/retention/policies/{tenant}/{dataClass}` | `@authz.has('admin')` |
+| `POST` | `/api/v1/admin/retention/runs` | `@authz.has('admin')` |
 | `POST` | `/api/v1/api-keys` | `hasAuthority('SCOPE_admin')` |
 | `GET` | `/api/v1/api-keys/owners/{ownerId}` | `hasAuthority('SCOPE_admin') or @userAccessPolicy.isSelf(#ownerId)` |
 | `GET` | `/api/v1/api-keys/scopes` | `@authz.authenticated()` |
@@ -163,6 +168,9 @@ Only the caller's own session and notifications, and the public scope vocabulary
 | `GET` | `/api/v1/ledger/status` | `@authz.has('trails:read')` |
 | `POST` | `/api/v1/ledger/verify-chain` | `@authz.has('trails:read')` |
 | `POST` | `/api/v1/ledger/verify/{recordId}` | `@authz.has('trails:read')` |
+| `GET` | `/api/v1/legal-holds` | `@authz.has('admin')` |
+| `POST` | `/api/v1/legal-holds` | `@authz.has('admin')` |
+| `POST` | `/api/v1/legal-holds/{id}/release` | `@authz.has('admin')` |
 | `GET` | `/api/v1/logical-environments` | `@authz.has('flows:read')` |
 | `POST` | `/api/v1/logical-environments` | `@authz.has('flows:write')` |
 | `DELETE` | `/api/v1/logical-environments/{id}` | `@authz.has('flows:write')` |

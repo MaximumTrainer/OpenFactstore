@@ -3,6 +3,7 @@ package com.factstore.application.shredding
 import com.factstore.application.ActorResolver
 import com.factstore.application.command.EventAppender
 import com.factstore.core.domain.AuditEventType
+import com.factstore.core.domain.DataKey
 import com.factstore.core.domain.DataKeyStatus
 import com.factstore.core.domain.ShredRequest
 import com.factstore.core.domain.ShredRequestStatus
@@ -91,41 +92,61 @@ class ShreddingService(
         val key = keys.find(request.tenant, request.period) ?: throw NotFoundException("No data key for ${request.tenant}/${request.period}")
         if (key.status == DataKeyStatus.SHREDDED) throw ConflictException("The data key for ${request.tenant}/${request.period} is already shredded")
 
+        request.status = ShredRequestStatus.APPROVED
+        request.approvedBy = approver
+        request.approvedAt = clock.instant()
+        requests.save(request)
+        return destroy(key, requestedBy = request.requestedBy, approvedBy = approver, extra = mapOf("requestId" to request.id.toString()))
+    }
+
+    /**
+     * Shreds a key because a retention policy says its period is over (#251). The policy, set by an
+     * administrator, stands in for the two-person request: the certificate names it as the requester
+     * and whoever last set it as the approver.
+     */
+    fun shredForRetention(tenant: String, period: String, policyOwner: String): ShredCertificate? {
+        val key = keys.find(tenant, period) ?: return null
+        if (key.status == DataKeyStatus.SHREDDED) return null
+        return destroy(key, requestedBy = RETENTION_REQUESTER, approvedBy = policyOwner, extra = mapOf("reason" to "retention"))
+    }
+
+    private fun destroy(key: DataKey, requestedBy: String, approvedBy: String, extra: Map<String, Any?>): ShredCertificate {
         val now = clock.instant()
         key.wrappedKey = null
         key.status = DataKeyStatus.SHREDDED
         key.shreddedAt = now
-        key.shreddedBy = approver
+        key.shreddedBy = approvedBy
         keys.save(key)
-        request.status = ShredRequestStatus.APPROVED
-        request.approvedBy = approver
-        request.approvedAt = now
-        requests.save(request)
-        encryption.forget(request.tenant, request.period)
+        encryption.forget(key.tenant, key.period)
 
         val record = eventAppender.append(
             DomainEvent.DataKeyShredded(
                 aggregateId = key.id,
                 occurredAt = now,
-                tenant = request.tenant,
-                period = request.period,
-                requestedBy = request.requestedBy,
-                approvedBy = approver
+                tenant = key.tenant,
+                period = key.period,
+                requestedBy = requestedBy,
+                approvedBy = approvedBy
             )
         )
         auditService.record(
-            AuditEventType.DATA_KEY_SHREDDED, approver,
-            mapOf(
-                "requestId" to request.id.toString(), "tenant" to request.tenant, "period" to request.period,
-                "requestedBy" to request.requestedBy, "certificateHash" to record.recordHash
+            AuditEventType.DATA_KEY_SHREDDED, approvedBy,
+            extra + mapOf(
+                "tenant" to key.tenant, "period" to key.period,
+                "requestedBy" to requestedBy, "certificateHash" to record.recordHash
             )
         )
-        return ShredCertificate(request.tenant, request.period, now, request.requestedBy, approver, record.recordHash, record.sequenceNumber)
+        return ShredCertificate(key.tenant, key.period, now, requestedBy, approvedBy, record.recordHash, record.sequenceNumber)
     }
 
     @Transactional(readOnly = true)
     fun list(): List<DataKeyView> = keys.findAll().map {
         DataKeyView(it.tenant, it.period, it.status, it.kekId, it.createdAt, it.shreddedAt)
+    }
+
+    companion object {
+        /** The requester named on a shred that a retention policy triggered. */
+        const val RETENTION_REQUESTER = "retention-policy"
     }
 
     private fun ShredRequest.toView() = ShredRequestView(id, tenant, period, status, requestedBy)

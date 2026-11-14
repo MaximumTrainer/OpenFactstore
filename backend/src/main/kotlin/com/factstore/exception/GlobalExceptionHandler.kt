@@ -159,6 +159,16 @@ class GlobalExceptionHandler(
         )
     }
 
+    /** A path or query value of the wrong type, such as an unknown enum value, is the caller's mistake. */
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException::class)
+    fun handleTypeMismatch(
+        ex: org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+    ): ResponseEntity<ErrorResponse> {
+        log.warn("Bad request parameter '{}': {}", ex.name, ex.value)
+        val allowed = ex.requiredType?.enumConstants?.joinToString(", ")?.let { "; expected one of $it" } ?: ""
+        return respond(ex, HttpStatus.BAD_REQUEST, "Bad Request", "Invalid value '${ex.value}' for '${ex.name}'$allowed")
+    }
+
     @ExceptionHandler(BadRequestException::class)
     fun handleBadRequest(ex: BadRequestException): ResponseEntity<ErrorResponse> {
         log.warn("Bad request: ${ex.message}")

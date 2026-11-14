@@ -8,11 +8,11 @@ Every operation the backend serves, grouped by resource, with the decision taken
 
 | | Operations |
 |---|---:|
-| `/api/v1` | 257 |
+| `/api/v1` | 265 |
 | `/api/v2` | 24 |
-| **Total** | **281** |
+| **Total** | **289** |
 | Deprecated | 22 |
-| After the sunset on 2027-05-14 | 259 |
+| After the sunset on 2027-05-14 | 267 |
 
 Deprecated operations still work until the sunset. Every response from one carries `Deprecation`, `Sunset` and a `Link: <successor>; rel="successor-version"` header, and the OpenAPI document marks it `deprecated: true`. See [API deprecations](upgrading/api-deprecations.md) for how to move.
 
@@ -66,6 +66,16 @@ Request counts per route are in the `http_server_requests_seconds_count` metric 
 | Method | Path | Summary | Status |
 |---|---|---|---|
 | POST | `/api/v1/admin/ledger/checkpoints` | Checkpoint now |  |
+
+### admin/retention
+
+| Method | Path | Summary | Status |
+|---|---|---|---|
+| GET | `/api/v1/admin/retention/data-classes` | The data classes a retention policy can govern, with their action and minimum period |  |
+| GET | `/api/v1/admin/retention/policies` | List retention policies |  |
+| PUT | `/api/v1/admin/retention/policies/{tenant}/{dataClass}` | Set how long an organisation keeps a class of data |  |
+| DELETE | `/api/v1/admin/retention/policies/{tenant}/{dataClass}` | Remove a retention policy; the data class is then kept indefinitely |  |
+| POST | `/api/v1/admin/retention/runs` | Run the retention job now |  |
 
 ### api-keys
 
@@ -317,6 +327,14 @@ Request counts per route are in the `http_server_requests_seconds_count` metric 
 | GET | `/api/v1/ledger/status` | Ledger health and sync status |  |
 | POST | `/api/v1/ledger/verify-chain` | Verify chain integrity for a date range |  |
 | POST | `/api/v1/ledger/verify/{recordId}` | Verify the integrity of a specific record |  |
+
+### legal-holds
+
+| Method | Path | Summary | Status |
+|---|---|---|---|
+| GET | `/api/v1/legal-holds` | List legal holds; released holds only with includeReleased=true |  |
+| POST | `/api/v1/legal-holds` | Place a legal hold on a trail or flow; retention skips everything it covers |  |
+| POST | `/api/v1/legal-holds/{id}/release` | Release a legal hold; the hold stays on record |  |
 
 ### logical-environments
 

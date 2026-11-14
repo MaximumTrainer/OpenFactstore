@@ -80,8 +80,7 @@ class OrgTemplateService(private val repository: IOrgTemplateRepository) {
         if (request.templateId.isBlank()) throw BadRequestException("templateId is required")
         if (request.name.isBlank()) throw BadRequestException("name is required")
         if (request.templateYaml.isBlank()) throw BadRequestException("templateYaml is required")
-        templateParser.parse(request.templateYaml)
-            ?: throw BadRequestException("templateYaml is not a valid flow template")
+        templateParser.validate(request.templateYaml)
     }
 
     private fun OrgTemplate.toResponse() = OrgTemplateResponse(

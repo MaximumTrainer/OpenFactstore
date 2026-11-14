@@ -39,12 +39,14 @@ class FlowCommandHandler(
 ) : IFlowCommandHandler {
 
     private val log = LoggerFactory.getLogger(FlowCommandHandler::class.java)
+    private val templateParser = com.factstore.application.template.TemplateParser()
 
     override fun createFlow(command: CreateFlowCommand): CommandResult {
         if (flowRepository.existsByName(command.name)) {
             throw ConflictException("Flow with name '${command.name}' already exists")
         }
         validateTags(command.tags)
+        command.templateYaml?.let { templateParser.validate(it) }
         // A template is copied onto the flow at creation, never linked live (#162), as on v1.
         val templateIds = (listOfNotNull(command.templateId) + command.templateIds.orEmpty()).distinct()
         val applied = templateIds.takeIf { it.isNotEmpty() }?.let {
@@ -97,7 +99,10 @@ class FlowCommandHandler(
             validateTags(it)
             flow.tags = it.toMutableMap()
         }
-        command.templateYaml?.let { flow.templateYaml = it }
+        command.templateYaml?.let {
+            templateParser.validate(it)
+            flow.templateYaml = it
+        }
         command.requiresApproval?.let { flow.requiresApproval = it }
         command.requiredApproverRoles?.let { flow.requiredApproverRoles = it }
         flow.updatedAt = Instant.now()
